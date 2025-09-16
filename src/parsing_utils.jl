@@ -1,3 +1,49 @@
+const ATOMIC_ORDER = [
+    :Ca, :Na, :K, :Mg, :Sr, :Ba,  # Alkaline earth/alkali metals
+    :Al, :Si, :Fe, :Ti, :Mn, :Cr,  # Transition metals
+    :S, :P, :C, :B,               # Non-metals
+    :H, :O,                       # H before O for H₂O, OH⁻, etc.
+    :F, :Cl, :Br, :I,             # Halogens
+    :N,                           # Nitrogen
+    :Zz                            # Charge
+]
+
+# const cement_to_mendeleev = [
+#     "C" => "CaO",  
+#     "S" => "SiO2", 
+#     "A" => "Al2O3",
+#     "F" => "Fe2O3",
+#     "K" => "K2O",  
+#     "N" => "Na2O", 
+#     "M" => "MgO",  
+#     "P" => "P2O5", 
+#     "T" => "TiO2", 
+#     "C̄" => "CO2",  
+#     "S̄" => "SO3",  
+#     "N̄" => "NO3",  
+#     "H" => "H2O",  
+# ]
+
+const cement_to_mendeleev = [
+    :C  => Dict(:Ca => 1, :O => 1),
+    :S  => Dict(:Si => 1, :O => 2),
+    :A  => Dict(:Al => 2, :O => 3),
+    :F  => Dict(:Fe => 2, :O => 3),
+    :K  => Dict(:K  => 2, :O => 1),
+    :N  => Dict(:Na => 2, :O => 1),
+    :M  => Dict(:Mg => 1, :O => 1),
+    :P  => Dict(:P  => 2, :O => 5),
+    :T  => Dict(:Ti => 1, :O => 2),
+    :C̄ => Dict(:C  => 1, :O => 2),
+    :S̄ => Dict(:S  => 1, :O => 3),
+    :N̄ => Dict(:N  => 1, :O => 3),
+    :H  => Dict(:H  => 2, :O => 1),
+]
+
+const CEMENT_ORDER = [
+    :C, :S, :A, :F, :K, :N, :M, :P, :T, :C̄, :S̄, :N̄, :H
+]
+
 const dict_super_to_normal = Dict{Char,Char}(
     '⁰' => '0',
     '¹' => '1',
@@ -93,23 +139,6 @@ sub_to_normal(s::AbstractString) = replace(s, dict_sub_to_normal...)
 
 "Convert all normal characters in `s` to numeric subscripts ."
 normal_to_sub(s::AbstractString) = replace(s, dict_normal_to_sub...)
-
-function replace_graphemes(s::AbstractString, old_new::Pair...)
-    gs = collect(graphemes(s))
-
-    mapping = Dict{String,String}()
-    for pair in old_new
-        mapping[string(pair.first)] = string(pair.second)
-    end
-
-    for i in eachindex(gs)
-        if haskey(mapping, gs[i])
-            gs[i] = mapping[gs[i]]
-        end
-    end
-    return join(gs)
-end
-
 
 function stoich_coef_round(x::T; tol=1e-4) where {T<:Real}
     try
@@ -269,7 +298,7 @@ function parse_formula(formula::AbstractString)
                 elseif occursin("//", countstr)
                     parse(Rational{Int}, countstr)
                 else
-                    parse(Float64, countstr)
+                    stoich_coef_round(parse(Float64, countstr))
                 end
 
                 if cnt isa Rational && denominator(cnt) == 1
@@ -287,9 +316,9 @@ function parse_formula(formula::AbstractString)
         end
     end
 
-    T = promote_type(typeof.(stoich_coef_round.(values(counts)))...)
+    # T = promote_type(typeof.(stoich_coef_round.(values(counts)))...)
 
-    return Dict(k => convert(T, v) for (k, v) in counts)
+    return Dict(k => stoich_coef_round(v) for (k, v) in counts)
 
 end
 
@@ -304,5 +333,46 @@ function extract_charge(formula::AbstractString)
     end
 end
 
-calculate_molar_mass(atoms::AbstractDict{Symbol,T}) where {T} =
-    uconvert(g/mol, sum(cnt * elements[element].atomic_mass for (element, cnt) in atoms) * AvogadroConstant)
+calculate_molar_mass(atoms::AbstractDict{Symbol,T}) where {T<:Number} =
+    uconvert(g/mol, sum(cnt * elements[element].atomic_mass for (element, cnt) in atoms; init=0u) * AvogadroConstant)
+
+function replace_graphemes(s::AbstractString, old_new::Pair...)
+    gs = collect(graphemes(s))
+
+    mapping = Dict{String,String}()
+    for pair in old_new
+        mapping[string(pair.first)] = string(pair.second)
+    end
+
+    for i in eachindex(gs)
+        if haskey(mapping, gs[i])
+            gs[i] = mapping[gs[i]]
+        end
+    end
+    return join(gs)
+end
+
+function merge_sum_dicts(dicts::Vector{Dict{Symbol, <:Number}})
+    result = Dict{Symbol, Number}()
+    for d in dicts
+        for (k, v) in d
+            result[k] = get(result, k, 0) + v
+        end
+    end
+    return Dict(k => stoich_coef_round(v) for (k, v) in result)
+end
+
+function to_mendeleev(oxides::AbstractDict{Symbol,T}) where {T<:Number}
+    result = Dict{Symbol, Number}()
+    for (ox, coef) in oxides
+        if ox ∉ [:Zz, :Zz⁺, :e, :e⁻]
+            idx = findfirst(p -> p.first == ox, cement_to_mendeleev)
+            idx !== nothing || error("$(ox) is not a valid oxide identifier")
+            mend = cement_to_mendeleev[idx].second
+            for (k, v) in mend
+                result[k] = get(result, k, 0) + v*coef
+            end
+        end
+    end
+    return length(result) > 0 ? Dict(k => stoich_coef_round(v) for (k, v) in result) : result
+end

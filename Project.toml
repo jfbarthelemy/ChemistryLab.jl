@@ -4,14 +4,28 @@ authors = ["Jean-François Barthélémy and Anthony Soive"]
 version = "0.1.0-dev"
 
 [deps]
+CSV = "336ed68f-0bac-5ca0-87d4-7b16caf5d00b"
+DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
+JSON = "682c06a0-de6a-54ab-a142-c8b1cf79cde6"
+JSON3 = "0f8b85d8-7281-11e9-16c2-39a750bddbf1"
+LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
+LinearAlgebraX = "9b3f67b0-2d00-526e-9884-9e4938f8fb88"
 PeriodicTable = "7b2266bf-644c-5ea3-82d8-af4bbd25a884"
 PhysicalConstants = "5ad8b20f-a522-5ce9-bfc9-ddf1d5bda6ab"
+PrettyTables = "08abe8d2-0d0c-5749-adfa-8a2ac140af0d"
 Unicode = "4ec0a83e-493e-50e2-b9ac-8f72acf5a8f5"
 Unitful = "1986cc42-f94f-5a68-af5c-568840ba703d"
 
 [compat]
+CSV = "0.10.15"
+DataFrames = "1.8.0"
+JSON = "0.21.4"
+JSON3 = "1.14.3"
+LinearAlgebra = "1.11.0"
+LinearAlgebraX = "0.2.10"
 PeriodicTable = "1.2.1"
 PhysicalConstants = "0.2.4"
+PrettyTables = "3.0.8"
 Unicode = "1.11.0"
 Unitful = "1.24.0"
 julia = "1.11"
