@@ -127,7 +127,7 @@ end
 CemSpecies(f::AbstractString; name=f, symbol=f) = CemSpecies(;expr=f, name=name, symbol=symbol)
 
 function CemSpecies(oxides::AbstractDict{Symbol,T}, charge=0; name="", symbol="") where {T}
-    cemformula = Formula(oxides, charge; order=CEMENT_ORDER)
+    cemformula = Formula(oxides, charge; order=OXIDE_ORDER)
     return CemSpecies(cemformula; name=name, symbol=symbol)
 end
 

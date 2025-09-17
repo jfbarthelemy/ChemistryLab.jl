@@ -5,7 +5,7 @@ struct AtomGroup{T<:Number} coef::T ; sym::Symbol end
 /(sym::Symbol, n::Number) = AtomGroup(stoich_coef_round(inv(n)), sym)
 //(sym::Symbol, n::Number) = AtomGroup(stoich_coef_round(1//n), sym)
 
-Base.convert(AtomGroup, sym::Symbol) = AtomGroup(1, sym)
+Base.convert(::Type{AtomGroup}, sym::Symbol) = AtomGroup(1, sym)
 
 AtomGroup(sym::Symbol) = AtomGroup(1, sym)
 

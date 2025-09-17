@@ -1,6 +1,6 @@
 module CementChemistry
 
-export ATOMIC_ORDER, CEMENT_ORDER, stoich_coef_round, phreeqc_to_unicode, unicode_to_phreeqc, parse_formula, extract_charge, calculate_molar_mass, to_mendeleev
+export ATOMIC_ORDER, OXIDE_ORDER, stoich_coef_round, phreeqc_to_unicode, unicode_to_phreeqc, parse_formula, extract_charge, calculate_molar_mass, to_mendeleev
 export Formula, expr, phreeqc, unicode, composition, charge
 export AbstractSpecies, Species, CemSpecies
 export name, symbol, formula, cemformula, atoms, atoms_charge, oxides, oxides_charge, components, properties

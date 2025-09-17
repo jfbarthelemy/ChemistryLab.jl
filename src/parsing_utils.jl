@@ -40,7 +40,7 @@ const cement_to_mendeleev = [
     :H  => Dict(:H  => 2, :O => 1),
 ]
 
-const CEMENT_ORDER = [
+const OXIDE_ORDER = [
     :C, :S, :A, :F, :K, :N, :M, :P, :T, :C̄, :S̄, :N̄, :H
 ]
 
