@@ -1,7 +1,5 @@
 # CementChemistry [![Stable](https://img.shields.io/badge/docs-stable-blue.svg)](https://jfbarthelemy.github.io/CementChemistry.jl/stable/) [![Dev](https://img.shields.io/badge/docs-dev-blue.svg)](https://jfbarthelemy.github.io/CementChemistry.jl/dev/) [![Build Status](https://github.com/jfbarthelemy/CementChemistry.jl/actions/workflows/CI.yml/badge.svg?branch=main)](https://github.com/jfbarthelemy/CementChemistry.jl/actions/workflows/CI.yml?query=branch%3Amain)
 
-# CementChemistry.jl
-
 CementChemistry.jl is a Julia library for chemical modeling of cements and aqueous solutions, supporting ThermoFun and Cemdata databases.
 
 ## Features
