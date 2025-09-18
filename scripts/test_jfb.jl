@@ -15,7 +15,7 @@ fNa⁺ = :Na+:Zz
 fH₂O = 2*:H + :O
 H₂O = Species(fH₂O)
 HSO₄⁻ = Species("HSO₄⁻")
-CO₂ = Species(Dict(:C=>1, :O=>2))
+CO₂ = Species(Dict(:C=>1, :O=>2); name="CO₂")
 species = [H₂O, HSO₄⁻, CO₂] ;
 stoich_matrix(species) ;
 
@@ -24,9 +24,9 @@ OXIDE_ORDER # provides the order of oxides in cement formulas
 C3S = CemSpecies("C3S")
 C2S = CemSpecies("C2S")
 C3A = CemSpecies("C3A")
-C4AF = CemSpecies(Dict(:C=>4, :A=>1, :F=>1))
+C4AF = CemSpecies(Dict(:C=>4, :A=>1, :F=>1); name="C4AF")
 cemspecies = [C3S, C2S, C3A, C4AF]
-stoich_matrix(cemspecies) ;
+A, indep_comp, dep_comp = stoich_matrix(cemspecies) ;
 
 # Thermofun cemdata18
 df_elements, df_substances, df_reactions = parse_cemdata18_thermofun("data/cemdata18-merged.json")
@@ -43,7 +43,7 @@ all_species = unique(vcat(given_species, secondaries), :symbol)
 # candidate_primaries = Species.(df_primaries.formula)
 species = [Species(f; name=phreeqc_to_unicode(n)) for (f,n) in zip(all_species.formula, all_species.symbol)]
 candidate_primaries = [Species(f; name=phreeqc_to_unicode(n)) for (f,n) in zip(df_primaries.formula, df_primaries.symbol)]
-stoich_matrix(species, candidate_primaries) ;
+A, indep_comp, dep_comp = stoich_matrix(species, candidate_primaries) ;
 
 # Construction of stoich matrix with aqueous species from database
 aqueous_species = filter(row->row.aggregate_state == "AS_AQUEOUS", df_substances)

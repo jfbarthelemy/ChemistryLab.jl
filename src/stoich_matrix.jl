@@ -1,7 +1,7 @@
-same_components(::Vector) = atoms_charge
+same_components(::Vector{<:AbstractSpecies}) = atoms_charge
 same_components(::Vector{<:CemSpecies}) = oxides_charge
 
-item_order(::Vector) = ATOMIC_ORDER
+item_order(::Vector{<:AbstractSpecies}) = ATOMIC_ORDER
 item_order(::Vector{<:CemSpecies}) = OXIDE_ORDER
 
 union_atoms(atom_dicts::Vector{<:Dict}, order_vec = ATOMIC_ORDER) = sort!(collect(union(keys.(atom_dicts)...)), by=k -> findfirst(==(k), order_vec))
