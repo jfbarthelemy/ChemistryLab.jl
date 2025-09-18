@@ -1,4 +1,4 @@
-abstract type AbstractSpecies{T<:Number} end
+abstract type AbstractSpecies end
 
 ==(s1::AbstractSpecies, s2::AbstractSpecies) = formula(s1) == formula(s2)
 
@@ -20,7 +20,7 @@ function atoms_charge(s::AbstractSpecies)
     end
 end
 
-Base.getindex(s::AbstractSpecies{T}, i::Symbol) where {T} = get(atoms(s), i, get(properties(s), i, zero(T)))
+Base.getindex(s::AbstractSpecies, i::Symbol) = get(atoms(s), i, get(properties(s), i, 0))
 
 Base.setindex!(s::AbstractSpecies, value, i::Symbol) = setindex!(properties(s), value, i)
 
@@ -42,7 +42,7 @@ function Base.setproperty!(s::AbstractSpecies, sym::Symbol, value)
     end
 end
 
-struct Species{T} <: AbstractSpecies{T}
+struct Species{T<:Number} <: AbstractSpecies
     name::String
     symbol::String
     formula::Formula{T}
@@ -87,7 +87,7 @@ function Base.show(io::IO, s::Species)
     if length(properties(s))>0 println(io, lpad("properties", pad), ": ", join(["$k = $v" for (k, v) in properties(s)], "\n"*repeat(" ", pad+2))) end
 end
 
-struct CemSpecies{T, S<:Number} <: AbstractSpecies{T}
+struct CemSpecies{T<:Number, S<:Number} <: AbstractSpecies
     name::String
     symbol::String
     formula::Formula{T}
