@@ -15,3 +15,4 @@ CementChemistry.jl is a Julia library for chemical modeling of cements and aqueo
 ```julia
 using Pkg
 Pkg.add(url="https://github.com/jfbarthelemy/CementChemistry.jl")
+```
