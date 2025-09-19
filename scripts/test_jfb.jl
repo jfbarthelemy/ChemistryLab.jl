@@ -58,3 +58,10 @@ ox = Dict(:C => â, :S => one(Sym), :A => b̂, :H => ĝ)
 CSH = CemSpecies(ox)
 numCSH = CemSpecies(map(N, map(subs, cemformula(CSH), â=>1.8, b̂=>1, ĝ=>5)))
 floatCSH = Species(convert(Float64, formula(numCSH)))
+
+# Conversion to cement notation
+H₂O = Species("H₂O")
+CemSpecies(H₂O)
+Jennite = Species(filter(row->row.symbol == "Jennite", df_substances).formula[1])
+cemJennite = CemSpecies(Jennite)
+println(unicode(Jennite), " ≡ ", unicode(cemJennite))
