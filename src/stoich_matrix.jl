@@ -95,3 +95,19 @@ function stoich_matrix(species::Vector{<:AbstractSpecies}, candidate_primaries::
 
     return A, indep_comp, dep_comp 
 end
+
+function stoich_matrix_to_equations(A::AbstractMatrix, indep_comp::Vector{<:AbstractString}, dep_comp::Vector{<:AbstractString}; scaling=1, display=true)
+    eqns = String[]
+    for (j,sp) in enumerate(dep_comp)
+        if sp in indep_comp
+            if display println(rpad("$(sp)", 11), "| $sp = $sp") end
+        else
+            coeffs = Dict(zip(indep_comp, -A[:,j]))
+            coeffs[sp] = 1
+            eqn = format_equation(coeffs; scaling=scaling)
+            push!(eqns, eqn)
+            if display println(rpad("$(sp)", 11), "| ", eqn) end
+        end
+    end
+    return eqns
+end
