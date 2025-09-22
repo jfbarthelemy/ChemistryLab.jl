@@ -1,11 +1,11 @@
 module CementChemistry
 
-export ATOMIC_ORDER, OXIDE_ORDER, stoich_coef_round, phreeqc_to_unicode, unicode_to_phreeqc, parse_formula, extract_charge, calculate_molar_mass, to_mendeleev
+export ATOMIC_ORDER, OXIDE_ORDER, stoich_coef_round, phreeqc_to_unicode, unicode_to_phreeqc, parse_formula, extract_charge, calculate_molar_mass, to_mendeleev, parse_equation, format_equation
 export Formula, expr, phreeqc, unicode, composition, charge
 export AbstractSpecies, Species, CemSpecies
 export name, symbol, formula, cemformula, atoms, atoms_charge, oxides, oxides_charge, components, properties
 export merge_json, parse_cemdata18_thermofun, extract_primary_species
-export union_atoms, stoich_matrix
+export union_atoms, stoich_matrix, stoich_matrix_to_equations
 
 import Base: ==, +, -, *, /, //
 using LinearAlgebra
