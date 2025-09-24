@@ -6,9 +6,10 @@ CurrentModule = CementChemistry
 
 Documentation for [CementChemistry](https://github.com/jfbarthelemy/CementChemistry.jl).
 
-```@index
-```
+Computational chemistry tool for low-carbon cementitious materials
 
-```@autodocs
-Modules = [CementChemistry]
+## Install
+
+```julia-repl
+pkg> add https://github.com/jfbarthelemy/CementChemistry.jl
 ```
