@@ -79,6 +79,8 @@ Base.getindex(f::Formula{T}, i::Symbol) where {T} = get(composition(f), i, zero(
 Base.length(f::Formula) = length(composition(f))
 
 ==(f1::Formula, f2::Formula) = composition(f1) == composition(f2) && charge(f1) == charge(f2)
+Base.isequal(f1::Formula, f2::Formula) = f1 == f2
+Base.hash(f::Formula, h::UInt) = hash(composition(f), hash(charge(f), h))
 
 function Base.show(io::IO, s::Formula)
     pad = 11

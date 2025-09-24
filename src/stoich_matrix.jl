@@ -16,7 +16,7 @@ function stoich_matrix(species::Vector{<:AbstractSpecies}; display = true)
             stoich_matrix[i, j] = get(atoms, atom, zero(T))
         end
     end
-    species_names = name.(species)
+    species_names = symbol.(species)
     if display
         pretty_table(
            stoich_matrix,
@@ -28,11 +28,14 @@ function stoich_matrix(species::Vector{<:AbstractSpecies}; display = true)
     return stoich_matrix, involved_atoms, species_names
 end
 
-function stoich_matrix(species::Vector{<:AbstractSpecies}, candidate_primaries::Vector{<:AbstractSpecies}; display = true)
+function stoich_matrix(s::Vector{<:AbstractSpecies}, candidate_primaries::Vector{<:AbstractSpecies}; display = true)
 
-    vec_components = same_components(union(species,candidate_primaries))
+    vec_components = same_components(union(s,candidate_primaries))
 
-    species = deepcopy(species)
+    S = promote_type(typeof.(s)..., typeof.(candidate_primaries)...)
+
+    species = S[]
+    append!(species, s)
     num_initial_species = length(species)
     initial_involved_atoms = union_atoms(vec_components.(species), item_order(species))
     candidate_primaries = deepcopy(candidate_primaries)
@@ -70,7 +73,7 @@ function stoich_matrix(species::Vector{<:AbstractSpecies}, candidate_primaries::
     r = Int(rank(M_subset; rtol=1.e-6))
     pivot_idx = F.p[1:r]
     independent_cols_indices = sort(cols_candidates[pivot_idx])
-    sort!(independent_cols_indices, by = x->species_names[x] !== "H2O@" && species_names[x] !== "H2O" && species_names[x] !== "H")
+    sort!(independent_cols_indices, by = x->species_names[x] !== "H2O@" && species_names[x] !== "H2O" && species_names[x] !== "H₂O" && species_names[x] !== "H")
 
     M_indep = M[:, independent_cols_indices]
     A = stoich_coef_round.(pinv(M_indep)*M)
@@ -96,15 +99,15 @@ function stoich_matrix(species::Vector{<:AbstractSpecies}, candidate_primaries::
     return A, indep_comp, dep_comp 
 end
 
-function stoich_matrix_to_equations(A::AbstractMatrix, indep_comp::Vector{<:AbstractString}, dep_comp::Vector{<:AbstractString}; scaling=1, display=true)
+function stoich_matrix_to_equations(A::AbstractMatrix, indep_comp::Vector{<:AbstractString}, dep_comp::Vector{<:AbstractString}; scaling=1, display=true, equal_sign='=')
     eqns = String[]
     for (j,sp) in enumerate(dep_comp)
         if sp in indep_comp
-            if display println(rpad("$(sp)", 11), "| $sp = $sp") end
+            if display println(rpad("$(sp)", 11), "| $sp $(equal_sign) $sp") end
         else
             coeffs = Dict(zip(indep_comp, -A[:,j]))
             coeffs[sp] = 1
-            eqn = format_equation(coeffs; scaling=scaling)
+            eqn = format_equation(coeffs; scaling=scaling, equal_sign=equal_sign)
             push!(eqns, eqn)
             if display println(rpad("$(sp)", 11), "| ", eqn) end
         end

@@ -63,10 +63,31 @@ floatCSH = Species(convert(Float64, formula(numCSH)))
 # Conversion to cement notation
 H₂O = Species("H₂O")
 CemSpecies(H₂O)
-Jennite = Species(filter(row->row.symbol == "Jennite", df_substances).formula[1])
+df_Jennite = filter(row->row.symbol == "Jennite", df_substances)
+Jennite = Species(df_Jennite.formula[1]; name=df_Jennite.name[1], symbol=df_Jennite.symbol[1])
 cemJennite = CemSpecies(Jennite)
 println(unicode(Jennite), " ≡ ", unicode(cemJennite))
 
 # Equation parsing
-equation = "13H⁺ + NO₃⁻ + CO₃²⁻ + 10e- = 6H₂O@ + HCN@"
+equation = "13H⁺ + NO₃⁻ + CO₃²⁻ + 10e⁻ = 6H₂O@ + HCN@"
+ ## simple parsing giving Dicts
 reactants, equal_sign, products = parse_equation(equation)
+ ## construction of a Reaction struct from a string
+r = Reaction(equation)
+ ## species_stoich provides the Dict of species and stoich coeffs
+format_equation(Dict(symbol(k) => v for (k,v) in r.species_stoich))
+ ## construction of a Reaction of only CemSpecies by CemReaction
+eqC3S = "C₃S + 5.3H = 1.3CH + C₁.₇SH4"
+rC3S = CemReaction(eqC3S)
+format_equation(Dict(symbol(k) => v for (k,v) in rC3S.species_stoich))
+format_equation(Dict(unicode(formula(k)) => v for (k,v) in rC3S.species_stoich))
+ ## construction of a Reaction by operations on Species
+C3S = CemSpecies("C3S")
+H = CemSpecies("H")
+CH = CemSpecies("CH")
+CSH = CemSpecies("C1.7SH4")
+r = C3S + 5.3H ↔ 1.3CH + CSH
+species_list(r)
+stoich_list(r)
+ ## construction of a Reaction by a balance calculation
+r = Reaction(CSH, [H,CH,C3S]; equal_sign="→")

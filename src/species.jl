@@ -1,6 +1,8 @@
 abstract type AbstractSpecies end
 
-==(s1::AbstractSpecies, s2::AbstractSpecies) = formula(s1) == formula(s2)
+==(s1::AbstractSpecies, s2::AbstractSpecies) = formula(s1) == formula(s2) && symbol(s1) == symbol(s2)
+Base.isequal(s1::AbstractSpecies, s2::AbstractSpecies) = s1 == s2
+Base.hash(s::AbstractSpecies, h::UInt) = hash(symbol(s), hash(formula(s), h))
 
 name(s::AbstractSpecies) = s.name
 symbol(s::AbstractSpecies) = s.symbol
@@ -69,15 +71,21 @@ Species(f::AbstractString; name=f, symbol=f) = Species(;expr=f, name=name, symbo
 function Species(atoms::AbstractDict{Symbol,T}, charge=0; name="", symbol="") where {T}
     formula = Formula(atoms, charge)
     properties = Dict(:molar_mass => calculate_molar_mass(atoms))
+    if length(name) == 0 name = unicode(formula) end
+    if length(symbol) == 0 symbol = name end
     return Species{valtype(atoms)}(name, symbol, formula, properties)
 end
 
-function Base.convert(::Type{Species{T}}, s::Species) where {T}
-    return Species(convert(T, formula(s)); name=name(s), symbol=symbol(s))
+function Base.convert(::Type{Species{T}}, s::Species; name=name(s), symbol=symbol(s)) where {T}
+    return Species(convert(T, formula(s)); name=name, symbol=symbol)
 end
 
-function Species{T}(s::Species) where {T}
-    return convert(Species{T}, s)
+function Species{T}(s::Species; name=name(s), symbol=symbol(s)) where {T}
+    return convert(Species{T}, s; name=name, symbol=symbol)
+end
+
+function Species(s::Species; name=name(s), symbol=symbol(s))
+    return Species(formula(s); name=name, symbol=symbol)
 end
 
 function Base.show(io::IO, s::Species)
@@ -92,7 +100,7 @@ function Base.show(io::IO, s::Species)
     println(io, lpad("formula", pad), ": ", expr(s), " | ", phreeqc(s), " | ", unicode(s))
     println(io, lpad("atoms", pad), ": ", join(["$k:$v" for (k, v) in atoms(s)], ", "))
     println(io, lpad("charge", pad), ": ", charge(s))
-    if length(properties(s))>0 println(io, lpad("properties", pad), ": ", join(["$k = $v" for (k, v) in properties(s)], "\n"*repeat(" ", pad+2))) end
+    if length(properties(s))>0 print(io, lpad("properties", pad), ": ", join(["$k = $v" for (k, v) in properties(s)], "\n"*repeat(" ", pad+2))) end
 end
 
 struct CemSpecies{T<:Number, S<:Number} <: AbstractSpecies
@@ -136,6 +144,8 @@ CemSpecies(f::AbstractString; name=f, symbol=f) = CemSpecies(;expr=f, name=name,
 
 function CemSpecies(oxides::AbstractDict{Symbol,T}, charge=0; name="", symbol="") where {T}
     cemformula = Formula(oxides, charge; order=OXIDE_ORDER)
+    if length(name) == 0 name = unicode(cemformula) end
+    if length(symbol) == 0 symbol = name end
     return CemSpecies(cemformula; name=name, symbol=symbol)
 end
 
@@ -147,7 +157,7 @@ function CemSpecies(s::Species)
         if sym in first.(cement_to_mendeleev)
             return sym
         else
-            return Symbol(name(candidate_primaries[findfirst(==(Species(f)), candidate_primaries)]))
+            return Symbol(name(candidate_primaries[findfirst(k->formula(k)==formula(Species(f)), candidate_primaries)]))
         end
     end
     oxides = Dict(convert_to_cem_name(indep_comp[i]) => A[i,1] for i in 1:size(A, 1))
@@ -158,12 +168,20 @@ Species(s::CemSpecies) = Species{valtype(atoms(s))}(name(s), symbol(s), formula(
 
 Base.convert(::Type{<:Species}, s::CemSpecies) = Species(s)
 
-function Base.convert(::Type{CemSpecies{S}}, s::CemSpecies) where {S}
-    return CemSpecies(convert(S, cemformula(s)); name=name(s), symbol=symbol(s))
+function Base.convert(::Type{CemSpecies{S}}, s::CemSpecies; name=name(s), symbol=symbol(s)) where {S}
+    return CemSpecies(convert(S, cemformula(s)); name=name, symbol=symbol)
 end
 
-function CemSpecies{S}(s::CemSpecies) where {S}
-    return convert(CemSpecies{S}, s)
+function CemSpecies{S}(s::CemSpecies; name=name(s), symbol=symbol(s)) where {S}
+    return convert(CemSpecies{S}, s; name=name, symbol=symbol)
+end
+
+function CemSpecies{S,T}(s::CemSpecies; name=name(s), symbol=symbol(s)) where {S,T}
+    return convert(CemSpecies{S}, s; name=name, symbol=symbol)
+end
+
+function CemSpecies(s::CemSpecies; name=name(s), symbol=symbol(s))
+    return CemSpecies(cemformula(s); name=name, symbol=symbol)
 end
 
 function Base.show(io::IO, s::CemSpecies)
@@ -182,9 +200,14 @@ function Base.show(io::IO, s::CemSpecies)
     println(io, lpad("formula", pad), ": ", expr(f), " | ", phreeqc(f), " | ", unicode(f))
     println(io, lpad("atoms", pad), ": ", join(["$k:$v" for (k, v) in atoms(s)], ", "))
     println(io, lpad("charge", pad), ": ", charge(s))
-    if length(properties(s))>0 println(io, lpad("properties", pad), ": ", join(["$k = $v" for (k, v) in properties(s)], "\n"*repeat(" ", pad+2))) end
+    if length(properties(s))>0 print(io, lpad("properties", pad), ": ", join(["$k = $v" for (k, v) in properties(s)], "\n"*repeat(" ", pad+2))) end
 end
 
-Base.promote_rule(::Type{Species}, ::Type{CemSpecies}) = Species
-Base.promote_rule(::Type{CemSpecies}, ::Type{Species}) = Species
+Base.promote_rule(::Type{Species}, ::Type{<:AbstractSpecies}) = Species
+Base.promote_rule(::Type{<:AbstractSpecies}, ::Type{Species}) = Species
 
+Base.promote_rule(::Type{Species}, ::Type{Species{T}}) where {T} = Species
+Base.promote_rule(::Type{Species{T}}, ::Type{Species}) where {T} = Species
+
+Base.promote_rule(::Type{<:CemSpecies}, ::Type{Species{T}}) where {T} = Species
+Base.promote_rule(::Type{Species{T}}, ::Type{<:CemSpecies}) where {T} = Species

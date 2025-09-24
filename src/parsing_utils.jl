@@ -8,36 +8,20 @@ const ATOMIC_ORDER = [
     :Zz                            # Charge
 ]
 
-# const cement_to_mendeleev = [
-#     "C" => "CaO",  
-#     "S" => "SiO2", 
-#     "A" => "Al2O3",
-#     "F" => "Fe2O3",
-#     "K" => "K2O",  
-#     "N" => "Na2O", 
-#     "M" => "MgO",  
-#     "P" => "P2O5", 
-#     "T" => "TiO2", 
-#     "C̄" => "CO2",  
-#     "S̄" => "SO3",  
-#     "N̄" => "NO3",  
-#     "H" => "H2O",  
-# ]
-
 const cement_to_mendeleev = [
-    :C  => Dict(:Ca => 1, :O => 1),
-    :S  => Dict(:Si => 1, :O => 2),
-    :A  => Dict(:Al => 2, :O => 3),
-    :F  => Dict(:Fe => 2, :O => 3),
-    :K  => Dict(:K  => 2, :O => 1),
-    :N  => Dict(:Na => 2, :O => 1),
-    :M  => Dict(:Mg => 1, :O => 1),
-    :P  => Dict(:P  => 2, :O => 5),
-    :T  => Dict(:Ti => 1, :O => 2),
+    :C => Dict(:Ca => 1, :O => 1),
+    :S => Dict(:Si => 1, :O => 2),
+    :A => Dict(:Al => 2, :O => 3),
+    :F => Dict(:Fe => 2, :O => 3),
+    :K => Dict(:K  => 2, :O => 1),
+    :N => Dict(:Na => 2, :O => 1),
+    :M => Dict(:Mg => 1, :O => 1),
+    :P => Dict(:P  => 2, :O => 5),
+    :T => Dict(:Ti => 1, :O => 2),
     :C̄ => Dict(:C  => 1, :O => 2),
     :S̄ => Dict(:S  => 1, :O => 3),
     :N̄ => Dict(:N  => 1, :O => 3),
-    :H  => Dict(:H  => 2, :O => 1),
+    :H => Dict(:H  => 2, :O => 1),
 ]
 
 const OXIDE_ORDER = [
@@ -386,7 +370,7 @@ const EQUAL_REACTION = vcat(fwd_arrows, bwd_arrows, double_arrows, pure_rate_arr
 const EQUAL_REACTION_SET = Set(EQUAL_REACTION)
 
 function parse_equation(equation::AbstractString)
-    equal_sign  = nothing
+    equal_sign = nothing
     for c in equation
         if c in EQUAL_REACTION_SET
             equal_sign = c
@@ -433,12 +417,12 @@ function parse_equation(equation::AbstractString)
     return reactants, equal_sign, products
 end
 
-function format_equation(coeffs::AbstractDict; scaling=1)
+function format_equation(coeffs::AbstractDict; scaling=1, equal_sign='=')
     # Separate reactants and products
     reactants = String[]
     products = String[]
-    total_charge_left = 0.0
-    total_charge_right = 0.0
+    total_charge_left = 0
+    total_charge_right = 0
 
     for (species, coeff) in coeffs
         if species !== "Zz"
@@ -467,7 +451,6 @@ function format_equation(coeffs::AbstractDict; scaling=1)
     # Build the initial equation
     left_side = join(reactants, " + ")
     right_side = join(products, " + ")
-    equation = "$left_side = $right_side"
 
     # Compute the charge difference (corrected)
     charge_diff = total_charge_right + total_charge_left
@@ -484,8 +467,10 @@ function format_equation(coeffs::AbstractDict; scaling=1)
             # Add e- to the right (products)
             right_side = isempty(right_side) ? e_term : "$right_side + $e_term"
         end
-        equation = "$left_side = $right_side"
     end
 
-    return equation
+    if length(left_side) == 0 left_side ="∅" end
+    if length(right_side) == 0 right_side ="∅" end
+
+    return "$left_side $(isnothing(equal_sign) ? '=' : equal_sign) $right_side"
 end
