@@ -6,7 +6,7 @@ item_order(::Vector{<:CemSpecies}) = OXIDE_ORDER
 
 union_atoms(atom_dicts::Vector{<:Dict}, order_vec = ATOMIC_ORDER) = sort!(collect(union(keys.(atom_dicts)...)), by=k -> findfirst(==(k), order_vec))
 
-function stoich_matrix(species::Vector; display = true)
+function stoich_matrix(species::Vector{<:AbstractSpecies}; display = true)
     involved_atoms_dicts = same_components(species).(species)
     involved_atoms = union_atoms(involved_atoms_dicts, item_order(species))
     T = promote_type(valtype.(involved_atoms_dicts)...)
@@ -28,7 +28,7 @@ function stoich_matrix(species::Vector; display = true)
     return stoich_matrix, involved_atoms, species_names
 end
 
-function stoich_matrix(species::Vector, candidate_primaries::Vector; display = true)
+function stoich_matrix(species::Vector{<:AbstractSpecies}, candidate_primaries::Vector{<:AbstractSpecies}; display = true)
 
     vec_components = same_components(union(species,candidate_primaries))
 
@@ -54,7 +54,7 @@ function stoich_matrix(species::Vector, candidate_primaries::Vector; display = t
         if Zz ∉ candidate_primaries push!(candidate_primaries, Zz) end
     end
 
-    M, involved_atoms, species_names = stoich_matrix(species; display = false)
+    M, involved_atoms, species_names = stoich_matrix(species; display=false)
     redox = charged && rank(M[:, 1:end-1]; rtol=1.e-6) != rank(M[1:end-1, 1:end-1]; rtol=1.e-6)
 
     if !redox && charged
@@ -63,7 +63,7 @@ function stoich_matrix(species::Vector, candidate_primaries::Vector; display = t
         M = M[1:end-1, 1:end-1]
     end
 
-    cols_candidates = [findfirst(==(name(x)), species_names) for x in candidate_primaries]
+    cols_candidates = [findfirst(y -> y in (name(x), symbol(x), expr(x), phreeqc(x), unicode(x)), species_names) for x in candidate_primaries]
     filter!(x-> x !== nothing, cols_candidates)
     M_subset = M[:, cols_candidates]
     F = qr(M_subset, Val(true))
@@ -94,4 +94,20 @@ function stoich_matrix(species::Vector, candidate_primaries::Vector; display = t
     end
 
     return A, indep_comp, dep_comp 
+end
+
+function stoich_matrix_to_equations(A::AbstractMatrix, indep_comp::Vector{<:AbstractString}, dep_comp::Vector{<:AbstractString}; scaling=1, display=true)
+    eqns = String[]
+    for (j,sp) in enumerate(dep_comp)
+        if sp in indep_comp
+            if display println(rpad("$(sp)", 11), "| $sp = $sp") end
+        else
+            coeffs = Dict(zip(indep_comp, -A[:,j]))
+            coeffs[sp] = 1
+            eqn = format_equation(coeffs; scaling=scaling)
+            push!(eqns, eqn)
+            if display println(rpad("$(sp)", 11), "| ", eqn) end
+        end
+    end
+    return eqns
 end

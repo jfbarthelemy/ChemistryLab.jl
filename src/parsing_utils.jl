@@ -280,7 +280,7 @@ function parse_formula(formula::AbstractString)
             rest = j <= lastindex(formula) ? formula[j:end] : ""
 
             m = match(r"^([0-9]+//[0-9]+|[0-9]+(?:\.[0-9]+)?)", rest)
-            factor = (m === nothing) ? 1.0 : begin s = m.match ; factor = occursin("//", s) ? parse(Rational{Int}, s) : parse(Float64, s) end
+            factor = (m === nothing) ? 1 : begin s = m.match ; factor = occursin("//", s) ? parse(Rational{Int}, s) : parse(Float64, s) end
             offset = (m === nothing) ? 0 : length(m.match)
 
             for (el, n) in parse_formula(inner)
@@ -289,7 +289,7 @@ function parse_formula(formula::AbstractString)
 
             i = safe_nextind(formula, j, offset)
         else
-            m = match(r"^(\p{Lu}\p{Ll}?)([0-9]+//[0-9]+|[0-9]+(?:\.[0-9]+)?)?", formula[i:end])
+            m = match(r"^(\p{Lu}[\p{Ll}\u0300-\u036F]?)(([0-9]+//[0-9]+)|([0-9]+(?:\.[0-9]+)?))?", formula[i:end])
             if m !== nothing
                 el, countstr = m.captures
                 el = Symbol(el)
@@ -375,4 +375,117 @@ function to_mendeleev(oxides::AbstractDict{Symbol,T}) where {T<:Number}
         end
     end
     return length(result) > 0 ? Dict(k => stoich_coef_round(v) for (k, v) in result) : result
+end
+
+const fwd_arrows = ['>', '→', '↣', '↦', '⇾', '⟶', '⟼', '⥟', '⥟', '⇀', '⇁', '⇒', '⟾']
+const bwd_arrows = ['<', '←', '↢', '↤', '⇽', '⟵', '⟻', '⥚', '⥞', '↼', '↽', '⇐', '⟽']
+const double_arrows = ['↔', '⟷', '⇄', '⇆', '⇌', '⇋', '⇔', '⟺']
+const pure_rate_arrows = ['⇐', '⟽', '⇒', '⟾', '⇔', '⟺']
+const equal_signs = ['=', '≔', '⩴', '≕']
+const EQUAL_REACTION = vcat(fwd_arrows, bwd_arrows, double_arrows, pure_rate_arrows, equal_signs)
+const EQUAL_REACTION_SET = Set(EQUAL_REACTION)
+
+function parse_equation(equation::AbstractString)
+    equal_sign  = nothing
+    for c in equation
+        if c in EQUAL_REACTION_SET
+            equal_sign = c
+            break
+        end
+    end
+    sides = strip.(split(equation, EQUAL_REACTION))
+    nsides = length(sides)
+    left_side = nsides > 0 ? sides[1] : ""
+    right_side = nsides > 1 ? sides[2] : ""
+    function parse_side(side::AbstractString)
+        terms = split(side, " +")  # Split input string by " +" to get each term separately
+        result = Dict{String, Real}()  # Initialize dictionary to store formula => coefficient
+        
+        for term in terms
+            t = strip(term)  # Remove leading/trailing whitespace from each term
+            
+            # Regex to capture optional coefficient (integer, floating or rational a//b) at start, then formula
+            m = match(r"^(\d+//\d+|\d*\.?\d+)?\s*(.+)$", t)
+            
+            if m !== nothing
+                coeff_str = m.captures[1]  # The coefficient substring, may be missing
+                formula = strip(m.captures[2])    # The chemical formula substring
+                
+                # If coefficient string is missing or empty, set coefficient to 1
+                coeff = coeff_str === nothing || coeff_str == "" ? 1 : eval(Meta.parse(coeff_str))
+                
+                # Check that coefficient is a real number (Int, Float64, Rational...)
+                if !(coeff isa Real)
+                    error("Invalid coefficient: $coeff_str")
+                end
+                
+                # Store formula and coefficient in dictionary
+                result[formula] = coeff
+            else
+                error("Unexpected term format: $term")
+            end
+        end
+        
+        return Dict(k => stoich_coef_round(v) for (k, v) in result)  # Return dictionary of formula => coefficient
+    end
+    reactants = left_side == "∅" || left_side == "" ? Dict{String, Int}() : parse_side(left_side)
+    products  = right_side == "∅" || right_side == "" ? Dict{String, Int}() : parse_side(right_side)
+    return reactants, equal_sign, products
+end
+
+function format_equation(coeffs::AbstractDict; scaling=1)
+    # Separate reactants and products
+    reactants = String[]
+    products = String[]
+    total_charge_left = 0.0
+    total_charge_right = 0.0
+
+    for (species, coeff) in coeffs
+        if species !== "Zz"
+            coeff = stoich_coef_round(coeff*scaling)
+
+            # Format the coefficient
+            abs_coeff = abs(coeff)
+            coeff_str = if isapprox(abs_coeff, 1, atol=1e-6)
+                ""
+            elseif isinteger(abs_coeff)
+                string(Int(abs_coeff))
+            else
+                string(abs_coeff)
+            end
+
+            if coeff < 0
+                push!(reactants, "$coeff_str$species")
+                total_charge_left += coeff * extract_charge(species)
+            elseif coeff > 0
+                push!(products, "$coeff_str$species")
+                total_charge_right += coeff * extract_charge(species)
+            end
+        end
+    end
+
+    # Build the initial equation
+    left_side = join(reactants, " + ")
+    right_side = join(products, " + ")
+    equation = "$left_side = $right_side"
+
+    # Compute the charge difference (corrected)
+    charge_diff = total_charge_right + total_charge_left
+
+    # Balance charges if necessary
+    if !isapprox(charge_diff, 0, atol=1e-6)
+        needed_e = stoich_coef_round(abs(charge_diff))
+        e_term = needed_e == 1 ? "e⁻" : "$needed_e" * "e⁻"
+
+        if charge_diff < 0
+            # Add e- to the left (reactants)
+            left_side = isempty(left_side) ? e_term : "$left_side + $e_term"
+        else
+            # Add e- to the right (products)
+            right_side = isempty(right_side) ? e_term : "$right_side + $e_term"
+        end
+        equation = "$left_side = $right_side"
+    end
+
+    return equation
 end

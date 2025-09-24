@@ -50,6 +50,7 @@ aqueous_species = filter(row->row.aggregate_state == "AS_AQUEOUS", df_substances
 species = [Species(f; name=phreeqc_to_unicode(n)) for (f,n) in zip(aqueous_species.formula, aqueous_species.symbol)]
 candidate_primaries = [Species(f; name=phreeqc_to_unicode(n)) for (f,n) in zip(df_primaries.formula, df_primaries.symbol)]
 A, indep_comp, dep_comp = stoich_matrix(species, candidate_primaries) ;
+stoich_matrix_to_equations(A, indep_comp, dep_comp) ;
 
 # CemSpecies with Sym coef
 using SymPy
@@ -58,3 +59,14 @@ ox = Dict(:C => â, :S => one(Sym), :A => b̂, :H => ĝ)
 CSH = CemSpecies(ox)
 numCSH = CemSpecies(map(N, map(subs, cemformula(CSH), â=>1.8, b̂=>1, ĝ=>5)))
 floatCSH = Species(convert(Float64, formula(numCSH)))
+
+# Conversion to cement notation
+H₂O = Species("H₂O")
+CemSpecies(H₂O)
+Jennite = Species(filter(row->row.symbol == "Jennite", df_substances).formula[1])
+cemJennite = CemSpecies(Jennite)
+println(unicode(Jennite), " ≡ ", unicode(cemJennite))
+
+# Equation parsing
+equation = "13H⁺ + NO₃⁻ + CO₃²⁻ + 10e- = 6H₂O@ + HCN@"
+reactants, equal_sign, products = parse_equation(equation)
