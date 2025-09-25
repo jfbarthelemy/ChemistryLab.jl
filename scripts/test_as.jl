@@ -1,4 +1,4 @@
-using CementChemistry, Unicode
+using CementChemistry, Unicode, DataFrames
 
 # 1. Test formula parsing with charge and Unicode
 fSO4 = Formula("SO₄²⁻")
@@ -26,9 +26,10 @@ println("Phreeqc to Unicode: ", unicode)
 println("Unicode to Phreeqc: ", unicode_to_phreeqc(unicode))
 
 # 5. Test filtering database for solid phases only
-df_elements, df_substances, df_reactions = parse_cemdata18_thermofun("data/cemdata18-merged.json")
-solid_species = filter(row->row.aggregate_state == "AS_SOLID", df_substances)
-println("Number of solid species: ", length(solid_species))
+df_elements, df_substances, df_reactions = parse_cemdata18_thermofun("../data/cemdata18-merged.json")
+solid_species = filter(row->row.symbol == "M15SH", df_substances)
+solid_species = filter(row->row.aggregate_state == "AS_CRYSTAL", df_substances)
+println("Number of solid species: ", nrow(solid_species))
 
 # 6. Test symbolic CemSpecies with more variables
 using SymPy
