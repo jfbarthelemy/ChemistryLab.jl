@@ -55,7 +55,7 @@ function Formula(composition::AbstractDict{Symbol,T}, charge=0; order=ATOMIC_ORD
     charge += get(composition, :Zz, 0) + get(composition, :Zz⁺, 0)
     charge -= get(composition, :e, 0) + get(composition, :e⁻, 0)
     if !iszero(charge)
-        sign = charge < 0 ? "⁻" : "⁺"
+        sign = charge < 0 ? "-" : "+"
         abscharge = abs(charge)
         strch = isone(abscharge) ? "" : string(abscharge)
         expr *= sign * strch
