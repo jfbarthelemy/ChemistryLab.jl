@@ -11,7 +11,7 @@ makedocs(;
     repo = "https://jfbarthelemy.github.io/CementChemistry.jl/blob/{commit}{path}#{line}",
     sitename="CementChemistry.jl",
     format=Documenter.HTML(;
-        prettyurls = get(ENV, "CI", "false") == "true",
+        prettyurls = true,#get(ENV, "CI", "false") == "true",
         canonical="https://jfbarthelemy.github.io/CementChemistry.jl",
         #edit_link="main",
         #assets=String[],
