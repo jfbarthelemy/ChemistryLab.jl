@@ -1,5 +1,8 @@
 ```@meta
 CurrentModule = CementChemistry
+DocTestSetup = quote
+    using CementChemistry
+end
 ```
 
 # CementChemistry
