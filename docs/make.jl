@@ -8,7 +8,7 @@ makedocs(;
     doctest = true,
     linkcheck = true,
     authors="Jean-François Barthélémy and Anthony Soive",
-    repo = "https://jfbarthelemy.github.io/CementChemistry.jl/blob/{commit}{path}#{line}",
+    repo = "https://github.com/jfbarthelemy/CementChemistry.jl/blob/{commit}{path}#{line}",
     sitename="CementChemistry.jl",
     format=Documenter.HTML(;
         prettyurls = true,#get(ENV, "CI", "false") == "true",
