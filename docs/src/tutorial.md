@@ -4,7 +4,7 @@
 
 # CementChemistry.jl Step-by-Step Tutorial
 
-This tutorial progressively introduces the main features of [CementChemistry.jl](src/CementChemistry.jl) using practical examples.
+<!-- This tutorial progressively introduces the main features of [CementChemistry.jl](src/CementChemistry.jl) using practical examples. -->
 
 ---
 
@@ -21,7 +21,7 @@ using Unicode
 
 ## 2. Chemical Formula Manipulation
 
-Create and manipulate chemical formulas using [`Formula`](src/formulas.jl):
+<!-- Create and manipulate chemical formulas using [`Formula`](src/formulas.jl): -->
 
 ```@example 1
 using CementChemistry #hide
@@ -42,7 +42,7 @@ convert(Float64, fgen)
 
 ## 3. Species Creation
 
-Create chemical species for solution or solid phases using [`Species`](src/species.jl):
+<!-- Create chemical species for solution or solid phases using [`Species`](src/species.jl): -->
 
 ```julia
 fH2O = 2 * :H + :O
@@ -66,7 +66,7 @@ A, indep_comp, dep_comp = stoich_matrix(species)
 
 ## 5. Cement Notation and Solid Phases
 
-Work with cement notation and solid phases using [`CemSpecies`](src/species.jl):
+<!-- Work with cement notation and solid phases using [`CemSpecies`](src/species.jl): -->
 
 ```julia
 C3S = CemSpecies("C3S")
@@ -118,7 +118,7 @@ A, indep_comp, dep_comp = stoich_matrix(species, candidate_primaries)
 
 ## 8. Symbolic and Numeric CemSpecies
 
-Use symbolic coefficients with [`SymPy`](https://github.com/JuliaPy/SymPy.jl):
+<!-- Use symbolic coefficients with [`SymPy`](https://github.com/JuliaPy/SymPy.jl): -->
 
 ```julia
 using SymPy
@@ -153,7 +153,7 @@ r = Reaction(equation)
 format_equation(Dict(symbol(k) => v for (k, v) in r.species_stoich))
 ```
 
-Create reactions with [`CemReaction`](src/reactions.jl):
+<!-- Create reactions with [`CemReaction`](src/reactions.jl): -->
 
 ```julia
 eqC3S = "C₃S + 5.3H = 1.3CH + C₁.₇SH4"
@@ -189,4 +189,4 @@ r = Reaction(CSH, [H, CH, C3S]; equal_sign = "→")
 
 ---
 
-This tutorial covers the main workflow and features of CementChemistry.jl. For more details, see the [documentation](https://jfbarthelemy.github.io/CementChemistry.jl/dev/) and [reference](docs/src/reference.md).
+<!-- This tutorial covers the main workflow and features of CementChemistry.jl. For more details, see the [documentation](https://jfbarthelemy.github.io/CementChemistry.jl/dev/) and [reference](docs/src/reference.md). -->
