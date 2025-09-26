@@ -150,17 +150,9 @@ function CemSpecies(oxides::AbstractDict{Symbol,T}, charge=0; name="", symbol=""
 end
 
 function CemSpecies(s::Species)
-    candidate_primaries = [Species(d; name=string(k)) for (k,d) in cement_to_mendeleev]
+    candidate_primaries = [Species(d; symbol=string(k)) for (k,d) in cement_to_mendeleev]
     A, indep_comp, dep_comp = stoich_matrix([s], candidate_primaries; display=false)
-    function convert_to_cem_name(f::AbstractString)
-        sym = Symbol(f)
-        if sym in first.(cement_to_mendeleev)
-            return sym
-        else
-            return Symbol(name(candidate_primaries[findfirst(k->formula(k)==formula(Species(f)), candidate_primaries)]))
-        end
-    end
-    oxides = Dict(convert_to_cem_name(indep_comp[i]) => A[i,1] for i in 1:size(A, 1))
+    oxides = Dict(Symbol(symbol(indep_comp[i])) => A[i,1] for i in 1:size(A, 1))
     return CemSpecies(oxides, charge(s); name=name(s), symbol=symbol(s))
 end
 

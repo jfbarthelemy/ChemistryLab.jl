@@ -26,7 +26,7 @@ C2S = CemSpecies("C2S")
 C3A = CemSpecies("C3A")
 C4AF = CemSpecies(Dict(:C=>4, :A=>1, :F=>1); name="C4AF")
 cemspecies = [C3S, C2S, C3A, C4AF]
-A, indep_comp, dep_comp = stoich_matrix(cemspecies) ;
+A, indep_comp = stoich_matrix(cemspecies) ;
 
 # Thermofun cemdata18
 df_elements, df_substances, df_reactions = parse_cemdata18_thermofun("data/cemdata18-merged.json")
@@ -41,16 +41,16 @@ secondaries = filter(row->row.aggregate_state == "AS_AQUEOUS"
 all_species = unique(vcat(given_species, secondaries), :symbol)
 # species = Species.(all_species.formula)
 # candidate_primaries = Species.(df_primaries.formula)
-species = [Species(f; name=phreeqc_to_unicode(n)) for (f,n) in zip(all_species.formula, all_species.symbol)]
-candidate_primaries = [Species(f; name=phreeqc_to_unicode(n)) for (f,n) in zip(df_primaries.formula, df_primaries.symbol)]
+species = [Species(f; symbol=phreeqc_to_unicode(n)) for (f,n) in zip(all_species.formula, all_species.symbol)]
+candidate_primaries = [Species(f; symbol=phreeqc_to_unicode(n)) for (f,n) in zip(df_primaries.formula, df_primaries.symbol)]
 A, indep_comp, dep_comp = stoich_matrix(species, candidate_primaries) ;
 
 # Construction of stoich matrix with aqueous species from database
 aqueous_species = filter(row->row.aggregate_state == "AS_AQUEOUS", df_substances)
-species = [Species(f; name=phreeqc_to_unicode(n)) for (f,n) in zip(aqueous_species.formula, aqueous_species.symbol)]
+species = [Species(f; symbol=phreeqc_to_unicode(n)) for (f,n) in zip(aqueous_species.formula, aqueous_species.symbol)]
 candidate_primaries = [Species(f; name=phreeqc_to_unicode(n)) for (f,n) in zip(df_primaries.formula, df_primaries.symbol)]
 A, indep_comp, dep_comp = stoich_matrix(species, candidate_primaries) ;
-stoich_matrix_to_equations(A, indep_comp, dep_comp) ;
+stoich_matrix_to_equations(A, unicode.(indep_comp), unicode.(dep_comp)) ;
 
 # CemSpecies with Sym coef
 using SymPy
@@ -90,4 +90,4 @@ r = C3S + 5.3H ↔ 1.3CH + CSH
 species_list(r)
 stoich_list(r)
  ## construction of a Reaction by a balance calculation
-r = Reaction(CSH, [H,CH,C3S]; equal_sign="→")
+r = Reaction(CSH, [H,CH,C3S]; equal_sign='→')

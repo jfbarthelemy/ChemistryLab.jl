@@ -38,10 +38,15 @@ Reaction{U,T}(s::S) where {U<:AbstractSpecies, T<:Number, S<:AbstractSpecies} = 
 Reaction(r::R) where {R<:Reaction} = r
 Reaction(r::R, equal_sign) where {R<:Reaction} = equal_sign == r.equal_sign ? r : Reaction(r.species_stoich, equal_sign)
 
-function Reaction(species::S, candidates_primaries::Vector; scaling=1, equal_sign='=') where {S<:AbstractSpecies}
+function Reaction(species::S, candidate_primaries::Vector; scaling=1, equal_sign='=') where {S<:AbstractSpecies}
     if !isa(species, Vector) species = [species] end
-    A, indep_comp, dep_comp = stoich_matrix(species, candidates_primaries; display=false)
-    return Reaction(stoich_matrix_to_equations(A, indep_comp, dep_comp; scaling=scaling, display=false, equal_sign=equal_sign)[1])
+    A, indep_comp, dep_comp = stoich_matrix(species, candidate_primaries; display=false)
+    species_stoich = Dict{promote_type(typeof.(indep_comp)..., typeof.(dep_comp)...),eltype(A)}()
+    for (i, s) in enumerate(indep_comp)
+        species_stoich[s] = -A[i,1]*scaling
+    end
+    species_stoich[dep_comp[1]] = scaling
+    return Reaction(species_stoich, equal_sign)
 end
 
 species_list(r::Reaction) = collect(keys(r.species_stoich))
