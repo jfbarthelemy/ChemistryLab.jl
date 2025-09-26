@@ -23,7 +23,7 @@ using Unicode
 
 <!-- Create and manipulate chemical formulas using [`Formula`](src/formulas.jl): -->
 
-```@example 1
+```julia
 using CementChemistry #hide
 using Unicode #hide
 fgen = Formula("A1//2B3C0.4")  # Parses a formula with fractional and decimal coefficients
@@ -32,7 +32,7 @@ fCO2 = :C + 2 * :O             # Build formula using AtomGroup operations
 
 Convert formula coefficients to Float64:
 
-```@example 1
+```julia
 using CementChemistry #hide
 using Unicode #hide
 convert(Float64, fgen)
