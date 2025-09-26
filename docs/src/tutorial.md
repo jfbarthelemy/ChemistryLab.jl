@@ -33,6 +33,8 @@ fCO2 = :C + 2 * :O             # Build formula using AtomGroup operations
 Convert formula coefficients to Float64:
 
 ```@example
+using CementChemistry #hide
+using Unicode #hide
 convert(Float64, fgen)
 ```
 
