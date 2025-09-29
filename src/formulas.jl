@@ -85,7 +85,7 @@ Base.hash(f::Formula, h::UInt) = hash(composition(f), hash(charge(f), h))
 function Base.show(io::IO, s::Formula)
     pad = 11
     println(io, typeof(s))
-    println(io, lpad("formula", pad), ": ", expr(s), " | ", phreeqc(s), " | ", unicode(s))
+    println(io, lpad("formula", pad), ": ", colored_formula(expr(s)), " | ", colored_formula(phreeqc(s)), " | ", colored_formula((unicode(s))))
     println(io, lpad("composition", pad), ": ", join(["$k:$v" for (k, v) in composition(s)], ", "))
     println(io, lpad("charge", pad), ": ", charge(s))
 end

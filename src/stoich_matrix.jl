@@ -7,20 +7,37 @@ item_order(::Vector{<:CemSpecies}) = OXIDE_ORDER
 union_atoms(atom_dicts::Vector{<:Dict}, order_vec = ATOMIC_ORDER) = sort!(collect(union(keys.(atom_dicts)...)), by=k -> findfirst(==(k), order_vec))
 
 function print_stoich_matrix(A::AbstractMatrix, indep_comp_names::Vector, dep_comp_names::Vector)
+    hl_p = TextHighlighter(
+        (data, i, j) -> (data[i, j] > 0),
+        crayon"bold light_red"
+        )
+    hl_n = TextHighlighter(
+        (data, i, j) -> (data[i, j] < 0),
+        crayon"bold light_blue"
+        )
+    hl_z = TextHighlighter(
+        (data, i, j) -> (data[i, j] == 0),
+        crayon"conceal"
+        )
     pretty_table(
         A,
         column_labels=dep_comp_names,
         row_labels=indep_comp_names,
-        style=TextTableStyle(; table_border=crayon"green")
+        highlighters  = [hl_p, hl_n, hl_z],
+        style=TextTableStyle(; 
+                row_label = crayon"magenta bold",
+                first_line_column_label = crayon"cyan bold",
+                table_border=crayon"green bold")
     )
 end
 
 function stoich_matrix_to_equations(A::AbstractMatrix, indep_comp_names::Vector, dep_comp_names::Vector; scaling=1, display=true, equal_sign='=')
     eqns = String[]
+    pad = 11
     for (j, sp) in enumerate(dep_comp_names)
         if sp in indep_comp_names
             if display
-                println(rpad("$(sp)", 11), "| $sp $(equal_sign) $sp")
+                println(rpad("$(sp)", pad), "| $(colored_formula(sp)) $(string(COL_PAR(string(equal_sign)))) $(colored_formula(sp))")
             end
         else
             coeffs = Dict(zip(indep_comp_names, -A[:, j]))
@@ -28,7 +45,7 @@ function stoich_matrix_to_equations(A::AbstractMatrix, indep_comp_names::Vector,
             eqn = format_equation(coeffs; scaling=scaling, equal_sign=equal_sign)
             push!(eqns, eqn)
             if display
-                println(rpad("$(sp)", 11), "| ", eqn)
+                println(rpad("$(sp)", pad), "| ", colored_equation(eqn))
             end
         end
     end

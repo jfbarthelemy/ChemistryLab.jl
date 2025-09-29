@@ -77,7 +77,7 @@ r = Reaction(equation)
  ## species_stoich provides the Dict of species and stoich coeffs
 format_equation(Dict(symbol(k) => v for (k,v) in r.species_stoich))
  ## construction of a Reaction of only CemSpecies by CemReaction
-eqC3S = "C₃S + 5.3H = 1.3CH + C₁.₇SH4"
+eqC3S = "C₃S + 5.3H = 1.3CH + C₁.₇SH₄"
 rC3S = CemReaction(eqC3S)
 format_equation(Dict(symbol(k) => v for (k,v) in rC3S.species_stoich))
 format_equation(Dict(unicode(formula(k)) => v for (k,v) in rC3S.species_stoich))
