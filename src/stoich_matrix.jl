@@ -49,16 +49,17 @@ function stoich_matrix(species::Vector{<:AbstractSpecies}; display = true)
     return A, involved_atoms
 end
 
-function stoich_matrix(s::Vector{<:AbstractSpecies}, candidate_primaries::Vector{<:AbstractSpecies}; display = true)
+function stoich_matrix(vs::Vector{<:AbstractSpecies}, candidate_primaries::Vector{<:AbstractSpecies}; display = true, involve_all_atoms = false)
 
-    vec_components = same_components(union(s,candidate_primaries))
+    all_species = union(vs,candidate_primaries)
+    vec_components = same_components(all_species)
 
-    S = promote_type(typeof.(s)..., typeof.(candidate_primaries)...)
+    S = promote_type(typeof.(vs)..., typeof.(candidate_primaries)...)
 
     species = S[]
-    append!(species, s)
+    append!(species, vs)
     num_initial_species = length(species)
-    initial_involved_atoms = union_atoms(vec_components.(species), item_order(species))
+    initial_involved_atoms = involve_all_atoms ? union_atoms(vec_components.(all_species), item_order(species)) : union_atoms(vec_components.(species), item_order(species))
     candidate_primaries = deepcopy(candidate_primaries)
 
     for x in candidate_primaries

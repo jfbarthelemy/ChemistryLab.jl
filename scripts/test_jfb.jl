@@ -90,4 +90,8 @@ r = C3S + 5.3H ↔ 1.3CH + CSH
 species_list(r)
 stoich_list(r)
  ## construction of a Reaction by a balance calculation
-r = Reaction(CSH, [H,CH,C3S]; equal_sign='→')
+r = Reaction([C3S, H, CH, CSH]; equal_sign='→')
+Reaction(CemSpecies.(["C3S", "H", "CH", "C1.8SH4"]))
+for c_over_s in 1.5:0.1:2.
+    println(Reaction(CemSpecies.(["C3S", "H", "CH", "C$(c_over_s)SH4"])))
+end

@@ -38,14 +38,13 @@ Reaction{U,T}(s::S) where {U<:AbstractSpecies, T<:Number, S<:AbstractSpecies} = 
 Reaction(r::R) where {R<:Reaction} = r
 Reaction(r::R, equal_sign) where {R<:Reaction} = equal_sign == r.equal_sign ? r : Reaction(r.species_stoich, equal_sign)
 
-function Reaction(species::S, candidate_primaries::Vector; scaling=1, equal_sign='=') where {S<:AbstractSpecies}
-    if !isa(species, Vector) species = [species] end
-    A, indep_comp, dep_comp = stoich_matrix(species, candidate_primaries; display=false)
+function Reaction(species::Vector; scaling=1, equal_sign='=')
+    A, indep_comp, dep_comp = stoich_matrix(species[1:1], species[2:end]; display=false, involve_all_atoms=true)
     species_stoich = Dict{promote_type(typeof.(indep_comp)..., typeof.(dep_comp)...),eltype(A)}()
     for (i, s) in enumerate(indep_comp)
-        species_stoich[s] = -A[i,1]*scaling
+        species_stoich[s] = A[i,1]*scaling
     end
-    species_stoich[dep_comp[1]] = scaling
+    species_stoich[dep_comp[1]] = -scaling
     return Reaction(species_stoich, equal_sign)
 end
 
