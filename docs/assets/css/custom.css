@@ -1,0 +1,6 @@
+.output pre {
+    max-height: 400px;  /* limite la hauteur */
+    overflow-y: auto;   /* scroll vertical */
+    overflow-x: auto;   /* scroll horizontal */
+    white-space: pre;
+}

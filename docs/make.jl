@@ -16,12 +16,16 @@ makedocs(;
         prettyurls = true,#get(ENV, "CI", "false") == "true",
         # canonical="https://jfbarthelemy.github.io/CementChemistry.jl",
         #edit_link="main",
-        # assets = ["assets/style.css"],
+        assets = ["assets/css/custom.css"],
         ),
     pages=[
         "Home" => "index.md",
         "Reference" => "reference.md",
-        "Tutorial" => "tutorial.md",
+        "Tutorial" => [
+            # "man/quickstart.md",
+            "tutorial.md",
+            ],
+        # "Tutorial" => "tutorial.md",
     ],
 )
 
