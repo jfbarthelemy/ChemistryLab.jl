@@ -98,5 +98,5 @@ for OP in Symbol.(EQUAL_OPS)
 end
 
 function Base.show(io::IO, r::Reaction)
-    print(io, r.equation)
+    print(io, colored_equation(r.equation))
 end

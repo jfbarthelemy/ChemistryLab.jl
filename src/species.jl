@@ -97,7 +97,7 @@ function Base.show(io::IO, s::Species)
     if symbol(s) != formula(s) && length(symbol(s))>0
         println(io, lpad("symbol", pad), ": ", symbol(s))
     end
-    println(io, lpad("formula", pad), ": ", expr(s), " | ", phreeqc(s), " | ", unicode(s))
+    println(io, lpad("formula", pad), ": ", colored_formula(expr(s)), " | ", colored_formula(phreeqc(s)), " | ", colored_formula(unicode(s)))
     println(io, lpad("atoms", pad), ": ", join(["$k:$v" for (k, v) in atoms(s)], ", "))
     println(io, lpad("charge", pad), ": ", charge(s))
     if length(properties(s))>0 print(io, lpad("properties", pad), ": ", join(["$k = $v" for (k, v) in properties(s)], "\n"*repeat(" ", pad+2))) end
@@ -187,9 +187,9 @@ function Base.show(io::IO, s::CemSpecies)
     end
     cf = cemformula(s)
     f = formula(s)
-    println(io, lpad("cemformula", pad), ": ", expr(cf), " | ", phreeqc(cf), " | ", unicode(cf))
+    println(io, lpad("cemformula", pad), ": ", colored_formula(expr(cf)), " | ", colored_formula(phreeqc(cf)), " | ", colored_formula(unicode(cf)))
     println(io, lpad("oxides", pad), ": ", join(["$k:$v" for (k, v) in oxides(s)], ", "))
-    println(io, lpad("formula", pad), ": ", expr(f), " | ", phreeqc(f), " | ", unicode(f))
+    println(io, lpad("formula", pad), ": ", colored_formula(expr(f)), " | ", colored_formula(phreeqc(f)), " | ", colored_formula(unicode(f)))
     println(io, lpad("atoms", pad), ": ", join(["$k:$v" for (k, v) in atoms(s)], ", "))
     println(io, lpad("charge", pad), ": ", charge(s))
     if length(properties(s))>0 print(io, lpad("properties", pad), ": ", join(["$k = $v" for (k, v) in properties(s)], "\n"*repeat(" ", pad+2))) end

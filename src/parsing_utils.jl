@@ -1,11 +1,9 @@
 const ATOMIC_ORDER = [
-    :Ca, :Na, :K, :Mg, :Sr, :Ba,  # Alkaline earth/alkali metals
-    :Al, :Si, :Fe, :Ti, :Mn, :Cr,  # Transition metals
-    :S, :P, :C, :B,               # Non-metals
-    :H, :O,                       # H before O for H₂O, OH⁻, etc.
-    :F, :Cl, :Br, :I,             # Halogens
-    :N,                           # Nitrogen
-    :Zz                            # Charge
+    :Ca, :Na, :K, :Mg, :Sr, :Ba, 
+    :Al, :Fe, :Ti, :Mn, :Cr, :Si,
+    :C, :H, :N, :S, :O, :P, :B,  
+    :F, :Cl, :Br, :I,            
+    :Zz                          
 ]
 
 const cement_to_mendeleev = [
@@ -106,6 +104,14 @@ const dict_unicode_frac = Dict(
             '⅛' => 1//8, '⅜' => 3//8, '⅝' => 5//8, '⅞' => 7//8
         )
 
+const fwd_arrows = ['>', '→', '↣', '↦', '⇾', '⟶', '⟼', '⥟', '⥟', '⇀', '⇁', '⇒', '⟾']
+const bwd_arrows = ['<', '←', '↢', '↤', '⇽', '⟵', '⟻', '⥚', '⥞', '↼', '↽', '⇐', '⟽']
+const double_arrows = ['↔', '⟷', '⇄', '⇆', '⇌', '⇋', '⇔', '⟺']
+const pure_rate_arrows = ['⇐', '⟽', '⇒', '⟾', '⇔', '⟺']
+const equal_signs = ['=', '≔', '⩴', '≕']
+const EQUAL_REACTION = vcat(fwd_arrows, bwd_arrows, double_arrows, pure_rate_arrows, equal_signs)
+const EQUAL_REACTION_SET = Set(EQUAL_REACTION)
+
 "Return whether `c` is a numeric superscript or ⁺/⁻."
 issuperscript(c::Char) = c in keys(superscripts)
 
@@ -153,7 +159,7 @@ function phreeqc_to_unicode(s::AbstractString)
     for i in ind_sign
         sign = chars[i]
         j = i
-        while j < length(chars) && (isnumeric(chars[j+1]) || chars[j+1] == ".")
+        while j < length(chars) && (isnumeric(chars[j+1]) || chars[j+1] == '.')
             chars[j] = dict_normal_to_super[chars[j+1]]
             j += 1
         end
@@ -192,6 +198,25 @@ function phreeqc_to_unicode(s::AbstractString)
     return join(chars)
 end
 
+function merge_upper_lower(graphemes::Vector{<:AbstractString})
+    result = String[]
+    i = 1
+    while i <= length(graphemes)
+        current = graphemes[i]
+        if i < length(graphemes)
+            last_char = current[end]
+            next_first_char = graphemes[i+1][1]
+            if isuppercase(last_char) && islowercase(next_first_char)
+                current *= graphemes[i+1]
+                i += 1
+            end
+        end
+        push!(result, current)
+        i += 1
+    end
+    return result
+end
+
 function unicode_to_phreeqc(s::AbstractString)
     chars = collect(s)
 
@@ -223,6 +248,35 @@ function unicode_to_phreeqc(s::AbstractString)
     end
 
     return s
+end
+
+function colored_formula(s::AbstractString; colorcharge=true)
+    superscript_digits = ["⁰", "¹", "²", "³", "⁴", "⁵", "⁶", "⁷", "⁸", "⁹", "⁺", "⁻"]
+
+    colored_graph = merge_upper_lower(collect(graphemes(s)))
+    ind_sign = findlast(k -> k == "⁺" || k == "⁻" || k == "+" || k == "-", colored_graph)
+    if isnothing(ind_sign) ind_sign = length(colored_graph) + 1 end
+
+    idx_sign = Int[]
+    idx_atoms = Int[]
+    idx_par = Int[]
+    for (i,c) in enumerate(colored_graph)
+        if colorcharge && (i >= ind_sign || c in superscript_digits)
+            push!(idx_sign, i)
+        end
+        if Symbol(c) in ATOMIC_ORDER || Symbol(c) in OXIDE_ORDER
+            push!(idx_atoms, i)
+        end
+        if c in ["(", ")", "[", "]", "{", "}", "@", "|"]
+            push!(idx_par, i)
+        end
+    end
+    idx_stoich = setdiff(1:length(colored_graph), union(idx_sign, idx_atoms, idx_par))
+    colored_graph[idx_sign] .= string.(COL_CHARGE.(colored_graph[idx_sign]))
+    colored_graph[idx_par] .= string.(COL_PAR.(colored_graph[idx_par]))
+    colored_graph[idx_stoich] .= string.(COL_STOICH_INT.(colored_graph[idx_stoich]))
+
+    return join(colored_graph)
 end
 
 function parse_formula(formula::AbstractString)
@@ -361,14 +415,6 @@ function to_mendeleev(oxides::AbstractDict{Symbol,T}) where {T<:Number}
     return length(result) > 0 ? Dict(k => stoich_coef_round(v) for (k, v) in result) : result
 end
 
-const fwd_arrows = ['>', '→', '↣', '↦', '⇾', '⟶', '⟼', '⥟', '⥟', '⇀', '⇁', '⇒', '⟾']
-const bwd_arrows = ['<', '←', '↢', '↤', '⇽', '⟵', '⟻', '⥚', '⥞', '↼', '↽', '⇐', '⟽']
-const double_arrows = ['↔', '⟷', '⇄', '⇆', '⇌', '⇋', '⇔', '⟺']
-const pure_rate_arrows = ['⇐', '⟽', '⇒', '⟾', '⇔', '⟺']
-const equal_signs = ['=', '≔', '⩴', '≕']
-const EQUAL_REACTION = vcat(fwd_arrows, bwd_arrows, double_arrows, pure_rate_arrows, equal_signs)
-const EQUAL_REACTION_SET = Set(EQUAL_REACTION)
-
 function parse_equation(equation::AbstractString)
     equal_sign = nothing
     for c in equation
@@ -415,6 +461,13 @@ function parse_equation(equation::AbstractString)
     reactants = left_side == "∅" || left_side == "" ? Dict{String, Int}() : parse_side(left_side)
     products  = right_side == "∅" || right_side == "" ? Dict{String, Int}() : parse_side(right_side)
     return reactants, equal_sign, products
+end
+
+function colored_equation(equation::AbstractString)
+    reactants, equal_sign, products = parse_equation(equation)
+    left_side = join([string(COL_STOICH_EXT(string(isone(v) ? "" : v)))*colored_formula(k) for (k,v) in reactants], " + ")
+    right_side = join([string(COL_STOICH_EXT(string(isone(v) ? "" : v)))*colored_formula(k) for (k,v) in products], " + ")
+    return left_side * " " * string(COL_PAR(string(equal_sign))) * " " * right_side
 end
 
 function format_equation(coeffs::AbstractDict; scaling=1, equal_sign='=')
