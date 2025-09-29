@@ -1,10 +1,8 @@
-# Tutorials
-
 This tutorial progressively introduces the main features of [CementChemistry](@ref) using practical examples.
 
 ---
 
-## Quickstart
+# Quickstart
 
 Install CementChemistry in your chosen environment by entering pkg mode by pressing `]` and then:
 
@@ -20,7 +18,7 @@ julia> using CementChemistry
 
 ---
 
-## Chemical Formula Manipulation
+# Chemical Formula Manipulation
 
 CementChemistry allows you to create and manipulate chemical formulas. It is based on `Formula` which is a structure (`struct`) which contains an expression, a writing of the formula close to those found in the Phreeqc databases, a unicode expression as well as a composition in the form of dictionaries and a charge.
 
@@ -53,7 +51,7 @@ convert(Float64, fgen)
 
 ---
 
-## Species
+# Species
 
 `Species` is also a `struct` and is defined by a name, symbol, structure and properties. It creates chemical species for solution or solid phases:
 
@@ -97,7 +95,7 @@ CO2 = Species(Dict(:Si => 1, :O => 3),-2; name="SiO₃²⁻")
 
 ---
 
-## Cement Species
+# Cement Species
 
 The manipulation of chemical formulas can also be done in cement notation. Here are examples of anhydrous phases:
 
@@ -113,8 +111,42 @@ C4AF = CemSpecies(Dict(:C => 4, :A => 1, :F => 1); name = "C4AF")
 ```
 ---
 
+# Symbolic and Numeric CemSpecies
 
-## Database Interoperability
+The previous species were constructed from integer values ​​of the number of chemical elements. However, numerical values ​​are possible, as we have seen for formulas, as well as symbolic values. To do this, you need to use the [`SymPy`](https://github.com/JuliaPy/SymPy.jl) library:
+
+```@example example_cemspecies
+using SymPy
+â, b̂, ĝ = symbols("â b̂ ĝ", real = true)
+ox = Dict(:C => â, :S => one(Sym), :A => b̂, :H => ĝ)
+CSH = CemSpecies(ox)
+```
+
+```@example example_cemspecies
+numCSH = CemSpecies(map(N, map(subs, cemformula(CSH), â => 1.8, b̂ => 1, ĝ => 5)))
+```
+
+Conversion of coefficient types can also be done:
+
+```@example example_cemspecies
+floatCSH = Species(convert(Float64, formula(numCSH)))
+```
+
+---
+
+# Conversion to Cement Notation
+
+Convert species to cement notation and Unicode:
+
+```@example example_cemspecies
+H2O = Species("H₂O")
+cemH2O = CemSpecies(H2O)
+```
+
+---
+
+
+# Database Interoperability
 
 So far, we have looked at the possibility of creating and manipulating any species, whether they exist or not. Creating an H₂O⁺⁴ molecule, for example, is not a problem.
 
@@ -128,6 +160,8 @@ HSO4 = Species("H₂O⁺⁴")
 
 However, you will admit that it is a little strange...
 
+## Databases
+
 This is why Cement Chemistry relies on existing databases, in particular [Cemdata18](https://www.empa.ch/web/s308/thermodynamic-data) and [PSI-Nagra-12-07](https://www.psi.ch/en/les/thermodynamic-databases). Cemdata18 is a chemical thermodynamic database for hydrated Portland cements and alkali-activated materials. PSI-Nagra is a Chemical Thermodynamic Database. The formalism adopted for these databases is that of [Thermofun](https://thermohub.org/thermofun/thermofun/) which is a universal open-source client that delivers thermodynamic properties of substances and reactions at the temperature and pressure of interest. The information is stored in json files.
 
 With Cementchemistry, you can parse a ThermoFun-like json file and return DataFrames for elements, substances, and reactions.
@@ -136,9 +170,11 @@ With Cementchemistry, you can parse a ThermoFun-like json file and return DataFr
 ```@example database_interoperability
 df_elements, df_substances, df_reactions = parse_cemdata18_thermofun("../../data/cemdata18-merged.json")
 show(df_elements, allcols=true, allrows=true)
+```
 
 ```@example database_interoperability
-show(df_substances, allcols=true, allrows=true)
+show(df_substances, allcols=true, allrows=false)
+```
 
 ```@example database_interoperability
 show(df_reactions, allcols=true, allrows=true)
@@ -154,125 +190,36 @@ show(df_primaries, allcols=true, allrows=true)
 
 ---
 
+# Stoichiometric Matrix Construction
 
-## Extract data from ThermoFun
-Imagine we want to extract the set of aqueous species from a ThermoFun JSON data structure. For that, we use the function
-[`CementChemistry.get_aqueous_species`](@ref):
+From the definition of species, it is possible to construct a stoichiometric matrix that establishes the relationship between species and chemical elements for species or cement species:
 
-```@example
-using CementChemistry
-
+```@setup database_stoichiometry
+    using CementChemistry
 ```
 
----
-
-
-## 4. Stoichiometric Matrix Construction
-
-Build stoichiometric matrices for a set of species:
-
-```julia
+```@example database_stoichiometry
+fH2O = 2 * :H + :O
+H2O = Species(fH2O)
+HSO4 = Species("HSO₄⁻")
+CO2 = Species(Dict(:C => 1, :O => 2); name="CO₂")
 species = [H2O, HSO4, CO2]
 A, indep_comp, dep_comp = stoich_matrix(species)
+println(A)
+println(indep_comp)
+println(dep_comp)
 ```
 
-```julia
+```@example database_stoichiometry
+C3S = CemSpecies("C3S")
+C2S = CemSpecies("C2S")
+C3A = CemSpecies("C3A")
+C4AF = CemSpecies(Dict(:C => 4, :A => 1, :F => 1); name = "C4AF")
 cemspecies = [C3S, C2S, C3A, C4AF]
 A, indep_comp, dep_comp = stoich_matrix(cemspecies)
-```
-
-
-
----
----
-
-## 7. Advanced Stoichiometric Matrix (Database Species)
-
-Filter and combine species from the database:
-
-```julia
-given_species = filter(row -> row.symbol ∈ split("C3S Portlandite Jennite H2O@"), df_substances)
-secondaries = filter(row -> row.aggregate_state == "AS_AQUEOUS" &&
-                          all(k -> first(k) ∈ union_atoms(given_species.atoms), row.atoms) &&
-                          row.symbol ∉ split("H2@ O2@"),
-                          df_substances)
-all_species = unique(vcat(given_species, secondaries), :symbol)
-species = [Species(f; name = phreeqc_to_unicode(n)) for (f, n) in zip(all_species.formula, all_species.symbol)]
-candidate_primaries = [Species(f; name = phreeqc_to_unicode(n)) for (f, n) in zip(df_primaries.formula, df_primaries.symbol)]
-A, indep_comp, dep_comp = stoich_matrix(species, candidate_primaries)
-```
-
----
-
-## 8. Symbolic and Numeric CemSpecies
-
-Use symbolic coefficients with [`SymPy`](https://github.com/JuliaPy/SymPy.jl):
-
-```julia
-using SymPy
-â, b̂, ĝ = symbols("â b̂ ĝ", real = true)
-ox = Dict(:C => â, :S => one(Sym), :A => b̂, :H => ĝ)
-CSH = CemSpecies(ox)
-numCSH = CemSpecies(map(N, map(subs, cemformula(CSH), â => 1.8, b̂ => 1, ĝ => 5)))
-floatCSH = Species(convert(Float64, formula(numCSH)))
-```
-
----
-
-## 9. Conversion to Cement Notation
-
-Convert species to cement notation and Unicode:
-
-```julia
-H2O = Species("H₂O")
-cemH2O = CemSpecies(H2O)
-```
-
----
-
-## 10. Reaction Parsing and Manipulation
-
-Parse and format chemical equations:
-
-```julia
-equation = "13H⁺ + NO₃⁻ + CO₃²⁻ + 10e⁻ = 6H₂O@ + HCN@"
-reactants, equal_sign, products = parse_equation(equation)
-r = Reaction(equation)
-format_equation(Dict(symbol(k) => v for (k, v) in r.species_stoich))
-```
-
-Create reactions with :
-
-```julia
-eqC3S = "C₃S + 5.3H = 1.3CH + C₁.₇SH4"
-rC3S = CemReaction(eqC3S)
-format_equation(Dict(symbol(k) => v for (k, v) in rC3S.species_stoich))
-```
-
----
-
-## 11. Reaction Operations
-
-Build reactions by combining species:
-
-```julia
-C3S = CemSpecies("C3S")
-H = CemSpecies("H")
-CH = CemSpecies("CH")
-CSH = CemSpecies("C1.7SH4")
-r = C3S + 5.3H ↔ 1.3CH + CSH
-species_list(r)
-stoich_list(r)
-```
-
----
-
-## 12. Automated Reaction Balancing
-
-Balance reactions automatically:
-
-```julia
-r = Reaction(CSH, [H, CH, C3S]; equal_sign = "→")
+println(A)
+println(indep_comp)
+println(dep_comp)
 ```
 
 ---

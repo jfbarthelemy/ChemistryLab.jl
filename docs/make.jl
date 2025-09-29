@@ -21,7 +21,11 @@ makedocs(;
     pages=[
         "Home" => "index.md",
         "Reference" => "reference.md",
-        "Tutorial" => "tutorial.md",
+        "Tutorial" => [
+            # "man/quickstart.md",
+            "tutorial.md",
+            ],
+        # "Tutorial" => "tutorial.md",
     ],
 )
 
