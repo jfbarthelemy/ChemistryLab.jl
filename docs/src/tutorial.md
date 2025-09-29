@@ -115,21 +115,20 @@ C4AF = CemSpecies(Dict(:C => 4, :A => 1, :F => 1); name = "C4AF")
 
 The previous species were constructed from integer values ​​of the number of chemical elements. However, numerical values ​​are possible, as we have seen for formulas, as well as symbolic values. To do this, you need to use the [`SymPy`](https://github.com/JuliaPy/SymPy.jl) library:
 
-```@example example_cemspecies
-import Pkg; Pkg.add("SymPy")
+```julia
 using SymPy
 â, b̂, ĝ = symbols("â b̂ ĝ", real = true)
 ox = Dict(:C => â, :S => one(Sym), :A => b̂, :H => ĝ)
 CSH = CemSpecies(ox)
 ```
 
-```@example example_cemspecies
+```julia
 numCSH = CemSpecies(map(N, map(subs, cemformula(CSH), â => 1.8, b̂ => 1, ĝ => 5)))
 ```
 
 Conversion of coefficient types can also be done:
 
-```@example example_cemspecies
+```julia
 floatCSH = Species(convert(Float64, formula(numCSH)))
 ```
 
