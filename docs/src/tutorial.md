@@ -23,6 +23,7 @@ julia> using CementChemistry
 ## Chemical Formula Manipulation
 
 CementChemistry allows you to create and manipulate chemical formulas. It is based on `Formula` which is a structure (`struct`) which contains an expression, a writing of the formula close to those found in the Phreeqc databases, a unicode expression as well as a composition in the form of dictionaries and a charge.
+
 ```julia
 struct Formula{T<:Number}
     expr::String
@@ -89,48 +90,69 @@ CO2 = Species(Dict(:C => 1, :O => 2); name="CO₂")
 > **_NOTE:_**  To add a charge when creating species with a dictionary, you must add, after the dictionary, the value of the charge (charge is considered an argument of the structure).
 ```@example
 using CementChemistry #hide
-CO2 = Species(Dict(:Si => 1, :O => 2),-1; name="SiO₂⁻")
+CO2 = Species(Dict(:Si => 1, :O => 3),-2; name="SiO₃²⁻")
 ```
 
-> **_NOTE_:_** You will also have noticed that a calculation of the molar mass of the species is systematically carried out
+> **_NOTE:_** You will also have noticed that a calculation of the molar mass of the species is systematically carried out.
 
 ---
 
-## 4. Stoichiometric Matrix Construction
+## Cement Species
 
-Build stoichiometric matrices for a set of species:
+The manipulation of chemical formulas can also be done in cement notation. Here are examples of anhydrous phases:
 
-```julia
-species = [H2O, HSO4, CO2]
-A, indep_comp, dep_comp = stoich_matrix(species)
+```@setup example_cemspecies
+    using CementChemistry
 ```
 
----
-
-## 5. Cement Notation and Solid Phases
-
-Work with cement notation and solid phases using :
-
-```julia
+```@example example_cemspecies
 C3S = CemSpecies("C3S")
 C2S = CemSpecies("C2S")
 C3A = CemSpecies("C3A")
 C4AF = CemSpecies(Dict(:C => 4, :A => 1, :F => 1); name = "C4AF")
-cemspecies = [C3S, C2S, C3A, C4AF]
-A, indep_comp, dep_comp = stoich_matrix(cemspecies)
+```
+---
+
+
+## Database Interoperability
+
+So far, we have looked at the possibility of creating and manipulating any species, whether they exist or not. Creating an H₂O⁺⁴ molecule, for example, is not a problem.
+
+```@setup database_interoperability
+    using CementChemistry
+```
+
+```@example database_interoperability
+HSO4 = Species("H₂O⁺⁴")
+```
+
+However, you will admit that it is a little strange...
+
+This is why Cement Chemistry relies on existing databases, in particular [Cemdata18](https://www.empa.ch/web/s308/thermodynamic-data) and [PSI-Nagra-12-07](https://www.psi.ch/en/les/thermodynamic-databases). Cemdata18 is a chemical thermodynamic database for hydrated Portland cements and alkali-activated materials. PSI-Nagra is a Chemical Thermodynamic Database. The formalism adopted for these databases is that of [Thermofun](https://thermohub.org/thermofun/thermofun/) which is a universal open-source client that delivers thermodynamic properties of substances and reactions at the temperature and pressure of interest. The information is stored in json files.
+
+With Cementchemistry, you can parse a ThermoFun-like json file and return DataFrames for elements, substances, and reactions.
+
+[`CementChemistry.parse_cemdata18_thermofun`](@ref)
+```@example database_interoperability
+df_elements, df_substances, df_reactions = parse_cemdata18_thermofun("../../data/cemdata18-merged.json")
+show(df_elements, allcols=true, allrows=true)
+
+```@example database_interoperability
+show(df_substances, allcols=true, allrows=true)
+
+```@example database_interoperability
+show(df_reactions, allcols=true, allrows=true)
+```
+
+It is also possible to retrieve primary species from the Cemdata18 database, primary species being the designation of a subset of species for which any species can be represented as the linear combination of primary species.
+
+[`CementChemistry.extract_primary_species`](@ref)
+```@example database_interoperability
+df_primaries = extract_primary_species("../../data/CEMDATA18-31-03-2022-phaseVol.dat")
+show(df_primaries, allcols=true, allrows=true)
 ```
 
 ---
-
-## 6. Database Interoperability
-
-Import data from ThermoFun and Cemdata databases:
-
-```julia
-df_elements, df_substances, df_reactions = parse_cemdata18_thermofun("data/cemdata18-merged.json")
-df_primaries = extract_primary_species("data/CEMDATA18-31-03-2022-phaseVol.dat")
-```
-
 
 
 ## Extract data from ThermoFun
@@ -141,6 +163,27 @@ Imagine we want to extract the set of aqueous species from a ThermoFun JSON data
 using CementChemistry
 
 ```
+
+---
+
+
+## 4. Stoichiometric Matrix Construction
+
+Build stoichiometric matrices for a set of species:
+
+```julia
+species = [H2O, HSO4, CO2]
+A, indep_comp, dep_comp = stoich_matrix(species)
+```
+
+```julia
+cemspecies = [C3S, C2S, C3A, C4AF]
+A, indep_comp, dep_comp = stoich_matrix(cemspecies)
+```
+
+
+
+---
 ---
 
 ## 7. Advanced Stoichiometric Matrix (Database Species)

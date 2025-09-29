@@ -16,7 +16,7 @@ makedocs(;
         prettyurls = true,#get(ENV, "CI", "false") == "true",
         # canonical="https://jfbarthelemy.github.io/CementChemistry.jl",
         #edit_link="main",
-        # assets = ["assets/style.css"],
+        assets = ["assets/css/custom.css"],
         ),
     pages=[
         "Home" => "index.md",
