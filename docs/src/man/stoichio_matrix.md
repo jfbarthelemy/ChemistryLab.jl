@@ -8,7 +8,7 @@ From the definition of species, it is possible to construct a stoichiometric mat
     using CementChemistry
 ```
 
-```@example
+```julia
 using CementChemistry #hide
 fH2O = 2 * :H + :O
 H2O = Species(fH2O)

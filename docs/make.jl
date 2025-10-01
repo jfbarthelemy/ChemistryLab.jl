@@ -25,7 +25,7 @@ makedocs(;
             "tutorial.md",
             ],
         # "Tutorial" => "tutorial.md",
-        "Reference" => "reference.md",
+        "API" => "reference.md",
     ],
 )
 
