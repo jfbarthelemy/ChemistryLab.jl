@@ -198,7 +198,7 @@ From the definition of species, it is possible to construct a stoichiometric mat
     using CementChemistry
 ```
 
-```@example database_stoichiometry
+```julia
 fH2O = 2 * :H + :O
 H2O = Species(fH2O)
 HSO4 = Species("HSO₄⁻")
@@ -208,6 +208,74 @@ A, indep_comp, dep_comp = stoich_matrix(species)
 println(A)
 println(indep_comp)
 println(dep_comp)
+```
+
+---
+
+# Advanced Stoichiometric Matrix (Database Species)
+
+The same exercise can be performed between species and primary species defined from the species and cemdata18 database. :
+
+```@example
+using CementChemistry #hide
+df_elements, df_substances, df_reactions = parse_cemdata18_thermofun("../../data/cemdata18-merged.json") #hide
+df_primaries = extract_primary_species("../../data/CEMDATA18-31-03-2022-phaseVol.dat") #hide
+given_species = filter(row -> row.symbol ∈ split("C3S Portlandite Jennite H2O@"), df_substances)
+secondaries = filter(row -> row.aggregate_state == "AS_AQUEOUS" &&
+                          all(k -> first(k) ∈ union_atoms(given_species.atoms), row.atoms) &&
+                          row.symbol ∉ split("H2@ O2@"),
+                          df_substances)
+all_species = unique(vcat(given_species, secondaries), :symbol)
+species = [Species(f; name = phreeqc_to_unicode(n)) for (f, n) in zip(all_species.formula, all_species.symbol)]
+candidate_primaries = [Species(f; name = phreeqc_to_unicode(n)) for (f, n) in zip(df_primaries.formula, df_primaries.symbol)]
+A, indep_comp, dep_comp = stoich_matrix(species, candidate_primaries)
+```
+
+---
+
+# Reaction Parsing and Manipulation
+
+Parse and format chemical equations:
+
+```julia
+equation = "13H⁺ + NO₃⁻ + CO₃²⁻ + 10e⁻ = 6H₂O@ + HCN@"
+reactants, equal_sign, products = parse_equation(equation)
+r = Reaction(equation)
+format_equation(Dict(symbol(k) => v for (k, v) in r.species_stoich))
+```
+
+Create reactions with :
+
+```julia
+eqC3S = "C₃S + 5.3H = 1.3CH + C₁.₇SH4"
+rC3S = CemReaction(eqC3S)
+format_equation(Dict(symbol(k) => v for (k, v) in rC3S.species_stoich))
+```
+
+---
+
+# Reaction Operations
+
+Build reactions by combining species:
+
+```julia
+C3S = CemSpecies("C3S")
+H = CemSpecies("H")
+CH = CemSpecies("CH")
+CSH = CemSpecies("C1.7SH4")
+r = C3S + 5.3H ↔ 1.3CH + CSH
+species_list(r)
+stoich_list(r)
+```
+
+---
+
+# Automated Reaction Balancing
+
+Balance reactions automatically:
+
+```julia
+r = Reaction(CSH, [H, CH, C3S]; equal_sign = "→")
 ```
 
 ---
