@@ -7,7 +7,7 @@ So far, we have looked at the possibility of creating and manipulating any speci
 ```
 
 ```@example database_interoperability
-HSO4 = Species("H₂O⁺⁴")
+HSO4 = Species("H₂O⁴⁺")
 ```
 
 However, you will admit that it is a little strange...
