@@ -18,13 +18,11 @@ makedocs(;
     pages=[
         "Home" => "index.md",
         "Tutorial" => [
-            "man/quickstart.md",
             "man/formula_manipulation.md",
             "man/databases.md",
             "man/stoichio_matrix.md",
             "tutorial.md",
             ],
-        # "Tutorial" => "tutorial.md",
         "API" => "reference.md",
     ],
 )
