@@ -482,7 +482,7 @@ function format_equation(coeffs::AbstractDict; scaling=1, equal_sign='=')
             coeff = stoich_coef_round(coeff*scaling)
 
             # Format the coefficient
-            abs_coeff = abs(coeff)
+            abs_coeff = coeff < 0 ? -coeff : coeff
             coeff_str = if isapprox(abs_coeff, 1, atol=1e-6)
                 ""
             elseif isinteger(abs_coeff)
@@ -491,13 +491,26 @@ function format_equation(coeffs::AbstractDict; scaling=1, equal_sign='=')
                 string(abs_coeff)
             end
 
-            if coeff < 0
-                push!(reactants, "$coeff_str$species")
-                total_charge_left += coeff * extract_charge(species)
-            elseif coeff > 0
+            # if coeff > 0
+            #     push!(products, "$coeff_str$species")
+            #     total_charge_right += coeff * extract_charge(species)
+            # elseif coeff < 0
+            #     push!(reactants, "$coeff_str$species")
+            #     total_charge_left += coeff * extract_charge(species)
+            # end
+
+            if coeff > 0
                 push!(products, "$coeff_str$species")
                 total_charge_right += coeff * extract_charge(species)
+            elseif coeff < 0
+                push!(reactants, "$coeff_str$species")
+                total_charge_left += coeff * extract_charge(species)
+            elseif coeff == 0
+            else
+                push!(products, "($coeff_str)$species")
+                total_charge_right += coeff * extract_charge(species)
             end
+
         end
     end
 

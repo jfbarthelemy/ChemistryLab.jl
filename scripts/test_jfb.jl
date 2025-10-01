@@ -48,7 +48,7 @@ A, indep_comp, dep_comp = stoich_matrix(species, candidate_primaries) ;
 # Construction of stoich matrix with aqueous species from database
 aqueous_species = filter(row->row.aggregate_state == "AS_AQUEOUS", df_substances)
 species = [Species(f; symbol=phreeqc_to_unicode(n)) for (f,n) in zip(aqueous_species.formula, aqueous_species.symbol)]
-candidate_primaries = [Species(f; name=phreeqc_to_unicode(n)) for (f,n) in zip(df_primaries.formula, df_primaries.symbol)]
+candidate_primaries = [Species(f; symbol=phreeqc_to_unicode(n)) for (f,n) in zip(df_primaries.formula, df_primaries.symbol)]
 A, indep_comp, dep_comp = stoich_matrix(species, candidate_primaries) ;
 stoich_matrix_to_equations(A, unicode.(indep_comp), unicode.(dep_comp)) ;
 
@@ -95,3 +95,30 @@ Reaction(CemSpecies.(["C3S", "H", "CH", "C1.8SH4"]))
 for c_over_s in 1.5:0.1:2.
     println(Reaction(CemSpecies.(["C3S", "H", "CH", "C$(c_over_s)SH4"])))
 end
+ ## construction of a Reaction by a balance calculation with symbolic numbers
+â, b̂, ĝ = symbols("â b̂ ĝ", real=true)
+CSH = CemSpecies(Dict(:C => â, :S => one(Sym), :A => b̂, :H => ĝ))
+C3S = CemSpecies("C3S")
+H = CemSpecies("H")
+CH = CemSpecies("CH")
+r = Reaction([CSH, C3S, H, CH]; equal_sign='→')
+
+# Chen & Brouwers
+CSH = CemSpecies(Dict(:C => â, :S => 1, :A => b̂, :H => ĝ))
+HT = CemSpecies("M₅AH₁₃")
+HG = CemSpecies("C₆AFS₂H₈")
+AFt = CemSpecies("C₆S̄₃H₃₂")
+ST = CemSpecies("C₂ASH₈")
+AH = CemSpecies("C₄AH₁₃")
+A, ox = stoich_matrix([CSH, HT, HG, AFt, ST, AH]);
+A = Sym.(A[1:end-1, 1:end])
+oxides = (CemSpecies∘string).(ox[1:end-1])
+hydrates = [CSH, HT, HG, AFt, ST, AH]
+print_stoich_matrix(A, symbol.(oxides), symbol.(hydrates))
+print_stoich_matrix(inv(A), symbol.(hydrates), symbol.(oxides))
+Mhyd = getproperty.(hydrates, :molar_mass)
+Mox = getproperty.(oxides, :molar_mass)
+B = Mox .* A .* inv.(Mhyd)'
+print_stoich_matrix(B, "m_" .* symbol.(oxides), "m_" .* symbol.(hydrates))
+print_stoich_matrix(subs.(inv(B), â=>1.8, b̂=>1, ĝ=>4), "m_" .* symbol.(hydrates), "m_" .* symbol.(oxides))
+

@@ -10,24 +10,24 @@ function print_stoich_matrix(A::AbstractMatrix, indep_comp_names::Vector, dep_co
     hl_p = TextHighlighter(
         (data, i, j) -> (data[i, j] > 0),
         crayon"bold light_red"
-        )
+    )
     hl_n = TextHighlighter(
         (data, i, j) -> (data[i, j] < 0),
         crayon"bold light_blue"
-        )
+    )
     hl_z = TextHighlighter(
         (data, i, j) -> (data[i, j] == 0),
         crayon"conceal"
-        )
+    )
     pretty_table(
         A,
-        column_labels=dep_comp_names,
-        row_labels=indep_comp_names,
+        column_labels = dep_comp_names,
+        row_labels    = indep_comp_names,
         highlighters  = [hl_p, hl_n, hl_z],
-        style=TextTableStyle(; 
-                row_label = crayon"magenta bold",
-                first_line_column_label = crayon"cyan bold",
-                table_border=crayon"green bold")
+        style         = TextTableStyle(;
+                            row_label = crayon"magenta bold",
+                            first_line_column_label = crayon"cyan bold",
+                            table_border = crayon"green bold")
     )
 end
 
@@ -68,6 +68,8 @@ end
 
 function stoich_matrix(vs::Vector{<:AbstractSpecies}, candidate_primaries::Vector{<:AbstractSpecies}; display = true, involve_all_atoms = false)
 
+    safe_rank(A; rtol=1e-6) = try rank(A, rtol=rtol) catch; rank(A) end
+
     all_species = union(vs,candidate_primaries)
     vec_components = same_components(all_species)
 
@@ -97,7 +99,7 @@ function stoich_matrix(vs::Vector{<:AbstractSpecies}, candidate_primaries::Vecto
     end
 
     M, involved_atoms = stoich_matrix(species; display=false)
-    redox = charged && rank(M[:, 1:end-1]; rtol=1.e-6) != rank(M[1:end-1, 1:end-1]; rtol=1.e-6)
+    redox = charged && safe_rank(M[:, 1:end-1]) != safe_rank(M[1:end-1, 1:end-1])
 
     if !redox && charged
         pop!(species)
@@ -108,7 +110,7 @@ function stoich_matrix(vs::Vector{<:AbstractSpecies}, candidate_primaries::Vecto
     filter!(x-> x !== nothing, cols_candidates)
     M_subset = M[:, cols_candidates]
     F = qr(M_subset, Val(true))
-    r = Int(rank(M_subset; rtol=1.e-6))
+    r = Int(safe_rank(M_subset))
     pivot_idx = F.p[1:r]
     independent_cols_indices = sort(cols_candidates[pivot_idx])
     sort!(independent_cols_indices, by = x->symbol(species[x]) !== "H2O@" && symbol(species[x]) !== "H2O" && symbol(species[x]) !== "H₂O" && symbol(species[x]) !== "H")
