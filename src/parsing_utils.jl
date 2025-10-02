@@ -83,6 +83,8 @@ const dict_normal_to_sub = Dict{Char,Char}(
     '7' => '₇',
     '8' => '₈',
     '9' => '₉',
+    '+' => '₊',
+    '-' => '₋',
     '.' => '.',
 )
 
@@ -460,11 +462,11 @@ function parse_equation(equation::AbstractString)
     end
     reactants = left_side == "∅" || left_side == "" ? Dict{String, Int}() : parse_side(left_side)
     products  = right_side == "∅" || right_side == "" ? Dict{String, Int}() : parse_side(right_side)
-    return reactants, equal_sign, products
+    return reactants, products, equal_sign
 end
 
 function colored_equation(equation::AbstractString)
-    reactants, equal_sign, products = parse_equation(equation)
+    reactants, products, equal_sign = parse_equation(equation)
     left_side = join([string(COL_STOICH_EXT(string(isone(v) ? "" : v)))*colored_formula(k) for (k,v) in reactants], " + ")
     right_side = join([string(COL_STOICH_EXT(string(isone(v) ? "" : v)))*colored_formula(k) for (k,v) in products], " + ")
     return left_side * " " * string(COL_PAR(string(equal_sign))) * " " * right_side

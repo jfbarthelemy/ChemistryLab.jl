@@ -31,7 +31,7 @@ function print_stoich_matrix(A::AbstractMatrix, indep_comp_names::Vector, dep_co
     )
 end
 
-function stoich_matrix_to_equations(A::AbstractMatrix, indep_comp_names::Vector, dep_comp_names::Vector; scaling=1, display=true, equal_sign='=')
+function stoich_matrix_to_equations(A::AbstractMatrix, indep_comp_names::AbstractVector, dep_comp_names::AbstractVector; scaling=1, display=true, equal_sign='=')
     eqns = String[]
     pad = 11
     for (j, sp) in enumerate(dep_comp_names)
@@ -46,6 +46,27 @@ function stoich_matrix_to_equations(A::AbstractMatrix, indep_comp_names::Vector,
             push!(eqns, eqn)
             if display
                 println(rpad("$(sp)", pad), "| ", colored_equation(eqn))
+            end
+        end
+    end
+    return eqns
+end
+
+function stoich_matrix_to_reactions(A::AbstractMatrix, indep_comp_names::AbstractVector{<:AbstractSpecies}, dep_comp_names::AbstractVector{<:AbstractSpecies}; scaling=1, display=true, equal_sign='=')
+    eqns = Reaction[]
+    pad = 11
+    for (j, sp) in enumerate(dep_comp_names)
+        if sp in indep_comp_names
+            if display
+                println(rpad("$(symbol(sp))", pad), "| $(colored(sp)) $(string(COL_PAR(string(equal_sign)))) $(colored(sp))")
+            end
+        else
+            coeffs = Dict(zip(indep_comp_names, -A[:, j]))
+            coeffs[sp] = 1
+            eqn = scaling*Reaction(coeffs)
+            push!(eqns, eqn)
+            if display
+                println(rpad("$(symbol(sp))", pad), "| ", colored(eqn))
             end
         end
     end
@@ -107,12 +128,16 @@ function stoich_matrix(vs::Vector{<:AbstractSpecies}, candidate_primaries::Vecto
     end
 
     cols_candidates = [findfirst(y -> y == x, species) for x in candidate_primaries]
-    filter!(x-> x !== nothing, cols_candidates)
+    filter!(x-> !isnothing(x), cols_candidates)
     M_subset = M[:, cols_candidates]
-    F = qr(M_subset, Val(true))
-    r = Int(safe_rank(M_subset))
-    pivot_idx = F.p[1:r]
-    independent_cols_indices = sort(cols_candidates[pivot_idx])
+    if size(M_subset,1) >= size(M_subset, 2)
+        independent_cols_indices = cols_candidates
+    else
+        F = qr(M_subset, Val(true))
+        r = Int(safe_rank(M_subset))
+        pivot_idx = F.p[1:r]
+        independent_cols_indices = sort(cols_candidates[pivot_idx])
+    end
     sort!(independent_cols_indices, by = x->symbol(species[x]) !== "H2O@" && symbol(species[x]) !== "H2O" && symbol(species[x]) !== "H₂O" && symbol(species[x]) !== "H")
 
     M_indep = M[:, independent_cols_indices]

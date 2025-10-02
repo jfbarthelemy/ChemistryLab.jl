@@ -13,6 +13,7 @@ struct Formula{T<:Number}
     expr::String
     phreeqc::String
     unicode::String
+    colored::String
     composition::Dict{Symbol,T}
     charge::Int8
 end
@@ -21,6 +22,7 @@ stoichtype(::Formula{T}) where {T} = T
 expr(f::Formula) = f.expr
 phreeqc(f::Formula) = f.phreeqc
 unicode(f::Formula) = f.unicode
+colored(f::Formula) = f.colored
 composition(f::Formula) = f.composition
 charge(f::Formula) = f.charge
 
@@ -35,7 +37,9 @@ function Formula(expr::AbstractString="")
         composition = parse_formula(expr)
         charge = extract_charge(expr)
     end
-    return Formula{valtype(composition)}(expr, unicode_to_phreeqc(expr), phreeqc_to_unicode(expr), composition, charge)
+    phreeqc_expr = unicode_to_phreeqc(expr)
+    unicode_expr = phreeqc_to_unicode(expr)
+    return Formula{valtype(composition)}(expr, phreeqc_expr, unicode_expr, colored_formula(unicode_expr), composition, charge)
 end
 
 function Formula(composition::AbstractDict{Symbol,T}, charge=0; order=ATOMIC_ORDER) where {T<:Number}
@@ -45,11 +49,22 @@ function Formula(composition::AbstractDict{Symbol,T}, charge=0; order=ATOMIC_ORD
 
     # 2. Build the formula string
     expr_parts = String[]
+    col_expr_parts = String[]
     for k in sorted_keys
         v = composition[k]
-        push!(expr_parts, string(k) * (isone(v) ? "" : string(v)))
+        strv = string(v)
+        colstrv = string(v)
+        if occursin("+", strv) || occursin("-", strv) || occursin("*", strv)
+            strv = "(" * strv *")"
+            colstrv = string(COL_STOICH_INT(strv))
+        else
+            colstrv = string(COL_STOICH_INT(normal_to_sub(strv)))
+        end
+        push!(expr_parts, string(k) * (isone(v) ? "" : strv))
+        push!(col_expr_parts, string(k) * (isone(v) ? "" : colstrv))
     end
     expr = join(expr_parts, "")
+    col_expr = join(col_expr_parts, "")
 
     # 3. Handle charge (e.g., Ca²⁺, SO₄²⁻)
     if iszero(charge)
@@ -61,6 +76,7 @@ function Formula(composition::AbstractDict{Symbol,T}, charge=0; order=ATOMIC_ORD
         abscharge = abs(charge)
         strch = isone(abscharge) ? "" : string(abscharge)
         expr *= sign * strch
+        col_expr *= string(COL_CHARGE(normal_to_super(sign * strch)))
     end
 
     # 4. Clean composition (remove charge keys)
@@ -69,9 +85,8 @@ function Formula(composition::AbstractDict{Symbol,T}, charge=0; order=ATOMIC_ORD
         pop!(newcomposition, s, nothing)
     end
 
-    return Formula{T}(expr, unicode_to_phreeqc(expr), phreeqc_to_unicode(expr), newcomposition, charge)
+    return Formula{T}(expr, unicode_to_phreeqc(expr), phreeqc_to_unicode(expr), col_expr, newcomposition, charge)
 end
-
 
 function Formula(f::Formula)
     return Formula(composition(f))
@@ -84,10 +99,15 @@ Base.length(f::Formula) = length(composition(f))
 Base.isequal(f1::Formula, f2::Formula) = f1 == f2
 Base.hash(f::Formula, h::UInt) = hash(composition(f), hash(charge(f), h))
 
+function print_formula(io::IO, s::Formula, title::String, pad::Int)
+    println(io, lpad(title, pad), ": ", expr(s), " | ", phreeqc(s), " | ", (unicode(s)), " | ", (colored(s)))
+end
+
 function Base.show(io::IO, s::Formula)
     pad = 11
     println(io, typeof(s))
-    println(io, lpad("formula", pad), ": ", colored_formula(expr(s)), " | ", colored_formula(phreeqc(s)), " | ", colored_formula((unicode(s))))
+    # println(io, lpad("formula", pad), ": ", colored_formula(expr(s)), " | ", colored_formula(phreeqc(s)), " | ", colored_formula((unicode(s))))
+    print_formula(io, s, "formula", pad)
     println(io, lpad("composition", pad), ": ", join(["$k:$v" for (k, v) in composition(s)], ", "))
     println(io, lpad("charge", pad), ": ", charge(s))
 end
@@ -132,10 +152,10 @@ end
 
 function Base.convert(T::Type{<:Number}, f::Formula)
     newcomposition = Dict(k => convert(T, v) for (k,v) ∈ composition(f))
-    return Formula{T}(expr(f), phreeqc(f), unicode(f), newcomposition, charge(f))
+    return Formula{T}(expr(f), phreeqc(f), unicode(f), colored(f), newcomposition, charge(f))
 end
 
 function Base.map(func::Function, f::Formula, args... ; kwargs...)
         newcomposition = Dict(k => func(v, args... ; kwargs...) for (k,v) ∈ composition(f))
-    return Formula{valtype(newcomposition)}(expr(f), phreeqc(f), unicode(f), newcomposition, charge(f))
+    return Formula{valtype(newcomposition)}(expr(f), phreeqc(f), unicode(f), colored(f), newcomposition, charge(f))
 end

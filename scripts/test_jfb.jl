@@ -50,7 +50,7 @@ aqueous_species = filter(row->row.aggregate_state == "AS_AQUEOUS", df_substances
 species = [Species(f; symbol=phreeqc_to_unicode(n)) for (f,n) in zip(aqueous_species.formula, aqueous_species.symbol)]
 candidate_primaries = [Species(f; symbol=phreeqc_to_unicode(n)) for (f,n) in zip(df_primaries.formula, df_primaries.symbol)]
 A, indep_comp, dep_comp = stoich_matrix(species, candidate_primaries) ;
-stoich_matrix_to_equations(A, unicode.(indep_comp), unicode.(dep_comp)) ;
+stoich_matrix_to_reactions(A, indep_comp, dep_comp) ;
 
 # CemSpecies with Sym coef
 using SymPy
@@ -71,37 +71,34 @@ println(unicode(Jennite), " ≡ ", unicode(cemJennite))
 # Equation parsing
 equation = "13H⁺ + NO₃⁻ + CO₃²⁻ + 10e⁻ = 6H₂O@ + HCN@"
  ## simple parsing giving Dicts
-reactants, equal_sign, products = parse_equation(equation)
+reac, prod, equal_sign = parse_equation(equation)
  ## construction of a Reaction struct from a string
 r = Reaction(equation)
- ## species_stoich provides the Dict of species and stoich coeffs
-format_equation(Dict(symbol(k) => v for (k,v) in r.species_stoich))
  ## construction of a Reaction of only CemSpecies by CemReaction
 eqC3S = "C₃S + 5.3H = 1.3CH + C₁.₇SH₄"
 rC3S = CemReaction(eqC3S)
-format_equation(Dict(symbol(k) => v for (k,v) in rC3S.species_stoich))
-format_equation(Dict(unicode(formula(k)) => v for (k,v) in rC3S.species_stoich))
  ## construction of a Reaction by operations on Species
 C3S = CemSpecies("C3S")
 H = CemSpecies("H")
 CH = CemSpecies("CH")
 CSH = CemSpecies("C1.7SH4")
 r = C3S + 5.3H ↔ 1.3CH + CSH
-species_list(r)
-stoich_list(r)
  ## construction of a Reaction by a balance calculation
 r = Reaction([C3S, H, CH, CSH]; equal_sign='→')
+ ## application of a function to stoichimetric coefficients (here simplify)
+r = map(simplify, Reaction([C3S, H], [CH, CSH]; equal_sign='→'))
 Reaction(CemSpecies.(["C3S", "H", "CH", "C1.8SH4"]))
 for c_over_s in 1.5:0.1:2.
     println(Reaction(CemSpecies.(["C3S", "H", "CH", "C$(c_over_s)SH4"])))
 end
  ## construction of a Reaction by a balance calculation with symbolic numbers
 â, b̂, ĝ = symbols("â b̂ ĝ", real=true)
-CSH = CemSpecies(Dict(:C => â, :S => one(Sym), :A => b̂, :H => ĝ))
+CSH = CemSpecies(Dict(:C => â, :S => one(Sym), :H => ĝ))
 C3S = CemSpecies("C3S")
 H = CemSpecies("H")
 CH = CemSpecies("CH")
 r = Reaction([CSH, C3S, H, CH]; equal_sign='→')
+stoich_matrix([C3S], [CSH, H, CH]; involve_all_atoms=true) ;
 
 # Chen & Brouwers
 CSH = CemSpecies(Dict(:C => â, :S => 1, :A => b̂, :H => ĝ))
@@ -121,4 +118,3 @@ Mox = getproperty.(oxides, :molar_mass)
 B = Mox .* A .* inv.(Mhyd)'
 print_stoich_matrix(B, "m_" .* symbol.(oxides), "m_" .* symbol.(hydrates))
 print_stoich_matrix(subs.(inv(B), â=>1.8, b̂=>1, ĝ=>4), "m_" .* symbol.(hydrates), "m_" .* symbol.(oxides))
-

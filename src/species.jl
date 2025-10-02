@@ -54,6 +54,7 @@ end
 expr(s::Species) = expr(formula(s))
 phreeqc(s::Species) = phreeqc(formula(s))
 unicode(s::Species) = unicode(formula(s))
+colored(s::Species) = colored(formula(s))
 components(s::Species) = atoms_charge(s)
 
 function Species(formula::Formula; name=expr(formula), symbol=expr(formula))
@@ -97,7 +98,8 @@ function Base.show(io::IO, s::Species)
     if symbol(s) != formula(s) && length(symbol(s))>0
         println(io, lpad("symbol", pad), ": ", symbol(s))
     end
-    println(io, lpad("formula", pad), ": ", colored_formula(expr(s)), " | ", colored_formula(phreeqc(s)), " | ", colored_formula(unicode(s)))
+    # println(io, lpad("formula", pad), ": ", colored_formula(expr(s)), " | ", colored_formula(phreeqc(s)), " | ", colored_formula(unicode(s)))
+    print_formula(io, formula(s), "formula", pad)
     println(io, lpad("atoms", pad), ": ", join(["$k:$v" for (k, v) in atoms(s)], ", "))
     println(io, lpad("charge", pad), ": ", charge(s))
     if length(properties(s))>0 print(io, lpad("properties", pad), ": ", join(["$k = $v" for (k, v) in properties(s)], "\n"*repeat(" ", pad+2))) end
@@ -115,6 +117,7 @@ cemformula(s::CemSpecies) = s.cemformula
 expr(s::CemSpecies) = expr(cemformula(s))
 phreeqc(s::CemSpecies) = phreeqc(cemformula(s))
 unicode(s::CemSpecies) = unicode(cemformula(s))
+colored(s::CemSpecies) = colored(cemformula(s))
 oxides(s::CemSpecies) = composition(cemformula(s))
 function oxides_charge(s::CemSpecies)
     z = charge(s)
@@ -135,12 +138,12 @@ function CemSpecies(cemformula::Formula; name=expr(cemformula), symbol=expr(cemf
     return CemSpecies{valtype(atoms),valtype(composition(cemformula))}(name, symbol, formula, cemformula, properties)
 end
 
-function CemSpecies(;expr::AbstractString="", name=expr, symbol=expr)
+function CemSpecies(; expr::AbstractString="", name=expr, symbol=expr)
     cemformula = Formula(expr)
     return CemSpecies(cemformula; name=name, symbol=symbol)
 end
 
-CemSpecies(f::AbstractString; name=f, symbol=f) = CemSpecies(;expr=f, name=name, symbol=symbol)
+CemSpecies(f::AbstractString; name=f, symbol=f) = CemSpecies(; expr=f, name=name, symbol=symbol)
 
 function CemSpecies(oxides::AbstractDict{Symbol,T}, charge=0; name="", symbol="") where {T}
     cemformula = Formula(oxides, charge; order=OXIDE_ORDER)
@@ -187,9 +190,11 @@ function Base.show(io::IO, s::CemSpecies)
     end
     cf = cemformula(s)
     f = formula(s)
-    println(io, lpad("cemformula", pad), ": ", colored_formula(expr(cf)), " | ", colored_formula(phreeqc(cf)), " | ", colored_formula(unicode(cf)))
+    # println(io, lpad("cemformula", pad), ": ", colored_formula(expr(cf)), " | ", colored_formula(phreeqc(cf)), " | ", colored_formula(unicode(cf)))
+    print_formula(io, cf, "cemformula", pad)
     println(io, lpad("oxides", pad), ": ", join(["$k:$v" for (k, v) in oxides(s)], ", "))
-    println(io, lpad("formula", pad), ": ", colored_formula(expr(f)), " | ", colored_formula(phreeqc(f)), " | ", colored_formula(unicode(f)))
+    # println(io, lpad("formula", pad), ": ", colored_formula(expr(f)), " | ", colored_formula(phreeqc(f)), " | ", colored_formula(unicode(f)))
+    print_formula(io, f, "formula", pad)
     println(io, lpad("atoms", pad), ": ", join(["$k:$v" for (k, v) in atoms(s)], ", "))
     println(io, lpad("charge", pad), ": ", charge(s))
     if length(properties(s))>0 print(io, lpad("properties", pad), ": ", join(["$k = $v" for (k, v) in properties(s)], "\n"*repeat(" ", pad+2))) end
