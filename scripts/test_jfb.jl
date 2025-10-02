@@ -85,8 +85,6 @@ CSH = CemSpecies("C1.7SH4")
 r = C3S + 5.3H ↔ 1.3CH + CSH
  ## construction of a Reaction by a balance calculation
 r = Reaction([C3S, H, CH, CSH]; equal_sign='→')
- ## application of a function to stoichimetric coefficients (here simplify)
-r = map(simplify, Reaction([C3S, H], [CH, CSH]; equal_sign='→'))
 Reaction(CemSpecies.(["C3S", "H", "CH", "C1.8SH4"]))
 for c_over_s in 1.5:0.1:2.
     println(Reaction(CemSpecies.(["C3S", "H", "CH", "C$(c_over_s)SH4"])))
@@ -98,7 +96,10 @@ C3S = CemSpecies("C3S")
 H = CemSpecies("H")
 CH = CemSpecies("CH")
 r = Reaction([CSH, C3S, H, CH]; equal_sign='→')
-stoich_matrix([C3S], [CSH, H, CH]; involve_all_atoms=true) ;
+ ## application of a function to stoichimetric coefficients (here simplify)
+r = map(simplify, Reaction([C3S, H], [CH, CSH]; equal_sign='→'))
+A, _, _ = stoich_matrix([C3S], [CSH, H, CH]; involve_all_atoms=true) ;
+simplify.(A)
 
 # Chen & Brouwers
 CSH = CemSpecies(Dict(:C => â, :S => 1, :A => b̂, :H => ĝ))
