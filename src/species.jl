@@ -77,6 +77,10 @@ function Species(atoms::AbstractDict{Symbol,T}, charge=0; name="", symbol="") wh
     return Species{valtype(atoms)}(name, symbol, formula, properties)
 end
 
+function Species(atoms::Pair{Symbol,T}...; name="", symbol="") where {T}
+    return Species(Dict(atoms...); name=name, symbol=symbol)
+end
+
 function Base.convert(::Type{Species{T}}, s::Species; name=name(s), symbol=symbol(s)) where {T}
     return Species(convert(T, formula(s)); name=name, symbol=symbol)
 end
@@ -150,6 +154,10 @@ function CemSpecies(oxides::AbstractDict{Symbol,T}, charge=0; name="", symbol=""
     if length(name) == 0 name = unicode(cemformula) end
     if length(symbol) == 0 symbol = name end
     return CemSpecies(cemformula; name=name, symbol=symbol)
+end
+
+function CemSpecies(oxides::Pair{Symbol,T}...; name="", symbol="") where {T}
+    return CemSpecies(Dict(oxides...); name=name, symbol=symbol)
 end
 
 function CemSpecies(s::Species)

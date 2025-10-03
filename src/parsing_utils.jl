@@ -374,7 +374,7 @@ function extract_charge(formula::AbstractString)
 end
 
 calculate_molar_mass(atoms::AbstractDict{Symbol,T}) where {T<:Number} =
-    uconvert(g/mol, sum(cnt * elements[element].atomic_mass for (element, cnt) in atoms; init=0u) * AvogadroConstant)
+    uconvert(g/mol, sum(cnt * elements[element].atomic_mass for (element, cnt) in atoms if haskey(elements, element); init=0u) * AvogadroConstant)
 
 function replace_graphemes(s::AbstractString, old_new::Pair...)
     gs = collect(graphemes(s))

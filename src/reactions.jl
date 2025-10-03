@@ -3,7 +3,7 @@ struct Reaction{SR<:AbstractSpecies, TR<:Number, SP<:AbstractSpecies, TP<:Number
     colored::String
     reactants::Dict{SR, TR}
     products::Dict{SP, TP}
-    equal_sign::Union{Nothing,Char}
+    equal_sign::Char
 end
 
 equation(r::Reaction) = r.equation
@@ -32,12 +32,12 @@ function CemReaction(equation::AbstractString)
                     )
 end
 
-function split_species_by_stoich(species_stoich::AbstractDict{S, T}) where {S<:AbstractSpecies, T<:Number}
+function split_species_by_stoich(species_stoich::AbstractDict{S, T}; side::Symbol=:sign) where {S<:AbstractSpecies, T<:Number}
     reactants = Dict{S,T}()
     products = Dict{S,T}()
     for (species, coef) in species_stoich
         if !iszero(coef)
-            if coef < 0
+            if (coef < 0 && side == :sign) || side == :reactants
                 reactants[species] = -stoich_coef_round(coef)
             else
                 products[species] = stoich_coef_round(coef)
@@ -71,10 +71,9 @@ function format_side(side::AbstractDict{S, T}) where {S<:AbstractSpecies, T<:Num
     return join(equation, " + "), join(coleq, " + "), ch
 end
 
-function Reaction(reactants::AbstractDict{SR, TR}, products::AbstractDict{SP, TP}, equal_sign=nothing) where {SR<:AbstractSpecies, TR<:Number, SP<:AbstractSpecies, TP<:Number}
+function Reaction(reactants::AbstractDict{SR, TR}, products::AbstractDict{SP, TP}; equal_sign='=') where {SR<:AbstractSpecies, TR<:Number, SP<:AbstractSpecies, TP<:Number}
     sreac, creac, charge_left = format_side(reactants)
     sprod, cprod, charge_right = format_side(products)
-    if isnothing(equal_sign) equal_sign = '=' end
     
     charge_diff = charge_right - charge_left
 
@@ -104,9 +103,9 @@ function Reaction(reactants::AbstractDict{SR, TR}, products::AbstractDict{SP, TP
                              )
 end
 
-function Reaction(species_stoich::Dict{S, T}, equal_sign::Union{Nothing,Char}=nothing) where {S<:AbstractSpecies, T<:Number}
-    reactants, products = split_species_by_stoich(species_stoich)
-    return Reaction(reactants, products, equal_sign)
+function Reaction(species_stoich::Dict{S, T}; equal_sign::Char='=', side::Symbol=:sign) where {S<:AbstractSpecies, T<:Number}
+    reactants, products = split_species_by_stoich(species_stoich; side=side)
+    return Reaction(reactants, products; equal_sign=equal_sign)
 end
 
 Base.convert(::Type{Reaction}, s::S) where {S<:AbstractSpecies} = Reaction(Dict(s => 1))
@@ -114,20 +113,19 @@ Base.convert(::Type{Reaction{U,T}}, s::S) where {U<:AbstractSpecies, T<:Number, 
 Reaction(s::S) where {S<:AbstractSpecies} = Reaction(Dict(s => 1))
 Reaction{U,T}(s::S) where {U<:AbstractSpecies, T<:Number, S<:AbstractSpecies} = Reaction(Dict(s => 1))
 
-Reaction(r::R) where {R<:Reaction} = r
-Reaction(r::R, equal_sign) where {R<:Reaction} = equal_sign == r.equal_sign ? r : Reaction(reactants(r), products(r), equal_sign)
+Reaction(r::R; equal_sign=r.equal_sign) where {R<:Reaction} = equal_sign == r.equal_sign ? r : Reaction(reactants(r), products(r); equal_sign=equal_sign)
 
-function Reaction(species::Vector{<:AbstractSpecies}; scaling=1, equal_sign='=')
+function Reaction(species::AbstractVector{<:AbstractSpecies}; scaling=1, equal_sign='=', side::Symbol=:sign)
     A, indep_comp, dep_comp = stoich_matrix(species[1:1], species[2:end]; display=false, involve_all_atoms=true)
     species_stoich = Dict{promote_type(typeof.(indep_comp)..., typeof.(dep_comp)...),eltype(A)}()
     for (i, s) in enumerate(indep_comp)
         species_stoich[s] = A[i,1]*scaling
     end
     species_stoich[dep_comp[1]] = -scaling
-    return Reaction(species_stoich, equal_sign)
+    return Reaction(species_stoich; equal_sign=equal_sign, side=side)
 end
 
-function Reaction(reac::Vector{<:AbstractSpecies}, prod::Vector{<:AbstractSpecies}; scaling=1, equal_sign='=')
+function Reaction(reac::AbstractVector{<:AbstractSpecies}, prod::AbstractVector{<:AbstractSpecies}; scaling=1, equal_sign='=', side::Symbol=:sign)
     species = [reac ; prod]
     A, indep_comp, dep_comp = stoich_matrix(species[1:1], species[2:end]; display=false, involve_all_atoms=true)
     species_stoich = Dict{promote_type(typeof.(indep_comp)..., typeof.(dep_comp)...),eltype(A)}()
@@ -135,16 +133,20 @@ function Reaction(reac::Vector{<:AbstractSpecies}, prod::Vector{<:AbstractSpecie
         species_stoich[s] = A[i,1]*scaling
     end
     species_stoich[dep_comp[1]] = -scaling
-    return Reaction(Dict(k=>-v for (k,v) in species_stoich if k in reac), Dict(k=>v for (k,v) in species_stoich if k in prod), equal_sign)
+    if side != :sign
+        return Reaction(species_stoich; equal_sign=equal_sign, side=side)
+    else
+        return Reaction(Dict(k=>-v for (k,v) in species_stoich if k in reac), Dict(k=>v for (k,v) in species_stoich if k in prod); equal_sign=equal_sign)
+    end
 end
 
 *(ν::Number, s::AbstractSpecies) = Reaction(Dict(s => ν))
 
-*(ν::Number, r::Reaction) = Reaction(Dict(k => ν*v for (k,v) in reactants(r)), Dict(k => ν*v for (k,v) in products(r)), r.equal_sign)
+*(ν::Number, r::Reaction) = Reaction(Dict(k => ν*v for (k,v) in reactants(r)), Dict(k => ν*v for (k,v) in products(r)); equal_sign=r.equal_sign)
 
 -(s::AbstractSpecies) = Reaction(Dict(s => -1))
 
--(r::Reaction) = Reaction(products(r), reactants(r), r.equal_sign)
+-(r::Reaction) = Reaction(products(r), reactants(r); equal_sign=r.equal_sign)
 
 function +(s::S1, t::S2) where {S1<:AbstractSpecies, S2<:AbstractSpecies}
     S = promote_type(S1, S2)
@@ -170,11 +172,11 @@ function add_stoich(d1::AbstractDict{S1,T1}, d2::AbstractDict{S2,T2}) where {S1<
 end
 
 function +(r::R, s::S) where {R<:Reaction, S<:AbstractSpecies}
-    return Reaction(reactants(r), add_stoich(products(r), Dict(s => 1)), r.equal_sign)
+    return Reaction(reactants(r), add_stoich(products(r), Dict(s => 1)); equal_sign=r.equal_sign)
 end
 
 function -(r::R, s::S) where {R<:Reaction, S<:AbstractSpecies}
-    return Reaction(reactants(r), add_stoich(products(r), Dict(s => -1)), r.equal_sign)
+    return Reaction(reactants(r), add_stoich(products(r), Dict(s => -1)); equal_sign=r.equal_sign)
 end
 
 +(s::S, r::R) where {S<:AbstractSpecies, R<:Reaction} = +(r,s)
@@ -182,17 +184,17 @@ end
 -(s::S, r::R) where {S<:AbstractSpecies, R<:Reaction} = +(s,-r)
 
 function +(r::R, u::U) where {R<:Reaction, U<:Reaction}
-    return Reaction(add_stoich(reactants(r), reactants(u)), add_stoich(products(r), products(u)), r.equal_sign)
+    return Reaction(add_stoich(reactants(r), reactants(u)), add_stoich(products(r), products(u)); equal_sign=r.equal_sign)
 end
 
 function -(r::R, u::U) where {R<:Reaction, U<:Reaction}
-    return Reaction(add_stoich(reactants(r), products(u)), add_stoich(products(r), reactants(u)), r.equal_sign)
+    return Reaction(add_stoich(reactants(r), products(u)), add_stoich(products(r), reactants(u)); equal_sign=r.equal_sign)
 end
 
 const EQUAL_OPS = union(fwd_arrows[2:end], bwd_arrows[2:end], double_arrows, pure_rate_arrows, equal_signs[2:end])
 
 for OP in Symbol.(EQUAL_OPS)
-    @eval $OP(r,s) = Reaction(-Reaction(r)+Reaction(s), first(string($OP)))
+    @eval $OP(r,s) = Reaction(-Reaction(r)+Reaction(s); equal_sign=first(string($OP)))
 end
 
 function Base.show(io::IO, r::Reaction)
@@ -202,5 +204,5 @@ end
 function Base.map(func::Function, r::Reaction, args... ; kwargs...)
         reac = Dict(k => func(v, args... ; kwargs...) for (k,v) ∈ reactants(r))
         prod = Dict(k => func(v, args... ; kwargs...) for (k,v) ∈ products(r))
-    return Reaction(reac, prod, equal_sign(r))
+    return Reaction(reac, prod; equal_sign=equal_sign(r))
 end

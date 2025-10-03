@@ -49,21 +49,27 @@ function Formula(composition::AbstractDict{Symbol,T}, charge=0; order=ATOMIC_ORD
 
     # 2. Build the formula string
     expr_parts = String[]
+    uni_parts = String[]
     col_expr_parts = String[]
     for k in sorted_keys
         v = composition[k]
         strv = string(v)
+        strvuni = string(v)
         colstrv = string(v)
         if occursin("+", strv) || occursin("-", strv) || occursin("*", strv)
             strv = "(" * strv *")"
+            strvuni = strv
             colstrv = string(COL_STOICH_INT(strv))
         else
+            strvuni = normal_to_sub(strv)
             colstrv = string(COL_STOICH_INT(normal_to_sub(strv)))
         end
         push!(expr_parts, string(k) * (isone(v) ? "" : strv))
+        push!(uni_parts, string(k) * (isone(v) ? "" : strvuni))
         push!(col_expr_parts, string(k) * (isone(v) ? "" : colstrv))
     end
     expr = join(expr_parts, "")
+    uni = join(uni_parts, "")
     col_expr = join(col_expr_parts, "")
 
     # 3. Handle charge (e.g., Ca²⁺, SO₄²⁻)
@@ -76,6 +82,7 @@ function Formula(composition::AbstractDict{Symbol,T}, charge=0; order=ATOMIC_ORD
         abscharge = abs(charge)
         strch = isone(abscharge) ? "" : string(abscharge)
         expr *= sign * strch
+        uni *= sign * strch
         col_expr *= string(COL_CHARGE(normal_to_super(sign * strch)))
     end
 
@@ -85,7 +92,7 @@ function Formula(composition::AbstractDict{Symbol,T}, charge=0; order=ATOMIC_ORD
         pop!(newcomposition, s, nothing)
     end
 
-    return Formula{T}(expr, unicode_to_phreeqc(expr), phreeqc_to_unicode(expr), col_expr, newcomposition, charge)
+    return Formula{T}(expr, unicode_to_phreeqc(expr), uni, col_expr, newcomposition, charge)
 end
 
 function Formula(f::Formula)
