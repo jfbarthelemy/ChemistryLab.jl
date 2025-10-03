@@ -48,7 +48,7 @@ struct Species{T<:Number} <: AbstractSpecies
     name::String
     symbol::String
     formula::Formula{T}
-    properties::Dict{Symbol,Number}
+    properties::OrderedDict{Symbol,Number}
 end
 
 expr(s::Species) = expr(formula(s))
@@ -56,10 +56,11 @@ phreeqc(s::Species) = phreeqc(formula(s))
 unicode(s::Species) = unicode(formula(s))
 colored(s::Species) = colored(formula(s))
 components(s::Species) = atoms_charge(s)
+mainformula(s::Species) = s.formula
 
 function Species(formula::Formula; name=expr(formula), symbol=expr(formula))
     atoms = composition(formula)
-    properties = Dict(:molar_mass => calculate_molar_mass(atoms))
+    properties = OrderedDict(:molar_mass => calculate_molar_mass(atoms))
     return Species{valtype(atoms)}(name, symbol, formula, properties)
 end
 
@@ -71,14 +72,14 @@ Species(f::AbstractString; name=f, symbol=f) = Species(;expr=f, name=name, symbo
 
 function Species(atoms::AbstractDict{Symbol,T}, charge=0; name="", symbol="") where {T}
     formula = Formula(atoms, charge)
-    properties = Dict(:molar_mass => calculate_molar_mass(atoms))
+    properties = OrderedDict(:molar_mass => calculate_molar_mass(atoms))
     if length(name) == 0 name = unicode(formula) end
     if length(symbol) == 0 symbol = name end
     return Species{valtype(atoms)}(name, symbol, formula, properties)
 end
 
 function Species(atoms::Pair{Symbol,T}...; name="", symbol="") where {T}
-    return Species(Dict(atoms...); name=name, symbol=symbol)
+    return Species(OrderedDict(atoms...); name=name, symbol=symbol)
 end
 
 function Base.convert(::Type{Species{T}}, s::Species; name=name(s), symbol=symbol(s)) where {T}
@@ -114,10 +115,11 @@ struct CemSpecies{T<:Number, S<:Number} <: AbstractSpecies
     symbol::String
     formula::Formula{T}
     cemformula::Formula{S}
-    properties::Dict{Symbol,Number}
+    properties::OrderedDict{Symbol,Number}
 end
 
 cemformula(s::CemSpecies) = s.cemformula
+mainformula(s::CemSpecies) = s.cemformula
 expr(s::CemSpecies) = expr(cemformula(s))
 phreeqc(s::CemSpecies) = phreeqc(cemformula(s))
 unicode(s::CemSpecies) = unicode(cemformula(s))
@@ -138,7 +140,7 @@ components(s::CemSpecies) = oxides_charge(s)
 function CemSpecies(cemformula::Formula; name=expr(cemformula), symbol=expr(cemformula))
     formula = Formula(to_mendeleev(composition(cemformula)), charge(cemformula))
     atoms = composition(formula)
-    properties = Dict(:molar_mass => calculate_molar_mass(atoms))
+    properties = OrderedDict(:molar_mass => calculate_molar_mass(atoms))
     return CemSpecies{valtype(atoms),valtype(composition(cemformula))}(name, symbol, formula, cemformula, properties)
 end
 
@@ -157,13 +159,13 @@ function CemSpecies(oxides::AbstractDict{Symbol,T}, charge=0; name="", symbol=""
 end
 
 function CemSpecies(oxides::Pair{Symbol,T}...; name="", symbol="") where {T}
-    return CemSpecies(Dict(oxides...); name=name, symbol=symbol)
+    return CemSpecies(OrderedDict(oxides...); name=name, symbol=symbol)
 end
 
 function CemSpecies(s::Species)
     candidate_primaries = [Species(d; symbol=string(k)) for (k,d) in cement_to_mendeleev]
     A, indep_comp, dep_comp = stoich_matrix([s], candidate_primaries; display=false)
-    oxides = Dict(Symbol(symbol(indep_comp[i])) => A[i,1] for i in 1:size(A, 1))
+    oxides = OrderedDict(Symbol(symbol(indep_comp[i])) => A[i,1] for i in 1:size(A, 1))
     return CemSpecies(oxides, charge(s); name=name(s), symbol=symbol(s))
 end
 
@@ -216,3 +218,9 @@ Base.promote_rule(::Type{Species{T}}, ::Type{Species}) where {T} = Species
 
 Base.promote_rule(::Type{<:CemSpecies}, ::Type{Species{T}}) where {T} = Species
 Base.promote_rule(::Type{Species{T}}, ::Type{<:CemSpecies}) where {T} = Species
+
+function Base.map(func::Function, s::S, args... ; kwargs...) where {S<:AbstractSpecies}
+    tryfunc(v) = try func(v, args... ; kwargs...) catch; v end
+    newcomponents = OrderedDict(k => tryfunc(v) for (k,v) ∈ components(s))
+    return typeof(s).name.wrapper(newcomponents, tryfunc(charge(s)); name=get(kwargs, :name, name(s)), symbol=get(kwargs, :symbol, symbol(s)))
+end

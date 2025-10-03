@@ -14,7 +14,7 @@ struct Formula{T<:Number}
     phreeqc::String
     unicode::String
     colored::String
-    composition::Dict{Symbol,T}
+    composition::OrderedDict{Symbol,T}
     charge::Int8
 end
 
@@ -28,10 +28,10 @@ charge(f::Formula) = f.charge
 
 function Formula(expr::AbstractString="")
     if expr == "Zz" || expr == "Zz+" || expr == "Zz⁺"
-        composition = Dict{Symbol,Int}()
+        composition = OrderedDict{Symbol,Int}()
         charge = 1
     elseif expr == "e" || expr == "e-" || expr == "e⁻"
-        composition = Dict{Symbol,Int}()
+        composition = OrderedDict{Symbol,Int}()
         charge = -1
     else
         composition = parse_formula(expr)
@@ -120,17 +120,17 @@ function Base.show(io::IO, s::Formula)
 end
 
 function *(f::Formula, x::T) where {T<:Number}
-    composition = Dict(k => x*v for (k,v) in f.composition)
+    composition = OrderedDict(k => x*v for (k,v) in f.composition)
     return Formula(composition, f.charge)
 end
 
 function /(f::Formula, x::T) where {T<:Number}
-    composition = Dict(k => v/x for (k,v) in f.composition)
+    composition = OrderedDict(k => v/x for (k,v) in f.composition)
     return Formula(composition, f.charge)
 end
 
 function //(f::Formula, x::T) where {T<:Number}
-    composition = Dict(k => v//x for (k,v) in f.composition)
+    composition = OrderedDict(k => v//x for (k,v) in f.composition)
     return Formula(composition, f.charge)
 end
 
@@ -147,7 +147,7 @@ function +(f::Formula, atom::AtomGroup)
 end
 
 function +(a::AtomGroup{T}, b::AtomGroup{S}) where {T,S}
-    composition = a.sym == b.sym ? Dict{Symbol, promote_type(T, S)}(a.sym => a.coef+b.coef) : Dict{Symbol, promote_type(T, S)}(a.sym => a.coef, b.sym => b.coef)
+    composition = a.sym == b.sym ? OrderedDict{Symbol, promote_type(T, S)}(a.sym => a.coef+b.coef) : Dict{Symbol, promote_type(T, S)}(a.sym => a.coef, b.sym => b.coef)
     return Formula(composition, 0)
 end
 
@@ -158,11 +158,12 @@ end
 +(a::Symbol, b::Symbol) = AtomGroup(a) + AtomGroup(b)
 
 function Base.convert(T::Type{<:Number}, f::Formula)
-    newcomposition = Dict(k => convert(T, v) for (k,v) ∈ composition(f))
+    newcomposition = OrderedDict(k => convert(T, v) for (k,v) ∈ composition(f))
     return Formula{T}(expr(f), phreeqc(f), unicode(f), colored(f), newcomposition, charge(f))
 end
 
 function Base.map(func::Function, f::Formula, args... ; kwargs...)
-        newcomposition = Dict(k => func(v, args... ; kwargs...) for (k,v) ∈ composition(f))
-    return Formula{valtype(newcomposition)}(expr(f), phreeqc(f), unicode(f), colored(f), newcomposition, charge(f))
+    tryfunc(v) = try func(v, args... ; kwargs...) catch; v end    
+    newcomposition = OrderedDict(k => tryfunc(v) for (k,v) ∈ composition(f))
+    return Formula{valtype(newcomposition)}(expr(f), phreeqc(f), unicode(f), colored(f), newcomposition, tryfunc(charge(f)))
 end

@@ -129,5 +129,6 @@ CO₂ = Species("CO₂")
 r = Reaction([CₙH₂ₙ₊₂, O₂], [H₂O, CO₂])
 map(factor, r)
 println(2r)
+for vn in 1:9 println("n=$vn ⇒ ", map(subs, r, n=>vn)) end
 r = Reaction([CₙH₂ₙ₊₂, O₂], [H₂O, CO₂]; side=:products)
 r = Reaction([CₙH₂ₙ₊₂, O₂], [H₂O, CO₂]; side=:reactants)

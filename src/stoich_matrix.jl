@@ -4,7 +4,7 @@ same_components(::Vector{<:CemSpecies}) = oxides_charge
 item_order(::Vector{<:AbstractSpecies}) = ATOMIC_ORDER
 item_order(::Vector{<:CemSpecies}) = OXIDE_ORDER
 
-union_atoms(atom_dicts::Vector{<:Dict}, order_vec = ATOMIC_ORDER) = sort!(collect(union(keys.(atom_dicts)...)), by=k -> findfirst(==(k), order_vec))
+union_atoms(atom_dicts::Vector{<:AbstractDict}, order_vec = ATOMIC_ORDER) = sort!(collect(union(keys.(atom_dicts)...)), by=k -> findfirst(==(k), order_vec))
 
 function print_stoich_matrix(A::AbstractMatrix, indep_comp_names::Vector, dep_comp_names::Vector)
     hl_p = TextHighlighter(
@@ -40,7 +40,7 @@ function stoich_matrix_to_equations(A::AbstractMatrix, indep_comp_names::Abstrac
                 println(rpad("$(sp)", pad), "| $(colored_formula(sp)) $(string(COL_PAR(string(equal_sign)))) $(colored_formula(sp))")
             end
         else
-            coeffs = Dict(zip(indep_comp_names, -A[:, j]))
+            coeffs = OrderedDict(zip(indep_comp_names, -A[:, j]))
             coeffs[sp] = 1
             eqn = format_equation(coeffs; scaling=scaling, equal_sign=equal_sign)
             push!(eqns, eqn)
@@ -61,8 +61,7 @@ function stoich_matrix_to_reactions(A::AbstractMatrix, indep_comp_names::Abstrac
                 println(rpad("$(symbol(sp))", pad), "| $(colored(sp)) $(string(COL_PAR(string(equal_sign)))) $(colored(sp))")
             end
         else
-            coeffs = Dict(zip(indep_comp_names, -A[:, j]))
-            coeffs[sp] = 1
+            coeffs = OrderedDict(zip([sp ; indep_comp_names], [1 ; -A[:, j]]))
             eqn = scaling*Reaction(coeffs)
             push!(eqns, eqn)
             if display

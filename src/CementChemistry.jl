@@ -2,6 +2,7 @@ module CementChemistry
 
 import Base: ==, +, -, *, /, //
 using LinearAlgebra
+using OrderedCollections
 using JSON, JSON3, CSV, DataFrames
 using Unicode
 import Unitful: u, g, cm, K, J, mol, Quantity, uconvert
