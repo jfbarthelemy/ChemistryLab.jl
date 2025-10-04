@@ -44,7 +44,7 @@ Pkg.add(url="https://github.com/jfbarthelemy/CementChemistry.jl")
 
 ## Usage
 
-See the [documentation and tutorials](https://jfbarthelemy.github.io/CementChemistry.jl/stable/
+See the [documentation and tutorials](https://jfbarthelemy.github.io/CementChemistry.jl/dev/
 ) for examples on formula creation, species management, reaction parsing, and database merging.
 
 ## Contributing
@@ -56,7 +56,7 @@ See GitHub Issues for current bug reports.
 
 ## FAQ
 
-Frequently asked questions are addressed in the [documentation](https://jfbarthelemy.github.io/CementChemistry.jl/stable/).
+Frequently asked questions are addressed in the [documentation](https://jfbarthelemy.github.io/CementChemistry.jl/dev/).
 
 ## License
 
