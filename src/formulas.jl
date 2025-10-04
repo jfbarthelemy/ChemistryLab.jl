@@ -53,16 +53,19 @@ function Formula(composition::AbstractDict{Symbol,T}, charge=0; order=ATOMIC_ORD
     col_expr_parts = String[]
     for k in sorted_keys
         v = composition[k]
-        strv = string(v)
-        strvuni = string(v)
-        colstrv = string(v)
-        if occursin("+", strv) || occursin("-", strv) || occursin("*", strv)
+        strv0 = string(v)
+        strv = replace(strv0, " "=>"", "*"=>"")
+        strvuni = strv
+        colstrv = strv
+        if occursin("+", strv0) || occursin("-", strv0) || occursin("*", strv0)
             strv = "(" * strv *")"
+        end
+        if any(x->x ∉ keys(dict_normal_to_sub), strv)
             strvuni = strv
             colstrv = string(COL_STOICH_INT(strv))
         else
-            strvuni = normal_to_sub(strv)
-            colstrv = string(COL_STOICH_INT(normal_to_sub(strv)))
+            strvuni = normal_to_sub(strvuni)
+            colstrv = string(COL_STOICH_INT(strvuni))
         end
         push!(expr_parts, string(k) * (isone(v) ? "" : strv))
         push!(uni_parts, string(k) * (isone(v) ? "" : strvuni))

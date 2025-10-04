@@ -7,26 +7,26 @@ const ATOMIC_ORDER = [
 ]
 
 const cement_to_mendeleev = [
-    :C => Dict(:Ca => 1, :O => 1),
-    :S => Dict(:Si => 1, :O => 2),
-    :A => Dict(:Al => 2, :O => 3),
-    :F => Dict(:Fe => 2, :O => 3),
-    :K => Dict(:K  => 2, :O => 1),
-    :N => Dict(:Na => 2, :O => 1),
-    :M => Dict(:Mg => 1, :O => 1),
-    :P => Dict(:P  => 2, :O => 5),
-    :T => Dict(:Ti => 1, :O => 2),
-    :C̄ => Dict(:C  => 1, :O => 2),
-    :S̄ => Dict(:S  => 1, :O => 3),
-    :N̄ => Dict(:N  => 1, :O => 3),
-    :H => Dict(:H  => 2, :O => 1),
+    :C => OrderedDict(:Ca => 1, :O => 1),
+    :S => OrderedDict(:Si => 1, :O => 2),
+    :A => OrderedDict(:Al => 2, :O => 3),
+    :F => OrderedDict(:Fe => 2, :O => 3),
+    :K => OrderedDict(:K  => 2, :O => 1),
+    :N => OrderedDict(:Na => 2, :O => 1),
+    :M => OrderedDict(:Mg => 1, :O => 1),
+    :P => OrderedDict(:P  => 2, :O => 5),
+    :T => OrderedDict(:Ti => 1, :O => 2),
+    :C̄ => OrderedDict(:C  => 1, :O => 2),
+    :S̄ => OrderedDict(:S  => 1, :O => 3),
+    :N̄ => OrderedDict(:N  => 1, :O => 3),
+    :H => OrderedDict(:H  => 2, :O => 1),
 ]
 
 const OXIDE_ORDER = [
     :C, :S, :A, :F, :K, :N, :M, :P, :T, :C̄, :S̄, :N̄, :H
 ]
 
-const dict_super_to_normal = Dict{Char,Char}(
+const dict_super_to_normal = OrderedDict{Char,Char}(
     '⁰' => '0',
     '¹' => '1',
     '²' => '2',
@@ -42,7 +42,7 @@ const dict_super_to_normal = Dict{Char,Char}(
     '.' => '.',
 )
 
-const dict_normal_to_super = Dict{Char,Char}(
+const dict_normal_to_super = OrderedDict{Char,Char}(
     '0' => '⁰',
     '1' => '¹',
     '2' => '²',
@@ -58,7 +58,7 @@ const dict_normal_to_super = Dict{Char,Char}(
     '.' => '.',
 )
 
-const dict_sub_to_normal = Dict{Char,Char}(
+const dict_sub_to_normal = OrderedDict{Char,Char}(
     '₀' => '0',
     '₁' => '1',
     '₂' => '2',
@@ -72,23 +72,35 @@ const dict_sub_to_normal = Dict{Char,Char}(
     '.' => '.',
 )
 
-const dict_normal_to_sub = Dict{Char,Char}(
-    '0' => '₀',
-    '1' => '₁',
-    '2' => '₂',
-    '3' => '₃',
-    '4' => '₄',
-    '5' => '₅',
-    '6' => '₆',
-    '7' => '₇',
-    '8' => '₈',
-    '9' => '₉',
-    '+' => '₊',
-    '-' => '₋',
-    '.' => '.',
+# const dict_normal_to_sub = OrderedDict{Char,Char}(
+#     '0' => '₀',
+#     '1' => '₁',
+#     '2' => '₂',
+#     '3' => '₃',
+#     '4' => '₄',
+#     '5' => '₅',
+#     '6' => '₆',
+#     '7' => '₇',
+#     '8' => '₈',
+#     '9' => '₉',
+#     '+' => '₊',
+#     '-' => '₋',
+#     '.' => '.',
+# )
+
+const dict_normal_to_sub = OrderedDict{Char,Char}(
+    '0' => '₀', '1' => '₁', '2' => '₂', '3' => '₃', '4' => '₄', '5' => '₅',
+    '6' => '₆', '7' => '₇', '8' => '₈', '9' => '₉',
+    '+' => '₊', '-' => '₋', '=' => '₌', '(' => '₍', ')' => '₎', '.' => '.',
+    'a' => 'ₐ', 'e' => 'ₑ', 'o' => 'ₒ', 'x' => 'ₓ', 'h' => 'ₕ',
+    'k' => 'ₖ', 'l' => 'ₗ', 'm' => 'ₘ', 'n' => 'ₙ', 'p' => 'ₚ',
+    's' => 'ₛ', 't' => 'ₜ', '∂' => 'ₔ',
+    'ρ' => 'ᵨ',
+    'φ' => 'ᵩ',
+    'χ' => 'ᵪ',
 )
 
-const dict_frac_unicode = Dict(
+const dict_frac_unicode = OrderedDict(
         1//4 => "¼", 1//2 => "½", 3//4 => "¾",
         1//7 => "⅐", 1//9 => "⅑", 1//10 => "⅒",
         1//3 => "⅓", 2//3 => "⅔",
@@ -97,7 +109,7 @@ const dict_frac_unicode = Dict(
         1//8 => "⅛", 3//8 => "⅜", 5//8 => "⅝", 7//8 => "⅞"
     )
 
-const dict_unicode_frac = Dict(
+const dict_unicode_frac = OrderedDict(
             '¼' => 1//4, '½' => 1//2, '¾' => 3//4,
             '⅐' => 1//7, '⅑' => 1//9, '⅒' => 1//10,
             '⅓' => 1//3, '⅔' => 2//3,
@@ -299,7 +311,7 @@ function parse_formula(formula::AbstractString)
     formula = replace(formula, r"\|" => "")
     formula = unicode_to_phreeqc(String(formula))
 
-    counts = Dict{Symbol,Number}()
+    counts = OrderedDict{Symbol,Number}()
 
     i = firstindex(formula)
     while i <= lastindex(formula)
@@ -358,7 +370,7 @@ function parse_formula(formula::AbstractString)
 
     # T = promote_type(typeof.(stoich_coef_round.(values(counts)))...)
 
-    return Dict(k => stoich_coef_round(v) for (k, v) in counts)
+    return OrderedDict(k => stoich_coef_round(v) for (k, v) in counts)
 
 end
 
@@ -379,7 +391,7 @@ calculate_molar_mass(atoms::AbstractDict{Symbol,T}) where {T<:Number} =
 function replace_graphemes(s::AbstractString, old_new::Pair...)
     gs = collect(graphemes(s))
 
-    mapping = Dict{String,String}()
+    mapping = OrderedDict{String,String}()
     for pair in old_new
         mapping[string(pair.first)] = string(pair.second)
     end
@@ -393,17 +405,17 @@ function replace_graphemes(s::AbstractString, old_new::Pair...)
 end
 
 function merge_sum_dicts(dicts::Vector{Dict{Symbol, <:Number}})
-    result = Dict{Symbol, Number}()
+    result = OrderedDict{Symbol, Number}()
     for d in dicts
         for (k, v) in d
             result[k] = get(result, k, 0) + v
         end
     end
-    return Dict(k => stoich_coef_round(v) for (k, v) in result)
+    return OrderedDict(k => stoich_coef_round(v) for (k, v) in result)
 end
 
 function to_mendeleev(oxides::AbstractDict{Symbol,T}) where {T<:Number}
-    result = Dict{Symbol, Number}()
+    result = OrderedDict{Symbol, Number}()
     for (ox, coef) in oxides
         if ox ∉ [:Zz, :Zz⁺, :e, :e⁻]
             idx = findfirst(p -> p.first == ox, cement_to_mendeleev)
@@ -414,7 +426,7 @@ function to_mendeleev(oxides::AbstractDict{Symbol,T}) where {T<:Number}
             end
         end
     end
-    return length(result) > 0 ? Dict(k => stoich_coef_round(v) for (k, v) in result) : result
+    return length(result) > 0 ? OrderedDict(k => stoich_coef_round(v) for (k, v) in result) : result
 end
 
 function parse_equation(equation::AbstractString)
@@ -431,7 +443,7 @@ function parse_equation(equation::AbstractString)
     right_side = nsides > 1 ? sides[2] : ""
     function parse_side(side::AbstractString)
         terms = split(side, " +")  # Split input string by " +" to get each term separately
-        result = Dict{String, Real}()  # Initialize dictionary to store formula => coefficient
+        result = OrderedDict{String, Real}()  # Initialize dictionary to store formula => coefficient
         
         for term in terms
             t = strip(term)  # Remove leading/trailing whitespace from each term
@@ -458,10 +470,10 @@ function parse_equation(equation::AbstractString)
             end
         end
         
-        return Dict(k => stoich_coef_round(v) for (k, v) in result)  # Return dictionary of formula => coefficient
+        return OrderedDict(k => stoich_coef_round(v) for (k, v) in result)  # Return dictionary of formula => coefficient
     end
-    reactants = left_side == "∅" || left_side == "" ? Dict{String, Int}() : parse_side(left_side)
-    products  = right_side == "∅" || right_side == "" ? Dict{String, Int}() : parse_side(right_side)
+    reactants = left_side == "∅" || left_side == "" ? OrderedDict{String, Int}() : parse_side(left_side)
+    products  = right_side == "∅" || right_side == "" ? OrderedDict{String, Int}() : parse_side(right_side)
     return reactants, products, equal_sign
 end
 
