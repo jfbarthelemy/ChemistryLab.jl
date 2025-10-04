@@ -98,6 +98,8 @@ const dict_all_normal_to_sub = OrderedDict{Char,Char}(
     'ρ' => 'ᵨ',
     'φ' => 'ᵩ',
     'χ' => 'ᵪ',
+    '*' => '*',
+    '/' => '/',    
 )
 
 const dict_frac_unicode = OrderedDict(
