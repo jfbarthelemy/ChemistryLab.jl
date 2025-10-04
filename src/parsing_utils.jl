@@ -72,23 +72,23 @@ const dict_sub_to_normal = OrderedDict{Char,Char}(
     '.' => '.',
 )
 
-# const dict_normal_to_sub = OrderedDict{Char,Char}(
-#     '0' => '₀',
-#     '1' => '₁',
-#     '2' => '₂',
-#     '3' => '₃',
-#     '4' => '₄',
-#     '5' => '₅',
-#     '6' => '₆',
-#     '7' => '₇',
-#     '8' => '₈',
-#     '9' => '₉',
-#     '+' => '₊',
-#     '-' => '₋',
-#     '.' => '.',
-# )
-
 const dict_normal_to_sub = OrderedDict{Char,Char}(
+    '0' => '₀',
+    '1' => '₁',
+    '2' => '₂',
+    '3' => '₃',
+    '4' => '₄',
+    '5' => '₅',
+    '6' => '₆',
+    '7' => '₇',
+    '8' => '₈',
+    '9' => '₉',
+    '+' => '₊',
+    '-' => '₋',
+    '.' => '.',
+)
+
+const dict_all_normal_to_sub = OrderedDict{Char,Char}(
     '0' => '₀', '1' => '₁', '2' => '₂', '3' => '₃', '4' => '₄', '5' => '₅',
     '6' => '₆', '7' => '₇', '8' => '₈', '9' => '₉',
     '+' => '₊', '-' => '₋', '=' => '₌', '(' => '₍', ')' => '₎', '.' => '.',
@@ -143,6 +143,7 @@ sub_to_normal(s::AbstractString) = replace(s, dict_sub_to_normal...)
 
 "Convert all normal characters in `s` to numeric subscripts ."
 normal_to_sub(s::AbstractString) = replace(s, dict_normal_to_sub...)
+all_normal_to_sub(s::AbstractString) = replace(s, dict_all_normal_to_sub...)
 
 function stoich_coef_round(x::T; tol=1e-4) where {T<:Real}
     try

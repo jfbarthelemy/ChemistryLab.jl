@@ -60,11 +60,11 @@ function Formula(composition::AbstractDict{Symbol,T}, charge=0; order=ATOMIC_ORD
         if occursin("+", strv0) || occursin("-", strv0) || occursin("*", strv0)
             strv = "(" * strv *")"
         end
-        if any(x->x ∉ keys(dict_normal_to_sub), strv)
+        if any(x->x ∉ keys(dict_all_normal_to_sub), strv)
             strvuni = strv
             colstrv = string(COL_STOICH_INT(strv))
         else
-            strvuni = normal_to_sub(strvuni)
+            strvuni = all_normal_to_sub(strvuni)
             colstrv = string(COL_STOICH_INT(strvuni))
         end
         push!(expr_parts, string(k) * (isone(v) ? "" : strv))
