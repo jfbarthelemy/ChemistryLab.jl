@@ -27,7 +27,7 @@ CementChemistry.jl is a computational chemistry toolkit for modeling low-carbon 
 
 - Julia 1.6 or higher
 - Dependencies: JSON, JSON3, CSV, DataFrames, Unicode, Unitful, PeriodicTable, PhysicalConstants.CODATA2022, PrettyTables
-- No API account or special access required
+- No API account or special access required 
 
 ## Installation
 
