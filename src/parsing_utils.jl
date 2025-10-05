@@ -555,3 +555,125 @@ function format_equation(coeffs::AbstractDict; scaling=1, equal_sign='=')
 
     return "$left_side $(isnothing(equal_sign) ? '=' : equal_sign) $right_side"
 end
+
+function remove_redundant_outer_parens_unicode(s::AbstractString)
+    while true
+        if !startswith(s, "(") || !endswith(s, ")")
+            break
+        end
+
+        # Use Unicode-safe indices
+        first_paren = firstindex(s)
+        last_paren = lastindex(s)
+
+        # Find the index after first '(' and before last ')'
+        inner_start = nextind(s, first_paren)
+        inner_end = prevind(s, last_paren)
+
+        # Check balanced parentheses over s
+        count = 0
+        balanced = true
+        for c in s
+            if c == '('
+                count += 1
+            elseif c == ')'
+                count -= 1
+                if count == 0 && c != last(s)  # parentheses close before end
+                    balanced = false
+                    break
+                elseif count < 0
+                    balanced = false
+                    break
+                end
+            end
+        end
+
+        if !balanced || count != 0
+            break
+        end
+
+        inner = s[inner_start:inner_end]
+
+        # Check for '/' at root level (outside parentheses)
+        function has_root_level_slash(str)
+            lvl = 0
+            for ch in str
+                if ch == '('
+                    lvl += 1
+                elseif ch == ')'
+                    lvl -= 1
+                elseif ch == '/' && lvl == 0
+                    return true
+                end
+            end
+            return false
+        end
+
+        # Check for '+' or '-' at root level
+        function has_root_level_plusminus(str)
+            lvl = 0
+            for ch in str
+                if ch == '('
+                    lvl += 1
+                elseif ch == ')'
+                    lvl -= 1
+                elseif (ch == '+' || ch == '-') && lvl == 0
+                    return true
+                end
+            end
+            return false
+        end
+
+        if has_root_level_slash(inner)
+            s = inner
+        elseif has_root_level_plusminus(inner)
+            break  # keep parentheses if + or - at root level
+        else
+            s = inner
+        end
+    end
+    return s
+end
+
+function add_parentheses_if_needed(s::String)
+    # Return early if s is already parenthesized fully and balanced
+    if startswith(s, "(") && endswith(s, ")")
+        # Check if outer parentheses fully enclose s
+        count = 0
+        for (i, c) in enumerate(s)
+            if c == '('
+                count += 1
+            elseif c == ')'
+                count -= 1
+                if count == 0 && i != lastindex(s)
+                    break
+                end
+            end
+        end
+        if count == 0
+            return s  # already properly parenthesized
+        end
+    end
+
+    # Helper to detect + or - at root level (outside any parentheses)
+    function has_root_level_plusminus(str)
+        lvl = 0
+        for ch in str
+            if ch == '('
+                lvl += 1
+            elseif ch == ')'
+                lvl -= 1
+            elseif (ch == '+' || ch == '-') && lvl == 0
+                return true
+            end
+        end
+        return false
+    end
+
+    # Add parentheses only if necessary
+    if has_root_level_plusminus(s)
+        return "(" * s * ")"
+    else
+        return s
+    end
+end

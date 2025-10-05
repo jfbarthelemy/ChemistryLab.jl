@@ -59,10 +59,11 @@ function format_side(side::AbstractDict{S, T}) where {S<:AbstractSpecies, T<:Num
     for (species, coef) in side
         if !iszero(coef)
             coeff_str = isone(coef) ? "" : string(stoich_coef_round(coef))
+            coeff_str = add_parentheses_if_needed(coeff_str)
             coeff_str = replace(coeff_str, " "=>"", "*"=>"")
-            if occursin("+", coeff_str) || occursin("-", coeff_str) || occursin("*", coeff_str)
-                coeff_str = "(" * coeff_str *")"
-            end
+            # if occursin("+", coeff_str) || occursin("-", coeff_str) || occursin("*", coeff_str)
+            #     coeff_str = "(" * coeff_str *")"
+            # end
             push!(equation, coeff_str*unicode(species))
             push!(coleq, string(COL_STOICH_EXT(coeff_str))*colored(species))
             ch += coef*charge(species)
