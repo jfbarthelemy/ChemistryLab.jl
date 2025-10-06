@@ -16,31 +16,36 @@ However, you will admit that it is a little strange...
 
 This is why Cement Chemistry relies on existing databases, in particular [Cemdata18](https://www.empa.ch/web/s308/thermodynamic-data) and [PSI-Nagra-12-07](https://www.psi.ch/en/les/thermodynamic-databases). Cemdata18 is a chemical thermodynamic database for hydrated Portland cements and alkali-activated materials. PSI-Nagra is a Chemical Thermodynamic Database. The formalism adopted for these databases is that of [Thermofun](https://thermohub.org/thermofun/thermofun/) which is a universal open-source client that delivers thermodynamic properties of substances and reactions at the temperature and pressure of interest. The information is stored in json files.
 
-With Cementchemistry, you can parse a ThermoFun-like json file and return DataFrames for elements, substances, and reactions.
+With Cementchemistry, you can parse a ThermoFun-like json file and return DataFrames for:
 
-[`CementChemistry.parse_cemdata18_thermofun`](@ref)
+- elements:
+
 ```@example database_interoperability
 df_elements, df_substances, df_reactions = parse_cemdata18_thermofun("../../../data/cemdata18-merged.json")
 show(df_elements, allcols=true, allrows=true)
 ```
+[`CementChemistry.parse_cemdata18_thermofun`](@ref)
+
+- species (aqueous, solid or gaseous phases):
 
 ```@example database_interoperability
 show(df_substances, allcols=true, allrows=false)
 ```
 
+- reactions contained in the database
 ```@example database_interoperability
-show(df_reactions, allcols=true, allrows=true)
+show(df_reactions, allcols=true, allrows=false)
 ```
 
 ## Primary species extraction
 
 It is also possible to retrieve primary species from the Cemdata18 database, primary species being the designation of a subset of species for which any species can be represented as the linear combination of primary species.
 
-[`CementChemistry.extract_primary_species`](@ref)
 ```@example database_interoperability
 df_primaries = extract_primary_species("../../../data/CEMDATA18-31-03-2022-phaseVol.dat")
 show(df_primaries, allcols=true, allrows=true)
 ```
+[`CementChemistry.extract_primary_species`](@ref)
 
 ---
 

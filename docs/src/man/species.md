@@ -93,7 +93,7 @@ H2O = Species("H₂O")
 cemH2O = CemSpecies(H2O)
 ```
 
-Species can also be read from a database (Cemdata18 here). Reading the databases is detailed [here](#Database-Interoperability). Conversion is then possible:
+Species can also be read from a database (Cemdata18 here). Reading the databases is detailed [here](./databases.md#Database-Interoperability). Conversion is then possible:
 
 ```@example example_cemspecies
 df_elements, df_substances, df_reactions = parse_cemdata18_thermofun("../../../data/cemdata18-merged.json")

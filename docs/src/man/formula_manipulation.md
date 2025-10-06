@@ -28,13 +28,12 @@ using CementChemistry #hide
 fCO2 = :C + 2 * :O
 ```
 
-> [!WARNING]
-> This way of constructing formulas is only possible for a certain number of elements from Mendeleïev's table and which are found in cementitious materials. The list of the elements is as follows:
+> **_WARNING:_** This way of constructing formulas is only possible for a certain number of elements from Mendeleïev's table and which are found in cementitious materials. The list of the elements is as follows:
 ```@example 1
 ATOMIC_ORDER
 ```
 
-Charges can also be included during the creation:
+Charges can also be included during the creation in two different ways:
 ```@example 1
 fHSO₄⁻ = :H+:S+4*:O+:e
 ```

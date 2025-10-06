@@ -1,5 +1,3 @@
-
-
 # Stoichiometric Matrix Construction
 
 From the definition of species, it is possible to construct a stoichiometric matrix that establishes the relationship between species and chemical elements for species or cement species:
@@ -15,7 +13,10 @@ H2O = Species(fH2O)
 HSO4 = Species("HSO₄⁻")
 CO2 = Species(Dict(:C => 1, :O => 2); symbol="CO₂")
 species = [H2O, HSO4, CO2]
-A, indep_comp, dep_comp = stoich_matrix(species) ;
+A, indep_comp, dep_comp = stoich_matrix(species)
+
+using PrettyTables
+
 ```
 
 ```@example
@@ -56,7 +57,8 @@ secondaries = filter(row -> row.aggregate_state == "AS_AQUEOUS" &&
 all_species = unique(vcat(given_species, secondaries), :symbol)
 species = [Species(f; symbol = phreeqc_to_unicode(n)) for (f, n) in zip(all_species.formula, all_species.symbol)]
 candidate_primaries = [Species(f; symbol = phreeqc_to_unicode(n)) for (f, n) in zip(df_primaries.formula, df_primaries.symbol)]
-A, indep_comp, dep_comp = stoich_matrix(species, candidate_primaries);
+A, indep_comp, dep_comp = stoich_matrix(species, candidate_primaries)
+A
 ```
 
 ---
