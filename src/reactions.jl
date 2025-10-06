@@ -79,18 +79,19 @@ function Reaction(reactants::AbstractDict{SR, TR}, products::AbstractDict{SP, TP
     
     charge_diff = charge_right - charge_left
 
-    if !isapprox(charge_diff, 0, atol=1e-6)
+    if !isapprox(charge_diff, 0, atol=1e-4)
         needed_e = charge_diff < 0 ? -stoich_coef_round(charge_diff) : stoich_coef_round(charge_diff)
         e_term = needed_e == 1 ? "e⁻" : "$needed_e" * "e⁻"
+        ce_term = needed_e == 1 ? "e⁻" : string(COL_STOICH_EXT(add_parentheses_if_needed("$needed_e"))) * "e⁻"
 
         if charge_diff < 0
             # Add e- to the left (reactants)
             sreac = isempty(sreac) ? e_term : "$sreac + $e_term"
-            creac = isempty(creac) ? e_term : "$creac + $e_term"
+            creac = isempty(creac) ? e_term : "$creac + $ce_term"
         else
             # Add e- to the right (products)
             sprod = isempty(sprod) ? e_term : "$sprod + $e_term"
-            cprod = isempty(cprod) ? e_term : "$cprod + $e_term"
+            cprod = isempty(cprod) ? e_term : "$cprod + $ce_term"
         end
     end
 
