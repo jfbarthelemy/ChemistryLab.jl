@@ -6,15 +6,15 @@
     composition::Dict{Symbol,T}
     charge::Int8
 end</code></pre><p>Formulas can be constructed:</p><ul><li>by parsing a string containing eventually fractional or decimal coefficients</li></ul><pre><code class="language-julia hljs">fgen = Formula(&quot;A1//2B3C0.4&quot;)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">Formula{Real}
-    formula: A1//2B3C0.4 | A1//2B3C0.4 | A½B₃C⅖ | A<span class="sgr31"><span class="sgr1">½</span></span>B<span class="sgr31"><span class="sgr1">₃</span></span>C<span class="sgr31"><span class="sgr1">⅖</span></span>
+    formula: A1//2B3C0.4 ∙ A1//2B3C0.4 ∙ A½B₃C⅖ ∙ A<span class="sgr31"><span class="sgr1">½</span></span>B<span class="sgr31"><span class="sgr1">₃</span></span>C<span class="sgr31"><span class="sgr1">⅖</span></span>
 composition: A:1//2, B:3, C:2//5
      charge: 0
 </code></pre><ul><li>from symbols representing atoms </li></ul><pre><code class="language-julia hljs">fCO2 = :C + 2 * :O</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">Formula{Int64}
-    formula: CO2 | CO2 | CO₂ | CO<span class="sgr31"><span class="sgr1">₂</span></span>
+    formula: CO2 ∙ CO2 ∙ CO₂ ∙ CO<span class="sgr31"><span class="sgr1">₂</span></span>
 composition: O:2, C:1
      charge: 0
 </code></pre><p>Coefficient types can be changed <em>a posteriori</em>, the type of the <code>Formula</code> <code>struct</code> being associated with the most complex type of the set of coefficients.</p><pre><code class="language-julia hljs">convert(Float64, fgen)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">Formula{Float64}
-    formula: A1//2B3C0.4 | A1//2B3C0.4 | A½B₃C⅖ | A<span class="sgr31"><span class="sgr1">½</span></span>B<span class="sgr31"><span class="sgr1">₃</span></span>C<span class="sgr31"><span class="sgr1">⅖</span></span>
+    formula: A1//2B3C0.4 ∙ A1//2B3C0.4 ∙ A½B₃C⅖ ∙ A<span class="sgr31"><span class="sgr1">½</span></span>B<span class="sgr31"><span class="sgr1">₃</span></span>C<span class="sgr31"><span class="sgr1">⅖</span></span>
 composition: A:0.5, B:3.0, C:0.4
      charge: 0
 </code></pre><hr/><h1 id="Species"><a class="docs-heading-anchor" href="#Species">Species</a><a id="Species-1"></a><a class="docs-heading-anchor-permalink" href="#Species" title="Permalink"></a></h1><p><code>Species</code> is also a <code>struct</code> and is defined by a name, symbol, structure and properties. It creates chemical species for solution or solid phases:</p><pre><code class="language-julia hljs">struct Species{T&lt;:Number} &lt;: AbstractSpecies
@@ -26,34 +26,34 @@ end</code></pre><p><code>Species</code> can be created from:</p><ul><li>a <code>
 H2O = Species(fH2O)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">Species{Int64}
        name: H2O
      symbol: H2O
-    formula: H2O | H2O | H₂O | H<span class="sgr31"><span class="sgr1">₂</span></span>O
+    formula: H2O ∙ H2O ∙ H₂O ∙ H<span class="sgr31"><span class="sgr1">₂</span></span>O
       atoms: H:2, O:1
      charge: 0
  properties: molar_mass = 18.014999993774403 g mol^-1</code></pre><ul><li>a string</li></ul><pre><code class="language-julia hljs">HSO4 = Species(&quot;HSO₄⁻&quot;)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">Species{Int64}
        name: HSO₄⁻
      symbol: HSO₄⁻
-    formula: HSO₄⁻ | HSO4- | HSO₄⁻ | HSO<span class="sgr31"><span class="sgr1">₄</span></span><span class="sgr1"><span class="sgr36">⁻</span></span>
+    formula: HSO₄⁻ ∙ HSO4- ∙ HSO₄⁻ ∙ HSO<span class="sgr31"><span class="sgr1">₄</span></span><span class="sgr1"><span class="sgr36">⁻</span></span>
       atoms: H:1, S:1, O:4
      charge: -1
  properties: molar_mass = 97.06399996645678 g mol^-1</code></pre><ul><li>a dictionary</li></ul><pre><code class="language-julia hljs">CO2 = Species(Dict(:C =&gt; 1, :O =&gt; 2); name=&quot;CO₂&quot;)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">Species{Int64}
        name: CO₂
      symbol: CO₂
-    formula: CO2 | CO2 | CO₂ | CO<span class="sgr31"><span class="sgr1">₂</span></span>
+    formula: CO2 ∙ CO2 ∙ CO₂ ∙ CO<span class="sgr31"><span class="sgr1">₂</span></span>
       atoms: O:2, C:1
      charge: 0
  properties: molar_mass = 44.00899998479143 g mol^-1</code></pre><blockquote><p><strong><em>NOTE:</em></strong>  To add a charge when creating species with a dictionary, you must add, after the dictionary, the value of the charge (charge is considered an argument of the structure).</p></blockquote><pre><code class="language-julia hljs">CO2 = Species(Dict(:Si =&gt; 1, :O =&gt; 3),-2; name=&quot;SiO₃²⁻&quot;)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">Species{Int64}
        name: SiO₃²⁻
      symbol: SiO₃²⁻
-    formula: SiO3-2 | SiO3-2 | SiO₃-2 | SiO<span class="sgr31"><span class="sgr1">₃</span></span><span class="sgr1"><span class="sgr36">⁻²</span></span>
+    formula: SiO3-2 ∙ SiO3-2 ∙ SiO₃-2 ∙ SiO<span class="sgr31"><span class="sgr1">₃</span></span><span class="sgr1"><span class="sgr36">⁻²</span></span>
       atoms: Si:1, O:3
      charge: -2
  properties: molar_mass = 76.0819999737077 g mol^-1</code></pre><blockquote><p><strong><em>NOTE:</em></strong> You will also have noticed that a calculation of the molar mass of the species is systematically carried out.</p></blockquote><hr/><h1 id="Cement-Species"><a class="docs-heading-anchor" href="#Cement-Species">Cement Species</a><a id="Cement-Species-1"></a><a class="docs-heading-anchor-permalink" href="#Cement-Species" title="Permalink"></a></h1><p>The manipulation of chemical formulas can also be done in cement notation. Here are examples of anhydrous phases:</p><pre><code class="language-julia hljs">C3S = CemSpecies(&quot;C3S&quot;)
 C2S = CemSpecies(&quot;C2S&quot;)
 C3A = CemSpecies(&quot;C3A&quot;)
 C4AF = CemSpecies(Dict(:C =&gt; 4, :A =&gt; 1, :F =&gt; 1); name = &quot;C4AF&quot;)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">CemSpecies{Int64, Int64}
- cemformula: C4AF | C4AF | C₄AF | C<span class="sgr31"><span class="sgr1">₄</span></span>AF
+ cemformula: C4AF ∙ C4AF ∙ C₄AF ∙ C<span class="sgr31"><span class="sgr1">₄</span></span>AF
      oxides: F:1, A:1, C:4
-    formula: Ca4Al2Fe2O10 | Ca4Al2Fe2O10 | Ca₄Al₂Fe₂O₁₀ | Ca<span class="sgr31"><span class="sgr1">₄</span></span>Al<span class="sgr31"><span class="sgr1">₂</span></span>Fe<span class="sgr31"><span class="sgr1">₂</span></span>O<span class="sgr31"><span class="sgr1">₁₀</span></span>
+    formula: Ca4Al2Fe2O10 ∙ Ca4Al2Fe2O10 ∙ Ca₄Al₂Fe₂O₁₀ ∙ Ca<span class="sgr31"><span class="sgr1">₄</span></span>Al<span class="sgr31"><span class="sgr1">₂</span></span>Fe<span class="sgr31"><span class="sgr1">₂</span></span>O<span class="sgr31"><span class="sgr1">₁₀</span></span>
       atoms: Fe:2, O:10, Al:2, Ca:4
      charge: 0
  properties: molar_mass = 485.9550766320644 g mol^-1</code></pre><hr/><h1 id="Symbolic-and-Numeric-CemSpecies"><a class="docs-heading-anchor" href="#Symbolic-and-Numeric-CemSpecies">Symbolic and Numeric CemSpecies</a><a id="Symbolic-and-Numeric-CemSpecies-1"></a><a class="docs-heading-anchor-permalink" href="#Symbolic-and-Numeric-CemSpecies" title="Permalink"></a></h1><p>The previous species were constructed from integer values ​​of the number of chemical elements. However, numerical values ​​are possible, as we have seen for formulas, as well as symbolic values. To do this, you need to use the <a href="https://github.com/JuliaPy/SymPy.jl"><code>SymPy</code></a> library:</p><pre><code class="language-julia hljs">using SymPy
@@ -63,9 +63,9 @@ CSH = CemSpecies(ox)</code></pre><pre><code class="language-julia hljs">numCSH =
 cemH2O = CemSpecies(H2O)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">CemSpecies{Int64, Int64}
        name: H₂O
      symbol: H₂O
- cemformula: H | H | H | H
+ cemformula: H ∙ H ∙ H ∙ H
      oxides: H:1
-    formula: H2O | H2O | H₂O | H<span class="sgr31"><span class="sgr1">₂</span></span>O
+    formula: H2O ∙ H2O ∙ H₂O ∙ H<span class="sgr31"><span class="sgr1">₂</span></span>O
       atoms: H:2, O:1
      charge: 0
- properties: molar_mass = 18.014999993774403 g mol^-1</code></pre><hr/></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../../">« Home</a><a class="docs-footer-nextpage" href="../databases/">Database Interoperability »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.14.1 on <span class="colophon-date" title="Monday 6 October 2025 09:24">Monday 6 October 2025</span>. Using Julia version 1.11.7.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+ properties: molar_mass = 18.014999993774403 g mol^-1</code></pre><hr/></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../../">« Home</a><a class="docs-footer-nextpage" href="../databases/">Database Interoperability »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.14.1 on <span class="colophon-date" title="Monday 6 October 2025 09:29">Monday 6 October 2025</span>. Using Julia version 1.11.7.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
