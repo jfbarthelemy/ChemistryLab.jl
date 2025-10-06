@@ -38,7 +38,7 @@ function Formula(expr::AbstractString="")
         charge = extract_charge(expr)
     end
     phreeqc_expr = unicode_to_phreeqc(expr)
-    unicode_expr = phreeqc_to_unicode(expr)
+    unicode_expr = phreeqc_to_unicode(replace(expr, r"\|\-?\d+\|" => ""))
     return Formula{valtype(composition)}(expr, phreeqc_expr, unicode_expr, colored_formula(unicode_expr), composition, charge)
 end
 

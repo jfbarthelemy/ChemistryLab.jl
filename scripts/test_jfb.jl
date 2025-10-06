@@ -130,5 +130,12 @@ r = Reaction([CₙH₂ₙ₊₂, O₂], [H₂O, CO₂])
 map(factor, r)
 println(2r)
 for vn in 1:9 println("n=$vn ⇒ ", map(subs, r, n=>vn)) end
-r = Reaction([CₙH₂ₙ₊₂, O₂], [H₂O, CO₂]; side=:products)
-r = Reaction([CₙH₂ₙ₊₂, O₂], [H₂O, CO₂]; side=:reactants)
+println(Reaction([CₙH₂ₙ₊₂, O₂], [H₂O, CO₂]; side=:products))
+println(Reaction([CₙH₂ₙ₊₂, O₂], [H₂O, CO₂]; side=:reactants))
+
+# Example from https://github.com/thermohub/chemicalfun
+formulas = ["Ca+2", "Fe+2", "Fe|3|+3", "H+", "OH-", "SO4-2", "CaSO4@", "CaOH+", "FeO@", "HFe|3|O2@", "FeOH+", "Fe|3|OH+2", "H2O@",  "FeS|-2|", "FeS|0|S|-2|", "S|4|O2"] ;
+species = Species.(formulas) ;
+candidate_primaries = species[1:6] ;
+A, indep_comp, dep_comp = stoich_matrix(species, candidate_primaries) ;
+stoich_matrix_to_reactions(A, indep_comp, dep_comp) ;

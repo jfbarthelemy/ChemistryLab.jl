@@ -753,31 +753,3 @@ function extract_primary_species(file_path)
     df[df.symbol .== "Zz", :charge] .= 1
     return df[sortperm(df.symbol .== "Zz"), :]
 end
-
-"""
-    to_cement_notation(df_substances, species) -> String
-
-Convert a chemical species from a ThermoFun DataFrame to cement notation and Unicode representation.
-
-# Arguments
-- `df_substances`: DataFrame containing substance information (must have columns like `symbol`, `name`, and `formula`).
-- `species`: A function or predicate used to select the desired species from the DataFrame (e.g., `x -> x == "CaO"`).
-- `ratio`: If true, coefficients are rationalized for display (default: false).
-
-# Returns
-- `String`: The cement notation of the selected species, formatted with Unicode subscripts and superscripts.
-
-# Details
-- The function searches for the first row in `df_substances` where the predicate matches the `symbol`, `name`, or `formula` field.
-- Converts the formula to cement notation and then to Unicode for display.
-
-# Example
-```julia
-to_cement_notation(df_substances, x -> x == "CaO") # returns "𝐶" in Unicode format
-```
-"""
-function to_cement_notation(df_substances, species)
-    ok = isequal(species)
-    formulas = filter(row-> ok(row.symbol) || ok(row.name) || ok(row.formula), df_substances).formula
-    phreeqc_to_unicode(to_cement_notation(formulas[1]))
-end
