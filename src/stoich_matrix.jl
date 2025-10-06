@@ -86,7 +86,7 @@ function canonical_stoich_matrix(species::Vector{<:AbstractSpecies}; display = t
     return A, involved_atoms
 end
 
-function stoich_matrix(vs::Vector{<:AbstractSpecies}, candidate_primaries::Vector{<:AbstractSpecies}=vs; display = true, involve_all_atoms = false, optimize_primaries=false)
+function stoich_matrix(vs::Vector{<:AbstractSpecies}, candidate_primaries::Vector{<:AbstractSpecies}=vs; display = true, involve_all_atoms = false, reorder_primaries=false)
 
     safe_rank(A; rtol=1e-6) = try rank(A, rtol=rtol) catch; rank(A) end
 
@@ -132,9 +132,9 @@ function stoich_matrix(vs::Vector{<:AbstractSpecies}, candidate_primaries::Vecto
     if size(M_subset,1) >= size(M_subset, 2)
         independent_cols_indices = cols_candidates
     else
-        F = qr(M_subset, Val(optimize_primaries))
+        F = qr(M_subset, Val(reorder_primaries))
         r = Int(safe_rank(M_subset))
-        pivot_idx = optimize_primaries ? F.p[1:r] : 1:r
+        pivot_idx = reorder_primaries ? F.p[1:r] : 1:r
         independent_cols_indices = sort(cols_candidates[pivot_idx])
     end
     sort!(independent_cols_indices, by = x->symbol(species[x]) !== "H2O@" && symbol(species[x]) !== "H2O" && symbol(species[x]) !== "H₂O" && symbol(species[x]) !== "H")
