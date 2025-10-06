@@ -4,43 +4,15 @@ H2O = Species(fH2O)
 HSO4 = Species(&quot;HSO₄⁻&quot;)
 CO2 = Species(Dict(:C =&gt; 1, :O =&gt; 2); symbol=&quot;CO₂&quot;)
 species = [H2O, HSO4, CO2]
-A, indep_comp, dep_comp = stoich_matrix(species) ;</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">([1 0 0; 0 1 0; 0 0 1], Species{Int64}[Species{Int64}
-       name: H2O
-     symbol: H2O
-    formula: H2O ∙ H2O ∙ H₂O ∙ H<span class="sgr31"><span class="sgr1">₂</span></span>O
-      atoms: H:2, O:1
-     charge: 0
- properties: molar_mass = 18.014999993774403 g mol^-1, Species{Int64}
-       name: HSO₄⁻
-     symbol: HSO₄⁻
-    formula: HSO₄⁻ ∙ HSO4- ∙ HSO₄⁻ ∙ HSO<span class="sgr31"><span class="sgr1">₄</span></span><span class="sgr1"><span class="sgr36">⁻</span></span>
-      atoms: H:1, S:1, O:4
-     charge: -1
- properties: molar_mass = 97.06399996645678 g mol^-1, Species{Int64}
-       name: CO₂
-     symbol: CO₂
-    formula: CO2 ∙ CO2 ∙ CO₂ ∙ CO<span class="sgr31"><span class="sgr1">₂</span></span>
-      atoms: O:2, C:1
-     charge: 0
- properties: molar_mass = 44.00899998479143 g mol^-1], Species{Int64}[Species{Int64}
-       name: H2O
-     symbol: H2O
-    formula: H2O ∙ H2O ∙ H₂O ∙ H<span class="sgr31"><span class="sgr1">₂</span></span>O
-      atoms: H:2, O:1
-     charge: 0
- properties: molar_mass = 18.014999993774403 g mol^-1, Species{Int64}
-       name: HSO₄⁻
-     symbol: HSO₄⁻
-    formula: HSO₄⁻ ∙ HSO4- ∙ HSO₄⁻ ∙ HSO<span class="sgr31"><span class="sgr1">₄</span></span><span class="sgr1"><span class="sgr36">⁻</span></span>
-      atoms: H:1, S:1, O:4
-     charge: -1
- properties: molar_mass = 97.06399996645678 g mol^-1, Species{Int64}
-       name: CO₂
-     symbol: CO₂
-    formula: CO2 ∙ CO2 ∙ CO₂ ∙ CO<span class="sgr31"><span class="sgr1">₂</span></span>
-      atoms: O:2, C:1
-     charge: 0
- properties: molar_mass = 44.00899998479143 g mol^-1])</code></pre><pre><code class="language-julia hljs">fH2O = 2 * :H + :O
+A, indep_comp, dep_comp = stoich_matrix(species)
+
+using PrettyTables</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi"><span class="sgr32"><span class="sgr1">┌───────┬─────┬───────┬─────┐</span></span>
+<span class="sgr32"><span class="sgr1">│</span></span><span class="sgr1">       <span class="sgr32">│</span><span class="sgr36"> H2O </span><span class="sgr32">│</span><span class="sgr36"> HSO₄⁻ </span><span class="sgr32">│</span><span class="sgr36"> CO₂ </span><span class="sgr32">│</span></span>
+<span class="sgr32"><span class="sgr1">├───────┼─────┼───────┼─────┤</span></span>
+<span class="sgr32"><span class="sgr1">│</span></span><span class="sgr1"><span class="sgr35">   H2O </span><span class="sgr32">│</span><span class="sgr91">   1 </span><span class="sgr32">│</span></span><span class="sgr8">     0 </span><span class="sgr32"><span class="sgr1">│</span></span><span class="sgr8">   0 </span><span class="sgr32"><span class="sgr1">│</span></span>
+<span class="sgr32"><span class="sgr1">│</span></span><span class="sgr1"><span class="sgr35"> HSO₄⁻ </span><span class="sgr32">│</span></span><span class="sgr8">   0 </span><span class="sgr32"><span class="sgr1">│</span></span><span class="sgr1"><span class="sgr91">     1 </span><span class="sgr32">│</span></span><span class="sgr8">   0 </span><span class="sgr32"><span class="sgr1">│</span></span>
+<span class="sgr32"><span class="sgr1">│</span></span><span class="sgr1"><span class="sgr35">   CO₂ </span><span class="sgr32">│</span></span><span class="sgr8">   0 </span><span class="sgr32"><span class="sgr1">│</span></span><span class="sgr8">     0 </span><span class="sgr32"><span class="sgr1">│</span></span><span class="sgr1"><span class="sgr91">   1 </span><span class="sgr32">│</span></span>
+<span class="sgr32"><span class="sgr1">└───────┴─────┴───────┴─────┘</span></span></code></pre><pre><code class="language-julia hljs">fH2O = 2 * :H + :O
 H2O = Species(fH2O)
 HSO4 = Species(&quot;HSO₄⁻&quot;)
 CO2 = Species(Dict(:C =&gt; 1, :O =&gt; 2); symbol=&quot;CO₂&quot;)
@@ -58,112 +30,9 @@ secondaries = filter(row -&gt; row.aggregate_state == &quot;AS_AQUEOUS&quot; &am
 all_species = unique(vcat(given_species, secondaries), :symbol)
 species = [Species(f; symbol = phreeqc_to_unicode(n)) for (f, n) in zip(all_species.formula, all_species.symbol)]
 candidate_primaries = [Species(f; symbol = phreeqc_to_unicode(n)) for (f, n) in zip(df_primaries.formula, df_primaries.symbol)]
-A, indep_comp, dep_comp = stoich_matrix(species, candidate_primaries);</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">(Real[0 5//3 … 1 0; 1 3.76667 … 1 1; 0 -10//3 … -1 -1; 0 1 … 1 1], Species[Species{Int64}
-       name: Ca+2
-     symbol: Ca²⁺
-    formula: Ca+2 ∙ Ca+2 ∙ Ca²⁺ ∙ Ca<span class="sgr36"><span class="sgr1">²⁺</span></span>
-      atoms: Ca:1
-     charge: 2
- properties: molar_mass = 40.077999986149905 g mol^-1, Species{Int64}
-       name: H2O@
-     symbol: H₂O@
-    formula: H2O@ ∙ H2O@ ∙ H₂O@ ∙ H<span class="sgr31"><span class="sgr1">₂</span></span>O<span class="sgr35"><span class="sgr1">@</span></span>
-      atoms: H:2, O:1
-     charge: 0
- properties: molar_mass = 18.014999993774403 g mol^-1, Species{Int64}
-       name: H+
-     symbol: H⁺
-    formula: H+ ∙ H+ ∙ H⁺ ∙ H<span class="sgr36"><span class="sgr1">⁺</span></span>
-      atoms: H:1
-     charge: 1
- properties: molar_mass = 1.0079999996516569 g mol^-1, Species{Int64}
-       name: SiO2@
-     symbol: SiO₂@
-    formula: SiO2@ ∙ SiO2@ ∙ SiO₂@ ∙ SiO<span class="sgr31"><span class="sgr1">₂</span></span><span class="sgr1"><span class="sgr35">@</span></span>
-      atoms: Si:1, O:2
-     charge: 0
- properties: molar_mass = 60.082999979236604 g mol^-1], Species[Species{Int64}
-       name: H2O@
-     symbol: H₂O@
-    formula: H2O@ ∙ H2O@ ∙ H₂O@ ∙ H<span class="sgr31"><span class="sgr1">₂</span></span>O<span class="sgr35"><span class="sgr1">@</span></span>
-      atoms: H:2, O:1
-     charge: 0
- properties: molar_mass = 18.014999993774403 g mol^-1, Species{Real}
-       name: (SiO2)1(CaO)1.666667(H2O)2.1
-     symbol: Jennite
-    formula: (SiO2)1(CaO)1.666667(H2O)2.1 ∙ (SiO2)1(CaO)1.666667(H2O)2.1 ∙ (SiO₂)₁(CaO)₅//₃(H₂O)₂.₁ ∙ <span class="sgr35"><span class="sgr1">(</span></span>SiO<span class="sgr31"><span class="sgr1">₂</span></span><span class="sgr1"><span class="sgr35">)</span><span class="sgr31">₁</span><span class="sgr35">(</span></span>CaO<span class="sgr35"><span class="sgr1">)</span></span><span class="sgr1"><span class="sgr31">₅//₃</span><span class="sgr35">(</span></span>H<span class="sgr31"><span class="sgr1">₂</span></span>O<span class="sgr35"><span class="sgr1">)</span></span><span class="sgr1"><span class="sgr31">₂.₁</span></span>
-      atoms: Si:1, O:5.76667, Ca:5//3, H:21//5
-     charge: 0
- properties: molar_mass = 191.37621993053116 g mol^-1, Species{Int64}
-       name: (CaO)3SiO2
-     symbol: C₃S
-    formula: (CaO)3SiO2 ∙ (CaO)3SiO2 ∙ (CaO)₃SiO₂ ∙ <span class="sgr35"><span class="sgr1">(</span></span>CaO<span class="sgr35"><span class="sgr1">)</span></span><span class="sgr1"><span class="sgr31">₃</span></span>SiO<span class="sgr31"><span class="sgr1">₂</span></span>
-      atoms: Ca:3, O:5, Si:1
-     charge: 0
- properties: molar_mass = 228.31399992109962 g mol^-1, Species{Int64}
-       name: Ca(OH)2
-     symbol: Portlandite
-    formula: Ca(OH)2 ∙ Ca(OH)2 ∙ Ca(OH)₂ ∙ Ca<span class="sgr35"><span class="sgr1">(</span></span>OH<span class="sgr35"><span class="sgr1">)</span></span><span class="sgr1"><span class="sgr31">₂</span></span>
-      atoms: Ca:1, O:2, H:2
-     charge: 0
- properties: molar_mass = 74.0919999743954 g mol^-1, Species{Int64}
-       name: CaSiO3@
-     symbol: CaSiO₃@
-    formula: CaSiO3@ ∙ CaSiO3@ ∙ CaSiO₃@ ∙ CaSiO<span class="sgr31"><span class="sgr1">₃</span></span><span class="sgr1"><span class="sgr35">@</span></span>
-      atoms: Ca:1, Si:1, O:3
-     charge: 0
- properties: molar_mass = 116.15999995985761 g mol^-1, Species{Int64}
-       name: SiO3-2
-     symbol: SiO₃²⁻
-    formula: SiO3-2 ∙ SiO3-2 ∙ SiO₃²⁻ ∙ SiO<span class="sgr31"><span class="sgr1">₃</span></span><span class="sgr1"><span class="sgr36">²⁻</span></span>
-      atoms: Si:1, O:3
-     charge: -2
- properties: molar_mass = 76.0819999737077 g mol^-1, Species{Int64}
-       name: Si4O10-4
-     symbol: Si₄O₁₀⁴⁻
-    formula: Si4O10-4 ∙ Si4O10-4 ∙ Si₄O₁₀⁴⁻ ∙ Si<span class="sgr31"><span class="sgr1">₄</span></span>O<span class="sgr31"><span class="sgr1">₁₀</span></span><span class="sgr1"><span class="sgr36">⁴⁻</span></span>
-      atoms: Si:4, O:10
-     charge: -4
- properties: molar_mass = 272.32999990588866 g mol^-1, Species{Int64}
-       name: SiO2@
-     symbol: SiO₂@
-    formula: SiO2@ ∙ SiO2@ ∙ SiO₂@ ∙ SiO<span class="sgr31"><span class="sgr1">₂</span></span><span class="sgr1"><span class="sgr35">@</span></span>
-      atoms: Si:1, O:2
-     charge: 0
- properties: molar_mass = 60.082999979236604 g mol^-1, Species{Int64}
-       name: Ca+2
-     symbol: Ca²⁺
-    formula: Ca+2 ∙ Ca+2 ∙ Ca²⁺ ∙ Ca<span class="sgr36"><span class="sgr1">²⁺</span></span>
-      atoms: Ca:1
-     charge: 2
- properties: molar_mass = 40.077999986149905 g mol^-1, Species{Int64}
-       name: H+
-     symbol: H⁺
-    formula: H+ ∙ H+ ∙ H⁺ ∙ H<span class="sgr36"><span class="sgr1">⁺</span></span>
-      atoms: H:1
-     charge: 1
- properties: molar_mass = 1.0079999996516569 g mol^-1, Species{Int64}
-       name: Ca(OH)+
-     symbol: CaOH⁺
-    formula: Ca(OH)+ ∙ Ca(OH)+ ∙ Ca(OH)⁺ ∙ Ca<span class="sgr35"><span class="sgr1">(</span></span>OH<span class="sgr35"><span class="sgr1">)</span></span><span class="sgr1"><span class="sgr36">⁺</span></span>
-      atoms: Ca:1, O:1, H:1
-     charge: 1
- properties: molar_mass = 57.084999980272656 g mol^-1, Species{Int64}
-       name: OH-
-     symbol: OH⁻
-    formula: OH- ∙ OH- ∙ OH⁻ ∙ OH<span class="sgr36"><span class="sgr1">⁻</span></span>
-      atoms: O:1, H:1
-     charge: -1
- properties: molar_mass = 17.006999994122747 g mol^-1, Species{Int64}
-       name: Ca(HSiO3)+
-     symbol: Ca(HSiO₃)⁺
-    formula: Ca(HSiO3)+ ∙ Ca(HSiO3)+ ∙ Ca(HSiO₃)⁺ ∙ Ca<span class="sgr35"><span class="sgr1">(</span></span>HSiO<span class="sgr31"><span class="sgr1">₃</span></span><span class="sgr1"><span class="sgr35">)</span><span class="sgr36">⁺</span></span>
-      atoms: Ca:1, H:1, Si:1, O:3
-     charge: 1
- properties: molar_mass = 117.16799995950925 g mol^-1, Species{Int64}
-       name: HSiO3-
-     symbol: HSiO₃⁻
-    formula: HSiO3- ∙ HSiO3- ∙ HSiO₃⁻ ∙ HSiO<span class="sgr31"><span class="sgr1">₃</span></span><span class="sgr1"><span class="sgr36">⁻</span></span>
-      atoms: H:1, Si:1, O:3
-     charge: -1
- properties: molar_mass = 77.08999997335935 g mol^-1])</code></pre><hr/></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../databases/">« Database Interoperability</a><a class="docs-footer-nextpage" href="../../reference/">API »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.14.1 on <span class="colophon-date" title="Monday 6 October 2025 15:13">Monday 6 October 2025</span>. Using Julia version 1.11.7.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+A, indep_comp, dep_comp = stoich_matrix(species, candidate_primaries)
+A</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">4×14 Matrix{Real}:
+ 0    5//3       3   1   1   0   0  0  1  0   1   0   1   0
+ 1     3.76667   3   2   1   1   2  0  0  0   1   1   1   1
+ 0  -10//3      -6  -2  -2  -2  -4  0  0  1  -1  -1  -1  -1
+ 0     1         1   0   1   1   4  1  0  0   0   0   1   1</code></pre><hr/></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../databases/">« Database Interoperability</a><a class="docs-footer-nextpage" href="../../reference/">API »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.14.1 on <span class="colophon-date" title="Monday 6 October 2025 20:11">Monday 6 October 2025</span>. Using Julia version 1.11.7.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
