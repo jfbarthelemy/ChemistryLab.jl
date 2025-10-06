@@ -19,9 +19,9 @@ makedocs(;
         "Home" => "index.md",
         "Tutorial" => [
             "man/formula_manipulation.md",
+            "man/species.md",
             "man/databases.md",
             "man/stoichio_matrix.md",
-            "tutorial.md",
             ],
         "API" => "reference.md",
     ],
