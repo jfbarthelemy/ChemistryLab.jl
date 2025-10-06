@@ -110,7 +110,7 @@ Base.isequal(f1::Formula, f2::Formula) = f1 == f2
 Base.hash(f::Formula, h::UInt) = hash(composition(f), hash(charge(f), h))
 
 function print_formula(io::IO, s::Formula, title::String, pad::Int)
-    println(io, lpad(title, pad), ": ", expr(s), " | ", phreeqc(s), " | ", (unicode(s)), " | ", (colored(s)))
+    println(io, lpad(title, pad), ": ", expr(s), " ∙ ", phreeqc(s), " ∙ ", (unicode(s)), " ∙ ", (colored(s)))
 end
 
 function Base.show(io::IO, s::Formula)
