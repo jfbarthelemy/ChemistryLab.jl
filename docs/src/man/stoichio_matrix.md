@@ -4,9 +4,10 @@ From the definition of species, it is possible to construct a stoichiometric mat
 
 ```@setup database_stoichiometry
     using CementChemistry
+    import Pkg; Pkg.add("PrettyTables")
 ```
 
-```@example
+```@example database_stoichiometry
 using CementChemistry #hide
 fH2O = 2 * :H + :O
 H2O = Species(fH2O)
@@ -16,7 +17,6 @@ species = [H2O, HSO4, CO2]
 A, indep_comp, dep_comp = stoich_matrix(species)
 
 using PrettyTables
-
 ```
 
 ```@example
