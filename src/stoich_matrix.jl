@@ -72,7 +72,7 @@ function stoich_matrix_to_reactions(A::AbstractMatrix, indep_comp_names::Abstrac
     return eqns
 end
 
-function stoich_matrix(species::Vector{<:AbstractSpecies}; display = true)
+function canonical_stoich_matrix(species::Vector{<:AbstractSpecies}; display = true)
     involved_atoms_dicts = same_components(species).(species)
     involved_atoms = union_atoms(involved_atoms_dicts, item_order(species))
     T = promote_type(valtype.(involved_atoms_dicts)...)
@@ -86,7 +86,7 @@ function stoich_matrix(species::Vector{<:AbstractSpecies}; display = true)
     return A, involved_atoms
 end
 
-function stoich_matrix(vs::Vector{<:AbstractSpecies}, candidate_primaries::Vector{<:AbstractSpecies}; display = true, involve_all_atoms = false, optimize_primaries=false)
+function stoich_matrix(vs::Vector{<:AbstractSpecies}, candidate_primaries::Vector{<:AbstractSpecies}=vs; display = true, involve_all_atoms = false, optimize_primaries=false)
 
     safe_rank(A; rtol=1e-6) = try rank(A, rtol=rtol) catch; rank(A) end
 
@@ -118,7 +118,7 @@ function stoich_matrix(vs::Vector{<:AbstractSpecies}, candidate_primaries::Vecto
         if Zz ∉ candidate_primaries push!(candidate_primaries, Zz) end
     end
 
-    M, involved_atoms = stoich_matrix(species; display=false)
+    M, involved_atoms = canonical_stoich_matrix(species; display=false)
     redox = charged && safe_rank(M[:, 1:end-1]) != safe_rank(M[1:end-1, 1:end-1])
 
     if !redox && charged
@@ -140,6 +140,7 @@ function stoich_matrix(vs::Vector{<:AbstractSpecies}, candidate_primaries::Vecto
     sort!(independent_cols_indices, by = x->symbol(species[x]) !== "H2O@" && symbol(species[x]) !== "H2O" && symbol(species[x]) !== "H₂O" && symbol(species[x]) !== "H")
 
     M_indep = M[:, independent_cols_indices]
+    M_indep = promote_type(typeof.(M_indep)...).(M_indep)
     A = stoich_coef_round.(pinv(M_indep)*M)
 
     indep_comp = species[independent_cols_indices]

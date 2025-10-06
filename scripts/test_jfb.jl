@@ -17,7 +17,7 @@ H₂O = Species(fH₂O)
 HSO₄⁻ = Species("HSO₄⁻")
 CO₂ = Species(Dict(:C=>1, :O=>2); name="CO₂")
 species = [H₂O, HSO₄⁻, CO₂] ;
-stoich_matrix(species) ;
+canonical_stoich_matrix(species) ;
 
 # CemSpecies
 OXIDE_ORDER # provides the order of oxides in cement formulas
@@ -26,7 +26,7 @@ C2S = CemSpecies("C2S")
 C3A = CemSpecies("C3A")
 C4AF = CemSpecies(Dict(:C=>4, :A=>1, :F=>1); name="C4AF")
 cemspecies = [C3S, C2S, C3A, C4AF]
-A, indep_comp = stoich_matrix(cemspecies) ;
+A, indep_comp = canonical_stoich_matrix(cemspecies) ;
 
 # Thermofun cemdata18
 df_elements, df_substances, df_reactions = parse_cemdata18_thermofun("data/cemdata18-merged.json")
@@ -108,7 +108,7 @@ HG = CemSpecies("C₆AFS₂H₈")
 AFt = CemSpecies("C₆S̄₃H₃₂")
 ST = CemSpecies("C₂ASH₈")
 AH = CemSpecies("C₄AH₁₃")
-A, ox = stoich_matrix([CSH, HT, HG, AFt, ST, AH]);
+A, ox = canonical_stoich_matrix([CSH, HT, HG, AFt, ST, AH]);
 A = Sym.(A[1:end-1, 1:end])
 oxides = (CemSpecies∘string).(ox[1:end-1])
 hydrates = [CSH, HT, HG, AFt, ST, AH]
@@ -137,5 +137,5 @@ println(Reaction([CₙH₂ₙ₊₂, O₂], [H₂O, CO₂]; side=:reactants))
 formulas = ["Ca+2", "Fe+2", "Fe|3|+3", "H+", "OH-", "SO4-2", "CaSO4@", "CaOH+", "FeO@", "HFe|3|O2@", "FeOH+", "Fe|3|OH+2", "H2O@",  "FeS|-2|", "FeS|0|S|-2|", "S|4|O2"] ;
 species = Species.(formulas) ;
 candidate_primaries = species[1:6] ;
-A, indep_comp, dep_comp = stoich_matrix(species, candidate_primaries) ;
+A, indep_comp, dep_comp = stoich_matrix(species) ;
 stoich_matrix_to_reactions(A, indep_comp, dep_comp) ;
