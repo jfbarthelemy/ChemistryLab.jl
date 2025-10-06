@@ -23,7 +23,7 @@ include("stoich_matrix.jl")
 include("reactions.jl")
 
 export ATOMIC_ORDER, OXIDE_ORDER, stoich_coef_round, phreeqc_to_unicode, colored_formula, unicode_to_phreeqc, parse_formula, extract_charge, calculate_molar_mass, to_mendeleev, parse_equation, format_equation, colored_equation
-export Formula, expr, phreeqc, unicode, colored, composition, charge
+export Formula, expr, phreeqc, unicode, colored, composition, charge, apply
 export AbstractSpecies, Species, CemSpecies
 export name, symbol, formula, cemformula, atoms, atoms_charge, oxides, oxides_charge, components, properties
 export merge_json, parse_cemdata18_thermofun, extract_primary_species

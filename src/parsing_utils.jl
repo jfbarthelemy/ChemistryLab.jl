@@ -145,6 +145,8 @@ sub_to_normal(s::AbstractString) = replace(s, dict_sub_to_normal...)
 normal_to_sub(s::AbstractString) = replace(s, dict_normal_to_sub...)
 all_normal_to_sub(s::AbstractString) = replace(s, dict_all_normal_to_sub...)
 
+root_type(T) = T isa UnionAll ? root_type(T.body) : T.name.wrapper
+
 function stoich_coef_round(x::T; tol=1e-4) where {T<:Real}
     try
         if isapprox(x, round(x); atol=tol)

@@ -57,7 +57,7 @@ using SymPy
 â, b̂, ĝ = symbols("â b̂ ĝ", real=true)
 ox = Dict(:C => â, :S => one(Sym), :A => b̂, :H => ĝ)
 CSH = CemSpecies(ox)
-numCSH = CemSpecies(map(N, map(subs, cemformula(CSH), â=>1.8, b̂=>1, ĝ=>5)))
+numCSH = CemSpecies(apply(N, apply(subs, cemformula(CSH), â=>1.8, b̂=>1, ĝ=>5)))
 floatCSH = Species(convert(Float64, formula(numCSH)))
 
 # Conversion to cement notation
@@ -97,7 +97,7 @@ H = CemSpecies("H")
 CH = CemSpecies("CH")
 r = Reaction([CSH, C3S, H, CH]; equal_sign='→')
  ## application of a function to stoichimetric coefficients (here simplify)
-r = map(simplify, Reaction([C3S, H], [CH, CSH]; equal_sign='→'))
+r = apply(simplify, Reaction([C3S, H], [CH, CSH]; equal_sign='→'))
 A, _, _ = stoich_matrix([C3S], [CSH, H, CH]; involve_all_atoms=true) ;
 simplify.(A)
 
@@ -127,9 +127,9 @@ O₂ = Species("O₂")
 H₂O = Species("H₂O")
 CO₂ = Species("CO₂")
 r = Reaction([CₙH₂ₙ₊₂, O₂], [H₂O, CO₂])
-map(factor, r)
+apply(factor, r)
 println(2r)
-for vn in 1:9 println("n=$vn ⇒ ", map(subs, r, n=>vn)) end
+for vn in 1:9 println("n=$vn ⇒ ", apply(subs, r, n=>vn)) end
 println(Reaction([CₙH₂ₙ₊₂, O₂], [H₂O, CO₂]; side=:products))
 println(Reaction([CₙH₂ₙ₊₂, O₂], [H₂O, CO₂]; side=:reactants))
 

@@ -165,7 +165,7 @@ function Base.convert(T::Type{<:Number}, f::Formula)
     return Formula{T}(expr(f), phreeqc(f), unicode(f), colored(f), newcomposition, charge(f))
 end
 
-function Base.map(func::Function, f::Formula, args... ; kwargs...)
+function apply(func::Function, f::Formula, args... ; kwargs...)
     tryfunc(v) = try func(v, args... ; kwargs...) catch; v end    
     newcomposition = OrderedDict(k => tryfunc(v) for (k,v) ∈ composition(f))
     return Formula{valtype(newcomposition)}(expr(f), phreeqc(f), unicode(f), colored(f), newcomposition, tryfunc(charge(f)))

@@ -56,8 +56,9 @@ function format_side(side::AbstractDict{S, T}) where {S<:AbstractSpecies, T<:Num
     equation = String[]
     coleq = String[]
     ch = 0
+    Zz = root_type(S)("Zz")
     for (species, coef) in side
-        if !iszero(coef)
+        if !iszero(coef) && species != Zz
             coeff_str = isone(coef) ? "" : string(stoich_coef_round(coef))
             coeff_str = add_parentheses_if_needed(coeff_str)
             coeff_str = replace(coeff_str, " "=>"", "*"=>"")
@@ -214,10 +215,10 @@ function Base.show(io::IO, r::Reaction)
     print(io, colored(r))
 end
 
-function Base.map(func::Function, r::Reaction{SR, TR, SP, TP}, args... ; kwargs...) where {SR<:AbstractSpecies, TR<:Number, SP<:AbstractSpecies, TP<:Number}
+function apply(func::Function, r::Reaction{SR, TR, SP, TP}, args... ; kwargs...) where {SR<:AbstractSpecies, TR<:Number, SP<:AbstractSpecies, TP<:Number}
     tryfunc(v) = try func(v, args... ; kwargs...) catch; v end    
-    reac = OrderedDict{SR, TR}(map(func, k, args... ; kwargs..., name="", symbol ="") => tryfunc(v) for (k,v) ∈ reactants(r))
-    prod = OrderedDict{SP, TP}(map(func, k, args... ; kwargs..., name="", symbol ="") => tryfunc(v) for (k,v) ∈ products(r))
+    reac = OrderedDict{SR, TR}(apply(func, k, args... ; kwargs..., name="", symbol ="") => tryfunc(v) for (k,v) ∈ reactants(r))
+    prod = OrderedDict{SP, TP}(apply(func, k, args... ; kwargs..., name="", symbol ="") => tryfunc(v) for (k,v) ∈ products(r))
     return Reaction(reac, prod; equal_sign=equal_sign(r))
 end
 

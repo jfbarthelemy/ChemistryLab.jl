@@ -219,8 +219,8 @@ Base.promote_rule(::Type{Species{T}}, ::Type{Species}) where {T} = Species
 Base.promote_rule(::Type{<:CemSpecies}, ::Type{Species{T}}) where {T} = Species
 Base.promote_rule(::Type{Species{T}}, ::Type{<:CemSpecies}) where {T} = Species
 
-function Base.map(func::Function, s::S, args... ; kwargs...) where {S<:AbstractSpecies}
+function apply(func::Function, s::S, args... ; kwargs...) where {S<:AbstractSpecies}
     tryfunc(v) = try func(v, args... ; kwargs...) catch; v end
     newcomponents = OrderedDict(k => tryfunc(v) for (k,v) ∈ components(s))
-    return typeof(s).name.wrapper(newcomponents, tryfunc(charge(s)); name=get(kwargs, :name, name(s)), symbol=get(kwargs, :symbol, symbol(s)))
+    return root_type(typeof(s))(newcomponents, tryfunc(charge(s)); name=get(kwargs, :name, name(s)), symbol=get(kwargs, :symbol, symbol(s)))
 end
