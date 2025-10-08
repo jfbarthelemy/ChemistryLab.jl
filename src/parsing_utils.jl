@@ -8,12 +8,12 @@ const ATOMIC_ORDER = [
 
 const cement_to_mendeleev = [
     :C => OrderedDict(:Ca => 1, :O => 1),
+    :M => OrderedDict(:Mg => 1, :O => 1),
     :S => OrderedDict(:Si => 1, :O => 2),
     :A => OrderedDict(:Al => 2, :O => 3),
     :F => OrderedDict(:Fe => 2, :O => 3),
     :K => OrderedDict(:K  => 2, :O => 1),
     :N => OrderedDict(:Na => 2, :O => 1),
-    :M => OrderedDict(:Mg => 1, :O => 1),
     :P => OrderedDict(:P  => 2, :O => 5),
     :T => OrderedDict(:Ti => 1, :O => 2),
     :C̄ => OrderedDict(:C  => 1, :O => 2),
@@ -22,9 +22,7 @@ const cement_to_mendeleev = [
     :H => OrderedDict(:H  => 2, :O => 1),
 ]
 
-const OXIDE_ORDER = [
-    :C, :S, :A, :F, :K, :N, :M, :P, :T, :C̄, :S̄, :N̄, :H
-]
+const OXIDE_ORDER = collect(first.(cement_to_mendeleev))
 
 const dict_super_to_normal = OrderedDict{Char,Char}(
     '⁰' => '0',
