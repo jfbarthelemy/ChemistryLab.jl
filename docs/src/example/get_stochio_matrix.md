@@ -33,6 +33,7 @@ And construct the stoichiometric matrix
 
 ```@setup example1
     using CementChemistry #hide
+    import Pkg; Pkg.add("PrettyTables")
     df_elements, df_substances, df_reactions = parse_cemdata18_thermofun("../../../data/cemdata18-merged.json") #hide
     df_primaries = extract_primary_species("../../../data/CEMDATA18-31-03-2022-phaseVol.dat") #hide
 
@@ -58,6 +59,7 @@ using PrettyTables #hide
 
 ```@example example2
 using CementChemistry
+import Pkg; Pkg.add("PrettyTables")
 df_elements, df_substances, df_reactions = parse_cemdata18_thermofun("../../../data/cemdata18-merged.json")
 df_primaries = extract_primary_species("../../../data/CEMDATA18-31-03-2022-phaseVol.dat")
 aqueous_species = filter(row->row.aggregate_state == "AS_AQUEOUS", df_substances)
@@ -80,6 +82,7 @@ The exercise can also be done on solid species. In this case, the data filter is
 
 ```@setup example3
 using CementChemistry
+import Pkg; Pkg.add("PrettyTables")
 df_elements, df_substances, df_reactions = parse_cemdata18_thermofun("../../../data/cemdata18-merged.json")
 df_primaries = extract_primary_species("../../../data/CEMDATA18-31-03-2022-phaseVol.dat")
 aqueous_species = filter(row->row.aggregate_state == "AS_CRYSTAL", df_substances)
@@ -103,6 +106,7 @@ Or with gases ("AS_GAS")
 
 ```@setup example4
 using CementChemistry
+import Pkg; Pkg.add("PrettyTables")
 df_elements, df_substances, df_reactions = parse_cemdata18_thermofun("../../../data/cemdata18-merged.json")
 df_primaries = extract_primary_species("../../../data/CEMDATA18-31-03-2022-phaseVol.dat")
 aqueous_species = filter(row->row.aggregate_state == "AS_GAS", df_substances)
