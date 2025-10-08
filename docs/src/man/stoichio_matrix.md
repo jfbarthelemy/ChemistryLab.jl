@@ -65,57 +65,8 @@ using CementChemistry #hide
 df_elements, df_substances, df_reactions = parse_cemdata18_thermofun("../../../data/cemdata18-merged.json") #hide
 df_primaries = extract_primary_species("../../../data/CEMDATA18-31-03-2022-phaseVol.dat")
 ```
-
-# Advanced Stoichiometric Matrix
-
-Let's imagine that we now want to form the stochiometric matrix of a list of solid and water species.
-As in the previous example, we need to read the database from which these species originate and retrieve the list of primary species from that database.
-
-```julia
-using CementChemistry
-df_elements, df_substances, df_reactions = parse_cemdata18_thermofun("../../../data/cemdata18-merged.json")
-df_primaries = extract_primary_species("../../../data/CEMDATA18-31-03-2022-phaseVol.dat")
-```
-
-It is then necessary to identify the list of secondary species likely to appear during the reaction.
-
-```julia
-given_species = filter(row -> row.symbol ∈ split("C3S Portlandite Jennite H2O@"), df_substances)
-secondaries = filter(row -> row.aggregate_state == "AS_AQUEOUS" &&
-                          all(k -> first(k) ∈ union_atoms(given_species.atoms), row.atoms) &&
-                          row.symbol ∉ split("H2@ O2@"),
-                          df_substances)
-```
-
-We can then deduce the primary species concerned by the reaction.
-
-```julia
-all_species = unique(vcat(given_species, secondaries), :symbol)
-species = [Species(f; symbol = phreeqc_to_unicode(n)) for (f, n) in zip(all_species.formula, all_species.symbol)]
-candidate_primaries = [Species(f; symbol = phreeqc_to_unicode(n)) for (f, n) in zip(df_primaries.formula, df_primaries.symbol)]
-```
-
-And construct the stoichiometric matrix
-
-```@example adv_example
-using CementChemistry #hide
-df_elements, df_substances, df_reactions = parse_cemdata18_thermofun("../../../data/cemdata18-merged.json") #hide
-df_primaries = extract_primary_species("../../../data/CEMDATA18-31-03-2022-phaseVol.dat") #hide
-
-given_species = filter(row -> row.symbol ∈ split("C3S Portlandite Jennite H2O@"), df_substances) #hide
-secondaries = filter(row -> row.aggregate_state == "AS_AQUEOUS" &&
-                          all(k -> first(k) ∈ union_atoms(given_species.atoms), row.atoms) &&
-                          row.symbol ∉ split("H2@ O2@"),
-                          df_substances) #hide
+See [`CementChemistry.parse_cemdata18_thermofun`](@ref) and [`CementChemistry.extract_primary_species`](@ref)
 
 
-all_species = unique(vcat(given_species, secondaries), :symbol) #hide
-species = [Species(f; symbol = phreeqc_to_unicode(n)) for (f, n) in zip(all_species.formula, all_species.symbol)] #hide
-candidate_primaries = [Species(f; symbol = phreeqc_to_unicode(n)) for (f, n) in zip(df_primaries.formula, df_primaries.symbol)] #hide
-
-A, indep_comp, dep_comp = stoich_matrix(species, candidate_primaries)
-
-using PrettyTables #hide
-```
 
 ---

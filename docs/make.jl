@@ -22,6 +22,10 @@ makedocs(;
             "man/species.md",
             "man/databases.md",
             "man/stoichio_matrix.md",
+            "man/equations.md",
+            ],
+        "Examples" => [
+            "example/get_stochio_matrix.md",
             ],
         "API" => "reference.md",
     ],
