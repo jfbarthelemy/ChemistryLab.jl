@@ -1,7 +1,6 @@
 using CementChemistry
 using Documenter
 using PrettyTables
-using SymPy
 
 DocMeta.setdocmeta!(CementChemistry, :DocTestSetup, :(using CementChemistry); recursive=true)
 
