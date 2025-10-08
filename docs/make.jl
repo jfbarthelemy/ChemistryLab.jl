@@ -1,5 +1,6 @@
 using CementChemistry
 using Documenter
+using PrettyTables
 
 DocMeta.setdocmeta!(CementChemistry, :DocTestSetup, :(using CementChemistry); recursive=true)
 

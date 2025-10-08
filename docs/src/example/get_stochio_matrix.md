@@ -1,11 +1,10 @@
-# Examples
-
-## Get Stoichiometric Matrix from a list of species
+# Get Stoichiometric Matrix from a list of species
 
 Let's imagine that we want to form the stochiometric matrix of a list of solid and water species. For that, we need to read the database from which these species originate and retrieve the list of primary species from that database.
 
 ```julia
 using CementChemistry
+using PrettyTables
 df_elements, df_substances, df_reactions = parse_cemdata18_thermofun("../../../data/cemdata18-merged.json")
 df_primaries = extract_primary_species("../../../data/CEMDATA18-31-03-2022-phaseVol.dat")
 ```
@@ -33,7 +32,7 @@ And construct the stoichiometric matrix
 
 ```@setup example1
     using CementChemistry #hide
-    import Pkg; Pkg.add("PrettyTables")
+    using PrettyTables
     df_elements, df_substances, df_reactions = parse_cemdata18_thermofun("../../../data/cemdata18-merged.json") #hide
     df_primaries = extract_primary_species("../../../data/CEMDATA18-31-03-2022-phaseVol.dat") #hide
 
@@ -55,11 +54,11 @@ A, indep_comp, dep_comp = stoich_matrix(species, candidate_primaries)
 using PrettyTables #hide
 ```
 
-## Get Stoichiometric Matrix from a database file
+# Get Stoichiometric Matrix from a database file
 
 ```@example example2
 using CementChemistry
-import Pkg; Pkg.add("PrettyTables")
+using PrettyTables
 df_elements, df_substances, df_reactions = parse_cemdata18_thermofun("../../../data/cemdata18-merged.json")
 df_primaries = extract_primary_species("../../../data/CEMDATA18-31-03-2022-phaseVol.dat")
 aqueous_species = filter(row->row.aggregate_state == "AS_AQUEOUS", df_substances)
@@ -82,7 +81,7 @@ The exercise can also be done on solid species. In this case, the data filter is
 
 ```@setup example3
 using CementChemistry
-import Pkg; Pkg.add("PrettyTables")
+using PrettyTables
 df_elements, df_substances, df_reactions = parse_cemdata18_thermofun("../../../data/cemdata18-merged.json")
 df_primaries = extract_primary_species("../../../data/CEMDATA18-31-03-2022-phaseVol.dat")
 aqueous_species = filter(row->row.aggregate_state == "AS_CRYSTAL", df_substances)
@@ -106,7 +105,7 @@ Or with gases ("AS_GAS")
 
 ```@setup example4
 using CementChemistry
-import Pkg; Pkg.add("PrettyTables")
+using PrettyTables
 df_elements, df_substances, df_reactions = parse_cemdata18_thermofun("../../../data/cemdata18-merged.json")
 df_primaries = extract_primary_species("../../../data/CEMDATA18-31-03-2022-phaseVol.dat")
 aqueous_species = filter(row->row.aggregate_state == "AS_GAS", df_substances)
