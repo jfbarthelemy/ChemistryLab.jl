@@ -63,9 +63,10 @@ C4AF = CemSpecies(Dict(:C => 4, :A => 1, :F => 1); name = "C4AF")
 
 ## Symbolic and Numeric CemSpecies
 
-The previous species were constructed from integer values ​​of the number of chemical elements. However, numerical values ​​are possible, as we have seen for formulas, as well as symbolic values. To do this, you need to use the [`SymPy`](https://github.com/JuliaPy/SymPy.jl) library:
+The previous species were constructed from integer values ​​of the number of chemical elements. However, numerical values ​​are possible (see [species](./databases.md#formulas)), as well as symbolic values. To do this, you need to use the [`SymPy`](https://github.com/JuliaPy/SymPy.jl) library:
 
-```julia
+```@example sympy1
+using CementChemistry
 using SymPy
 â, b̂, ĝ = symbols("â b̂ ĝ", real = true)
 ox = Dict(:C => â, :S => one(Sym), :A => b̂, :H => ĝ)
