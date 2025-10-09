@@ -56,6 +56,8 @@ jobs:
         run: |
           using Pkg
           Pkg.develop(PackageSpec(path=pwd()))
+          ENV["PYTHON"] = ""
+          Pkg.build("PyCall")
           Pkg.instantiate()
       - uses: julia-actions/julia-buildpkg@v1
       - uses: julia-actions/julia-docdeploy@v1
