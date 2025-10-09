@@ -45,7 +45,7 @@ CSH = CemSpecies("C1.7SH4")
 r = Reaction([C3S, H, CH, CSH]; equal_sign='→')
 ```
 - a balance calculation with symbolic numbers
-```julia
+```@example
 using CementChemistry
 using SymPy
 â, b̂, ĝ = symbols("â b̂ ĝ", real=true)
