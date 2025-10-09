@@ -1,7 +1,7 @@
 abstract type AbstractSpecies end
 
-==(s1::AbstractSpecies, s2::AbstractSpecies) = formula(s1) == formula(s2) && symbol(s1) == symbol(s2)
-Base.isequal(s1::AbstractSpecies, s2::AbstractSpecies) = s1 == s2
+Base.isequal(s1::AbstractSpecies, s2::AbstractSpecies) = isequal(formula(s1), formula(s2)) && isequal(symbol(s1), symbol(s2))
+==(s1::AbstractSpecies, s2::AbstractSpecies) = isequal(s1, s2)
 Base.hash(s::AbstractSpecies, h::UInt) = hash(symbol(s), hash(formula(s), h))
 
 name(s::AbstractSpecies) = s.name
@@ -220,7 +220,11 @@ Base.promote_rule(::Type{<:CemSpecies}, ::Type{Species{T}}) where {T} = Species
 Base.promote_rule(::Type{Species{T}}, ::Type{<:CemSpecies}) where {T} = Species
 
 function apply(func::Function, s::S, args... ; kwargs...) where {S<:AbstractSpecies}
-    tryfunc(v) = try func(v, args... ; kwargs...) catch; v end
+    tryfunc(v) = try func(ustrip(v), args... ; kwargs...) * unit(v) catch; v end
     newcomponents = OrderedDict(k => tryfunc(v) for (k,v) ∈ components(s))
-    return root_type(typeof(s))(newcomponents, tryfunc(charge(s)); name=get(kwargs, :name, name(s)), symbol=get(kwargs, :symbol, symbol(s)))
+    newSpecies = root_type(typeof(s))(newcomponents, tryfunc(charge(s)); name=get(kwargs, :name, name(s)), symbol=get(kwargs, :symbol, symbol(s)))
+    for (k,v) in properties(s)
+        newSpecies[k] = tryfunc(v)
+    end
+    return newSpecies
 end

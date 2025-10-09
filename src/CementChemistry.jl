@@ -5,7 +5,7 @@ using LinearAlgebra
 using OrderedCollections
 using JSON3, CSV, DataFrames
 using Unicode
-import Unitful: u, g, cm, K, J, mol, Quantity, uconvert
+import Unitful: u, g, cm, K, J, mol, Quantity, uconvert, ustrip, unit
 using PeriodicTable
 using PhysicalConstants.CODATA2022
 using PrettyTables, Crayons

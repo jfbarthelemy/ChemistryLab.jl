@@ -19,16 +19,28 @@ function print_stoich_matrix(A::AbstractMatrix, indep_comp_names::Vector, dep_co
         (data, i, j) -> (data[i, j] == 0),
         crayon"conceal"
     )
-    pretty_table(
-        A,
-        column_labels = dep_comp_names,
-        row_labels    = indep_comp_names,
-        highlighters  = [hl_p, hl_n, hl_z],
-        style         = TextTableStyle(;
-                            row_label = crayon"magenta bold",
-                            first_line_column_label = crayon"cyan bold",
-                            table_border = crayon"green bold")
-    )
+    try
+        pretty_table(
+            A,
+            column_labels = dep_comp_names,
+            row_labels    = indep_comp_names,
+            highlighters  = [hl_p, hl_n, hl_z],
+            style         = TextTableStyle(;
+                                row_label = crayon"magenta bold",
+                                first_line_column_label = crayon"cyan bold",
+                                table_border = crayon"green bold")
+        )
+    catch
+        pretty_table(
+            A,
+            column_labels = dep_comp_names,
+            row_labels    = indep_comp_names,
+            style         = TextTableStyle(;
+                                row_label = crayon"magenta bold",
+                                first_line_column_label = crayon"cyan bold",
+                                table_border = crayon"green bold")
+        )
+    end
 end
 
 function stoich_matrix_to_equations(A::AbstractMatrix, indep_comp_names::AbstractVector, dep_comp_names::AbstractVector; scaling=1, display=true, equal_sign='=')
@@ -88,7 +100,8 @@ end
 
 function stoich_matrix(vs::Vector{<:AbstractSpecies}, candidate_primaries::Vector{<:AbstractSpecies}=vs; display = true, involve_all_atoms = false, reorder_primaries=false)
 
-    safe_rank(A; rtol=1e-6) = try rank(A, rtol=rtol) catch; rank(A) end
+    safe_rank(A; rtol=1e-6) = try rank(A, rtol=rtol) catch; try rank(A) catch; min(size(A)...) end end
+    safe_pinv(A) = try pinv(A) catch; inv(A) end
 
     all_species = union(vs,candidate_primaries)
     vec_components = same_components(all_species)
@@ -129,7 +142,7 @@ function stoich_matrix(vs::Vector{<:AbstractSpecies}, candidate_primaries::Vecto
     cols_candidates = [findfirst(y -> y == x, species) for x in candidate_primaries]
     filter!(x-> !isnothing(x), cols_candidates)
     M_subset = M[:, cols_candidates]
-    if size(M_subset,1) >= size(M_subset, 2)
+    if size(M_subset, 1) >= size(M_subset, 2)
         independent_cols_indices = cols_candidates
     else
         F = qr(M_subset, Val(reorder_primaries))
@@ -141,7 +154,7 @@ function stoich_matrix(vs::Vector{<:AbstractSpecies}, candidate_primaries::Vecto
 
     M_indep = M[:, independent_cols_indices]
     M_indep = promote_type(typeof.(M_indep)...).(M_indep)
-    A = stoich_coef_round.(pinv(M_indep)*M)
+    A = stoich_coef_round.(safe_pinv(M_indep)*M)
 
     indep_comp = species[independent_cols_indices]
     dep_comp = species[1:num_initial_species]

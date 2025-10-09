@@ -1,7 +1,8 @@
 using Revise, CementChemistry, Unicode
-import Unitful: u, g, cm, K, J, mol, Quantity, uconvert
-using PeriodicTable
-using PhysicalConstants.CODATA2022
+import Unitful: u, g, cm, K, J, mol, Quantity, uconvert, ustrip
+using SymPy
+import Symbolics: @variables, substitute
+
 
 # Formula
 fgen = Formula("A1//2B3C0.4")
@@ -53,7 +54,6 @@ A, indep_comp, dep_comp = stoich_matrix(species, candidate_primaries) ;
 stoich_matrix_to_reactions(A, indep_comp, dep_comp) ;
 
 # CemSpecies with Sym coef
-using SymPy
 â, b̂, ĝ = symbols("â b̂ ĝ", real=true)
 ox = Dict(:C => â, :S => one(Sym), :A => b̂, :H => ĝ)
 CSH = CemSpecies(ox)
@@ -91,7 +91,7 @@ for c_over_s in 1.5:0.1:2.
 end
  ## construction of a Reaction by a balance calculation with symbolic numbers
 â, b̂, ĝ = symbols("â b̂ ĝ", real=true)
-CSH = CemSpecies(Dict(:C => â, :S => one(Sym), :H => ĝ))
+CSH = CemSpecies(Dict(:C => â, :S => one(â), :H => ĝ))
 C3S = CemSpecies("C3S")
 H = CemSpecies("H")
 CH = CemSpecies("CH")
@@ -109,18 +109,18 @@ AFt = CemSpecies("C₆S̄₃H₃₂")
 ST = CemSpecies("C₂ASH₈")
 AH = CemSpecies("C₄AH₁₃")
 A, ox = canonical_stoich_matrix([CSH, HT, HG, AFt, ST, AH]);
-A = Sym.(A[1:end-1, 1:end])
+A = typeof(â).(A[1:end-1, 1:end])
 oxides = (CemSpecies∘string).(ox[1:end-1])
 hydrates = [CSH, HT, HG, AFt, ST, AH]
 print_stoich_matrix(A, symbol.(oxides), symbol.(hydrates))
 print_stoich_matrix(inv(A), symbol.(hydrates), symbol.(oxides))
-Mhyd = getproperty.(hydrates, :molar_mass)
-Mox = getproperty.(oxides, :molar_mass)
+Mhyd = ustrip.(getproperty.(hydrates, :molar_mass))
+Mox = ustrip.(getproperty.(oxides, :molar_mass))
 B = Mox .* A .* inv.(Mhyd)'
 print_stoich_matrix(B, "m_" .* symbol.(oxides), "m_" .* symbol.(hydrates))
-print_stoich_matrix(subs.(inv(B), â=>1.8, b̂=>1, ĝ=>4), "m_" .* symbol.(hydrates), "m_" .* symbol.(oxides))
+print_stoich_matrix(subs.(inv(B), Ref(Dict(â=>1.8, b̂=>1, ĝ=>4))), "m_" .* symbol.(hydrates), "m_" .* symbol.(oxides))
 
-# Alkane combustion
+# Alkane combustion with SymPy
 n = symbols("n", real=true)
 CₙH₂ₙ₊₂ = Species(:C => n, :H => 2n+2)
 O₂ = Species("O₂")
@@ -132,6 +132,16 @@ println(2r)
 for vn in 1:9 println("n=$vn ⇒ ", apply(subs, r, n=>vn)) end
 println(Reaction([CₙH₂ₙ₊₂, O₂], [H₂O, CO₂]; side=:products))
 println(Reaction([CₙH₂ₙ₊₂, O₂], [H₂O, CO₂]; side=:reactants))
+
+# Alkane combustion with Symbolics
+@variables n
+CₙH₂ₙ₊₂ = Species(:C => n, :H => 2n+2)
+O₂ = Species("O₂")
+H₂O = Species("H₂O")
+CO₂ = Species("CO₂")
+r = Reaction([CₙH₂ₙ₊₂, O₂], [H₂O, CO₂])
+for vn in 1:9 println("n=$vn ⇒ ", apply(substitute, r, n=>vn)) end
+for vn in 1:9 println("n=$vn ⇒ ", apply(stoich_coef_round∘Symbolics.value∘substitute, r, n=>vn)) end
 
 # Example from https://github.com/thermohub/chemicalfun
 formulas = ["Ca+2", "Fe+2", "Fe|3|+3", "H+", "OH-", "SO4-2", "CaSO4@", "CaOH+", "FeO@", "HFe|3|O2@", "FeOH+", "Fe|3|OH+2", "H2O@",  "FeS|-2|", "FeS|0|S|-2|", "S|4|O2"] ;

@@ -52,8 +52,8 @@ function Formula(composition::AbstractDict{Symbol,T}, charge=0; order=ATOMIC_ORD
     uni_parts = String[]
     col_expr_parts = String[]
     for k in sorted_keys
-        v = composition[k]
-        strv0 = string(v)
+        v = stoich_coef_round(composition[k])
+        strv0 = get(dict_frac_unicode, v, string(v))
         strv = replace(strv0, " "=>"", "*"=>"")
         strvuni = strv
         colstrv = strv
@@ -105,8 +105,8 @@ end
 Base.getindex(f::Formula{T}, i::Symbol) where {T} = get(composition(f), i, zero(T))
 Base.length(f::Formula) = length(composition(f))
 
-==(f1::Formula, f2::Formula) = composition(f1) == composition(f2) && charge(f1) == charge(f2)
-Base.isequal(f1::Formula, f2::Formula) = f1 == f2
+Base.isequal(f1::Formula, f2::Formula) = isequal(composition(f1), composition(f2)) && isequal(charge(f1), charge(f2))
+==(f1::Formula, f2::Formula) = isequal(f1, f2)
 Base.hash(f::Formula, h::UInt) = hash(composition(f), hash(charge(f), h))
 
 function print_formula(io::IO, s::Formula, title::String, pad::Int)
@@ -166,7 +166,7 @@ function Base.convert(T::Type{<:Number}, f::Formula)
 end
 
 function apply(func::Function, f::Formula, args... ; kwargs...)
-    tryfunc(v) = try func(v, args... ; kwargs...) catch; v end    
+    tryfunc(v) = try func(ustrip(v), args... ; kwargs...) * unit(v) catch; v end
     newcomposition = OrderedDict(k => tryfunc(v) for (k,v) ∈ composition(f))
     return Formula{valtype(newcomposition)}(expr(f), phreeqc(f), unicode(f), colored(f), newcomposition, tryfunc(charge(f)))
 end
