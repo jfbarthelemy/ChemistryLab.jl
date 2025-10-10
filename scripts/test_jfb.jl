@@ -74,6 +74,9 @@ equation = "13H⁺ + NO₃⁻ + CO₃²⁻ + 10e⁻ = 6H₂O@ + HCN@"
 reac, prod, equal_sign = parse_equation(equation)
  ## construction of a Reaction struct from a string
 r = Reaction(equation)
+ ## simplification of a Reaction
+r = Reaction("2H₂O → H⁺ + OH⁻ +H₂O")
+println(simplify_reaction(r))
  ## construction of a Reaction of only CemSpecies by CemReaction
 eqC3S = "C₃S + 5.3H = 1.3CH + C₁.₇SH₄"
 rC3S = CemReaction(eqC3S)

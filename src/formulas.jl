@@ -170,7 +170,11 @@ function apply(func::Function, f::Formula, args... ; kwargs...)
         try
             func(ustrip(v), args...; kwargs...) * func(unit(v), args...; kwargs...)
         catch
-            v
+            try
+                func(v, args...; kwargs...)
+            catch
+                v
+            end
         end
     newcomposition = OrderedDict(k => tryfunc(v) for (k,v) ∈ composition(f))
     return Formula{valtype(newcomposition)}(expr(f), phreeqc(f), unicode(f), colored(f), newcomposition, tryfunc(charge(f)))

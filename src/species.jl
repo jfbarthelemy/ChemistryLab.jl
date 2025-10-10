@@ -22,7 +22,7 @@ function atoms_charge(s::AbstractSpecies)
     end
 end
 
-Base.getindex(s::AbstractSpecies, i::Symbol) = get(atoms(s), i, get(properties(s), i, 0))
+Base.getindex(s::AbstractSpecies, i::Symbol) = get(atoms(s), i, get(properties(s), i, nothing))
 
 Base.setindex!(s::AbstractSpecies, value, i::Symbol) = setindex!(properties(s), value, i)
 
@@ -42,6 +42,7 @@ function Base.setproperty!(s::AbstractSpecies, sym::Symbol, value)
     else
         properties(s)[sym] = value
     end
+    return s
 end
 
 const PropertyType = Union{Number,AbstractVector{<:Number},Function,AbstractString}
@@ -238,7 +239,11 @@ function apply(func::Function, s::S, args...; kwargs...) where {S<:AbstractSpeci
         try
             func(ustrip(v), args...; kwargs...) * func(unit(v), args...; kwargs...)
         catch
-            v
+            try
+                func(v, args...; kwargs...)
+            catch
+                v
+            end
         end
     newcomponents = OrderedDict(k => tryfunc(v) for (k, v) ∈ components(s))
     newSpecies = root_type(typeof(s))(newcomponents, tryfunc(charge(s)); name=get(kwargs, :name, name(s)), symbol=get(kwargs, :symbol, symbol(s)))
