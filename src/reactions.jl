@@ -216,7 +216,12 @@ function Base.show(io::IO, r::Reaction)
 end
 
 function apply(func::Function, r::Reaction{SR, TR, SP, TP}, args... ; kwargs...) where {SR<:AbstractSpecies, TR<:Number, SP<:AbstractSpecies, TP<:Number}
-    tryfunc(v) = try func(ustrip(v), args... ; kwargs...) * unit(v) catch; v end
+    tryfunc(v) =
+        try
+            func(ustrip(v), args...; kwargs...) * func(unit(v), args...; kwargs...)
+        catch
+            v
+        end
     reac = OrderedDict{SR, TR}(apply(func, k, args... ; kwargs..., name="", symbol ="") => tryfunc(v) for (k,v) ∈ reactants(r))
     prod = OrderedDict{SP, TP}(apply(func, k, args... ; kwargs..., name="", symbol ="") => tryfunc(v) for (k,v) ∈ products(r))
     return Reaction(reac, prod; equal_sign=equal_sign(r))

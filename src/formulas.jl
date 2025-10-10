@@ -166,7 +166,12 @@ function Base.convert(T::Type{<:Number}, f::Formula)
 end
 
 function apply(func::Function, f::Formula, args... ; kwargs...)
-    tryfunc(v) = try func(ustrip(v), args... ; kwargs...) * unit(v) catch; v end
+    tryfunc(v) =
+        try
+            func(ustrip(v), args...; kwargs...) * func(unit(v), args...; kwargs...)
+        catch
+            v
+        end
     newcomposition = OrderedDict(k => tryfunc(v) for (k,v) ∈ composition(f))
     return Formula{valtype(newcomposition)}(expr(f), phreeqc(f), unicode(f), colored(f), newcomposition, tryfunc(charge(f)))
 end

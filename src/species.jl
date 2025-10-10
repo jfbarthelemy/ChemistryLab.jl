@@ -44,11 +44,13 @@ function Base.setproperty!(s::AbstractSpecies, sym::Symbol, value)
     end
 end
 
+const PropertyType = Union{Number,AbstractVector{<:Number},Function,AbstractString}
+
 struct Species{T<:Number} <: AbstractSpecies
     name::String
     symbol::String
     formula::Formula{T}
-    properties::OrderedDict{Symbol,Number}
+    properties::OrderedDict{Symbol,PropertyType}
 end
 
 expr(s::Species) = expr(formula(s))
@@ -64,17 +66,21 @@ function Species(formula::Formula; name=expr(formula), symbol=expr(formula))
     return Species{valtype(atoms)}(name, symbol, formula, properties)
 end
 
-function Species(;expr::AbstractString="", name=expr, symbol=expr)
+function Species(; expr::AbstractString="", name=expr, symbol=expr)
     formula = Formula(expr)
     return Species(formula; name=name, symbol=symbol)
 end
-Species(f::AbstractString; name=f, symbol=f) = Species(;expr=f, name=name, symbol=symbol)
+Species(f::AbstractString; name=f, symbol=f) = Species(; expr=f, name=name, symbol=symbol)
 
 function Species(atoms::AbstractDict{Symbol,T}, charge=0; name="", symbol="") where {T}
     formula = Formula(atoms, charge)
     properties = OrderedDict(:molar_mass => calculate_molar_mass(atoms))
-    if length(name) == 0 name = unicode(formula) end
-    if length(symbol) == 0 symbol = name end
+    if length(name) == 0
+        name = unicode(formula)
+    end
+    if length(symbol) == 0
+        symbol = name
+    end
     return Species{valtype(atoms)}(name, symbol, formula, properties)
 end
 
@@ -97,25 +103,27 @@ end
 function Base.show(io::IO, s::Species)
     pad = 11
     println(io, typeof(s))
-    if name(s) != formula(s) && length(name(s))>0
+    if name(s) != formula(s) && length(name(s)) > 0
         println(io, lpad("name", pad), ": ", name(s))
     end
-    if symbol(s) != formula(s) && length(symbol(s))>0
+    if symbol(s) != formula(s) && length(symbol(s)) > 0
         println(io, lpad("symbol", pad), ": ", symbol(s))
     end
     # println(io, lpad("formula", pad), ": ", colored_formula(expr(s)), " | ", colored_formula(phreeqc(s)), " | ", colored_formula(unicode(s)))
     print_formula(io, formula(s), "formula", pad)
     println(io, lpad("atoms", pad), ": ", join(["$k:$v" for (k, v) in atoms(s)], ", "))
     println(io, lpad("charge", pad), ": ", charge(s))
-    if length(properties(s))>0 print(io, lpad("properties", pad), ": ", join(["$k = $v" for (k, v) in properties(s)], "\n"*repeat(" ", pad+2))) end
+    if length(properties(s)) > 0
+        print(io, lpad("properties", pad), ": ", join(["$k = $v" for (k, v) in properties(s)], "\n" * repeat(" ", pad + 2)))
+    end
 end
 
-struct CemSpecies{T<:Number, S<:Number} <: AbstractSpecies
+struct CemSpecies{T<:Number,S<:Number} <: AbstractSpecies
     name::String
     symbol::String
     formula::Formula{T}
     cemformula::Formula{S}
-    properties::OrderedDict{Symbol,Number}
+    properties::OrderedDict{Symbol,PropertyType}
 end
 
 cemformula(s::CemSpecies) = s.cemformula
@@ -153,8 +161,12 @@ CemSpecies(f::AbstractString; name=f, symbol=f) = CemSpecies(; expr=f, name=name
 
 function CemSpecies(oxides::AbstractDict{Symbol,T}, charge=0; name="", symbol="") where {T}
     cemformula = Formula(oxides, charge; order=OXIDE_ORDER)
-    if length(name) == 0 name = unicode(cemformula) end
-    if length(symbol) == 0 symbol = name end
+    if length(name) == 0
+        name = unicode(cemformula)
+    end
+    if length(symbol) == 0
+        symbol = name
+    end
     return CemSpecies(cemformula; name=name, symbol=symbol)
 end
 
@@ -163,9 +175,9 @@ function CemSpecies(oxides::Pair{Symbol,T}...; name="", symbol="") where {T}
 end
 
 function CemSpecies(s::Species)
-    candidate_primaries = [Species(d; symbol=string(k)) for (k,d) in cement_to_mendeleev]
+    candidate_primaries = [Species(d; symbol=string(k)) for (k, d) in cement_to_mendeleev]
     A, indep_comp, dep_comp = stoich_matrix([s], candidate_primaries; display=false)
-    oxides = OrderedDict(Symbol(symbol(indep_comp[i])) => A[i,1] for i in 1:size(A, 1))
+    oxides = OrderedDict(Symbol(symbol(indep_comp[i])) => A[i, 1] for i in 1:size(A, 1))
     return CemSpecies(oxides, charge(s); name=name(s), symbol=symbol(s))
 end
 
@@ -192,10 +204,10 @@ end
 function Base.show(io::IO, s::CemSpecies)
     pad = 11
     println(io, typeof(s))
-    if name(s) != expr(s) && length(name(s))>0
+    if name(s) != expr(s) && length(name(s)) > 0
         println(io, lpad("name", pad), ": ", name(s))
     end
-    if symbol(s) != expr(s) && length(symbol(s))>0
+    if symbol(s) != expr(s) && length(symbol(s)) > 0
         println(io, lpad("symbol", pad), ": ", symbol(s))
     end
     cf = cemformula(s)
@@ -207,7 +219,9 @@ function Base.show(io::IO, s::CemSpecies)
     print_formula(io, f, "formula", pad)
     println(io, lpad("atoms", pad), ": ", join(["$k:$v" for (k, v) in atoms(s)], ", "))
     println(io, lpad("charge", pad), ": ", charge(s))
-    if length(properties(s))>0 print(io, lpad("properties", pad), ": ", join(["$k = $v" for (k, v) in properties(s)], "\n"*repeat(" ", pad+2))) end
+    if length(properties(s)) > 0
+        print(io, lpad("properties", pad), ": ", join(["$k = $v" for (k, v) in properties(s)], "\n" * repeat(" ", pad + 2)))
+    end
 end
 
 Base.promote_rule(::Type{Species}, ::Type{<:AbstractSpecies}) = Species
@@ -219,11 +233,16 @@ Base.promote_rule(::Type{Species{T}}, ::Type{Species}) where {T} = Species
 Base.promote_rule(::Type{<:CemSpecies}, ::Type{Species{T}}) where {T} = Species
 Base.promote_rule(::Type{Species{T}}, ::Type{<:CemSpecies}) where {T} = Species
 
-function apply(func::Function, s::S, args... ; kwargs...) where {S<:AbstractSpecies}
-    tryfunc(v) = try func(ustrip(v), args... ; kwargs...) * unit(v) catch; v end
-    newcomponents = OrderedDict(k => tryfunc(v) for (k,v) ∈ components(s))
+function apply(func::Function, s::S, args...; kwargs...) where {S<:AbstractSpecies}
+    tryfunc(v) =
+        try
+            func(ustrip(v), args...; kwargs...) * func(unit(v), args...; kwargs...)
+        catch
+            v
+        end
+    newcomponents = OrderedDict(k => tryfunc(v) for (k, v) ∈ components(s))
     newSpecies = root_type(typeof(s))(newcomponents, tryfunc(charge(s)); name=get(kwargs, :name, name(s)), symbol=get(kwargs, :symbol, symbol(s)))
-    for (k,v) in properties(s)
+    for (k, v) in properties(s)
         newSpecies[k] = tryfunc(v)
     end
     return newSpecies

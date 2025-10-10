@@ -1,7 +1,7 @@
 using Revise, CementChemistry, Unicode
 import Unitful: u, g, cm, K, J, mol, Quantity, uconvert, ustrip
 using SymPy
-import Symbolics: @variables, substitute
+import Symbolics: @variables, substitute, value
 
 
 # Formula
@@ -141,7 +141,7 @@ H₂O = Species("H₂O")
 CO₂ = Species("CO₂")
 r = Reaction([CₙH₂ₙ₊₂, O₂], [H₂O, CO₂])
 for vn in 1:9 println("n=$vn ⇒ ", apply(substitute, r, n=>vn)) end
-for vn in 1:9 println("n=$vn ⇒ ", apply(stoich_coef_round∘Symbolics.value∘substitute, r, n=>vn)) end
+for vn in 1:9 println("n=$vn ⇒ ", apply(stoich_coef_round∘value∘substitute, r, n=>vn)) end
 
 # Example from https://github.com/thermohub/chemicalfun
 formulas = ["Ca+2", "Fe+2", "Fe|3|+3", "H+", "OH-", "SO4-2", "CaSO4@", "CaOH+", "FeO@", "HFe|3|O2@", "FeOH+", "Fe|3|OH+2", "H2O@",  "FeS|-2|", "FeS|0|S|-2|", "S|4|O2"] ;
