@@ -258,7 +258,7 @@ end
 const EQUAL_OPS = union(fwd_arrows[2:end], bwd_arrows[2:end], double_arrows, pure_rate_arrows, equal_signs[2:end])
 
 for OP in Symbol.(EQUAL_OPS)
-    @eval $OP(r,s) = Reaction(-Reaction(r)+Reaction(s); equal_sign=first(string($OP)))
+    @eval $OP(r,s) = Reaction(-Reaction(r)+Reaction(s); equal_sign=first(string($OP)), side=:sign)
 end
 
 function Base.show(io::IO, r::Reaction)
