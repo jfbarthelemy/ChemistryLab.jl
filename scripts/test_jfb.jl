@@ -14,7 +14,7 @@ fNa⁺ = :Na+:Zz
 
 # Species
 fH₂O = 2*:H + :O
-H₂O = Species(fH₂O)
+H₂O = Species(fH₂O; aggregate_state=AS_AQUEOUS, class=SC_AQSOLVENT)
 HSO₄⁻ = Species("HSO₄⁻")
 CO₂ = Species(Dict(:C=>1, :O=>2); name="CO₂")
 species = [H₂O, HSO₄⁻, CO₂] ;

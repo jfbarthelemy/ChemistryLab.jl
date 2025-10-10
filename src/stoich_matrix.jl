@@ -115,7 +115,8 @@ function stoich_matrix(vs::Vector{<:AbstractSpecies}, candidate_primaries::Vecto
     candidate_primaries = deepcopy(candidate_primaries)
 
     for x in candidate_primaries
-        if x ∉ species && all(k -> first(k) ∈ initial_involved_atoms || first(k) == :Zz, vec_components(x))
+        idx = findfirst(y->x==y, species)
+        if (isnothing(idx) || symbol(species[idx]) != symbol(x)) && all(k -> first(k) ∈ initial_involved_atoms || first(k) == :Zz, vec_components(x))
             push!(species, x)
         end
     end
@@ -139,7 +140,7 @@ function stoich_matrix(vs::Vector{<:AbstractSpecies}, candidate_primaries::Vecto
         M = M[1:end-1, 1:end-1]
     end
 
-    cols_candidates = [findfirst(y -> y == x, species) for x in candidate_primaries]
+    cols_candidates = [findfirst(y -> y == x && symbol(y) == symbol(x), species) for x in candidate_primaries]
     filter!(x-> !isnothing(x), cols_candidates)
     M_subset = M[:, cols_candidates]
     if size(M_subset, 1) >= size(M_subset, 2)
