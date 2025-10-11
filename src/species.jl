@@ -199,7 +199,7 @@ function CemSpecies(s::Species; name=name(s), symbol=symbol(s), aggregate_state=
     end
     x = stoich_coef_round.(Aoxides\b)
     bcalc = stoich_coef_round.(Aoxides*x)
-    if try isequal(bcalc, b) catch; try isapprox(bcalc, b) catch; false end end
+    if try isequal(bcalc, b) || isapprox(bcalc, b; rtol=1.e-4) catch; false end
         oxides = OrderedDict(OXIDE_ORDER[i] => vx for (i,vx) in enumerate(x) if !iszero(vx))
         return CemSpecies(oxides, charge(s); name=name, symbol=symbol, aggregate_state=aggregate_state, class=class)
     else
