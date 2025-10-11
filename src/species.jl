@@ -187,11 +187,24 @@ function CemSpecies(oxides::Pair{Symbol,T}...; name="", symbol="", aggregate_sta
     return CemSpecies(OrderedDict(oxides...); name=name, symbol=symbol, aggregate_state=aggregate_state, class=class)
 end
 
-function CemSpecies(s::Species)
-    candidate_primaries = [Species(d; symbol=string(k), aggregate_state=aggregate_state(s), class=class(s)) for (k, d) in cement_to_mendeleev]
-    A, indep_comp, dep_comp = stoich_matrix([s], candidate_primaries; display=false)
-    oxides = OrderedDict(Symbol(symbol(indep_comp[i])) => A[i, 1] for i in 1:size(A, 1))
-    return CemSpecies(oxides, charge(s); name=name(s), symbol=symbol(s), aggregate_state=aggregate_state(s), class=class(s))
+function CemSpecies(s::Species; name=name(s), symbol=symbol(s), aggregate_state=aggregate_state(s), class=class(s))
+    satoms = atoms(s)
+    b = zeros(valtype(satoms), size(Aoxides, 1))
+    for (atom, coef) in satoms
+        if atom ∉ atoms_in_oxides
+            error("$(name) cannot be decomposed in cement oxides since $(atom) does not belong to cement atoms")
+        else
+            b[order_atom_in_oxides[atom]] = coef
+        end
+    end
+    x = stoich_coef_round.(Aoxides\b)
+    bcalc = stoich_coef_round.(Aoxides*x)
+    if try isequal(bcalc, b) catch; try isapprox(bcalc, b) catch; false end end
+        oxides = OrderedDict(OXIDE_ORDER[i] => vx for (i,vx) in enumerate(x) if !iszero(vx))
+        return CemSpecies(oxides, charge(s); name=name, symbol=symbol, aggregate_state=aggregate_state, class=class)
+    else
+        error("$(name) cannot be decomposed in cement oxides")
+    end
 end
 
 Species(s::CemSpecies) = Species{valtype(atoms(s))}(name(s), symbol(s), formula(s), aggregate_state(s), class(s), properties(s))

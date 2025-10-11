@@ -116,7 +116,7 @@ function stoich_matrix(vs::Vector{<:AbstractSpecies}, candidate_primaries::Vecto
 
     for x in candidate_primaries
         idx = findfirst(y->x==y, species)
-        if (isnothing(idx) || symbol(species[idx]) != symbol(x)) && all(k -> first(k) ∈ initial_involved_atoms || first(k) == :Zz, vec_components(x))
+        if isnothing(idx) && all(k -> first(k) ∈ initial_involved_atoms || first(k) == :Zz, vec_components(x))
             push!(species, x)
         end
     end
@@ -140,7 +140,7 @@ function stoich_matrix(vs::Vector{<:AbstractSpecies}, candidate_primaries::Vecto
         M = M[1:end-1, 1:end-1]
     end
 
-    cols_candidates = [findfirst(y -> y == x && symbol(y) == symbol(x), species) for x in candidate_primaries]
+    cols_candidates = [findfirst(y -> y == x, species) for x in candidate_primaries]
     filter!(x-> !isnothing(x), cols_candidates)
     M_subset = M[:, cols_candidates]
     if size(M_subset, 1) >= size(M_subset, 2)
@@ -171,3 +171,8 @@ function stoich_matrix(vs::Vector{<:AbstractSpecies}, candidate_primaries::Vecto
     return A, indep_comp, dep_comp 
 end
 
+const oxides_as_species = [Species(d; symbol=string(k)) for (k, d) in cement_to_mendeleev]
+
+const Aoxides, atoms_in_oxides = canonical_stoich_matrix(oxides_as_species; display=false)
+
+const order_atom_in_oxides = Dict(atom=>i for (i, atom) in enumerate(atoms_in_oxides))

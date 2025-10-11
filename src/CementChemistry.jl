@@ -27,7 +27,7 @@ export Formula, expr, phreeqc, unicode, colored, composition, charge, apply
 export AggregateState, AS_UNDEF, AS_AQUEOUS, AS_CRYSTAL, AS_GAS
 export Class, SC_UNDEF, SC_AQSOLVENT, SC_AQSOLUTE, SC_COMPONENT, SC_GAS_FLUID
 export AbstractSpecies, Species, CemSpecies
-export name, symbol, formula, cemformula, atoms, atoms_charge, oxides, oxides_charge, components, properties
+export name, symbol, formula, cemformula, atoms, atoms_charge, oxides, oxides_charge, components, aggregate_state, class, properties
 export merge_json, parse_cemdata18_thermofun, extract_primary_species
 export union_atoms, print_stoich_matrix, canonical_stoich_matrix, stoich_matrix, stoich_matrix_to_equations, stoich_matrix_to_reactions
 export Reaction, CemReaction, reactants, products, simplify_reaction
