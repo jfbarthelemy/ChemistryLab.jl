@@ -109,9 +109,7 @@ end
 
 function Reaction(reactants::AbstractDict{SR, TR}, products::AbstractDict{SP, TP} ; equal_sign='=', properties::AbstractDict{Symbol,PropertyType}=OrderedDict{Symbol,PropertyType}(), side::Symbol=:sign) where {SR<:AbstractSpecies, TR<:Number, SP<:AbstractSpecies, TP<:Number}
 
-    if side != :sign
-        reactants, products = split_species_by_stoich(merge_species_by_stoich(reactants, products); side=side)
-    end
+    reactants, products = split_species_by_stoich(merge_species_by_stoich(reactants, products); side=side)
 
     sreac, creac, charge_left = format_side(reactants)
     sprod, cprod, charge_right = format_side(products)
@@ -156,7 +154,7 @@ Base.convert(::Type{Reaction{U,T}}, s::S) where {U<:AbstractSpecies, T<:Number, 
 Reaction(s::S) where {S<:AbstractSpecies} = Reaction(OrderedDict(s => 1))
 Reaction{U,T}(s::S) where {U<:AbstractSpecies, T<:Number, S<:AbstractSpecies} = Reaction(OrderedDict(s => 1))
 
-Reaction(r::R; equal_sign=r.equal_sign, properties=r.properties, side::Symbol=:none) where {R<:Reaction} = equal_sign == r.equal_sign && side == :none ? r : Reaction(reactants(r), products(r); equal_sign=equal_sign, side=side, properties=properties)
+Reaction(r::R; equal_sign=r.equal_sign, properties=r.properties, side::Symbol=:sign) where {R<:Reaction} = Reaction(reactants(r), products(r); equal_sign=equal_sign, side=side, properties=properties)
 
 function simplify_reaction(r::Reaction)
     reac = remove_zeros(deepcopy(reactants(r)))
