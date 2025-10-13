@@ -107,9 +107,11 @@ function format_side(side::AbstractDict{S, T}) where {S<:AbstractSpecies, T<:Num
     return join(equation, " + "), join(coleq, " + "), ch
 end
 
-function Reaction(reactants::AbstractDict{SR, TR}, products::AbstractDict{SP, TP} ; equal_sign='=', properties::AbstractDict{Symbol,PropertyType}=OrderedDict{Symbol,PropertyType}(), side::Symbol=:sign) where {SR<:AbstractSpecies, TR<:Number, SP<:AbstractSpecies, TP<:Number}
+function Reaction(reactants::AbstractDict{SR, TR}, products::AbstractDict{SP, TP} ; equal_sign='=', properties::AbstractDict{Symbol,PropertyType}=OrderedDict{Symbol,PropertyType}(), side::Symbol=:none) where {SR<:AbstractSpecies, TR<:Number, SP<:AbstractSpecies, TP<:Number}
 
-    reactants, products = split_species_by_stoich(merge_species_by_stoich(reactants, products); side=side)
+    if side != :none
+        reactants, products = split_species_by_stoich(merge_species_by_stoich(reactants, products); side=side)
+    end
 
     sreac, creac, charge_left = format_side(reactants)
     sprod, cprod, charge_right = format_side(products)
@@ -154,7 +156,7 @@ Base.convert(::Type{Reaction{U,T}}, s::S) where {U<:AbstractSpecies, T<:Number, 
 Reaction(s::S) where {S<:AbstractSpecies} = Reaction(OrderedDict(s => 1))
 Reaction{U,T}(s::S) where {U<:AbstractSpecies, T<:Number, S<:AbstractSpecies} = Reaction(OrderedDict(s => 1))
 
-Reaction(r::R; equal_sign=r.equal_sign, properties=r.properties, side::Symbol=:sign) where {R<:Reaction} = Reaction(reactants(r), products(r); equal_sign=equal_sign, side=side, properties=properties)
+Reaction(r::R; equal_sign=r.equal_sign, properties=r.properties, side::Symbol=:none) where {R<:Reaction} = Reaction(reactants(r), products(r); equal_sign=equal_sign, side=side, properties=properties)
 
 function simplify_reaction(r::Reaction)
     reac = remove_zeros(deepcopy(reactants(r)))
@@ -201,17 +203,17 @@ function Reaction(species::AbstractVector{<:AbstractSpecies}; equal_sign='=', pr
     return Reaction(species_stoich; equal_sign=equal_sign, properties=properties, side=side)
 end
 
-function Reaction(reac::AbstractVector{<:AbstractSpecies}, prod::AbstractVector{<:AbstractSpecies}; equal_sign='=', properties::AbstractDict{Symbol,PropertyType}=OrderedDict{Symbol,PropertyType}(), scaling=1, auto_scale=false, side::Symbol=:sign)
+function Reaction(reac::AbstractVector{<:AbstractSpecies}, prod::AbstractVector{<:AbstractSpecies}; equal_sign='=', properties::AbstractDict{Symbol,PropertyType}=OrderedDict{Symbol,PropertyType}(), scaling=1, auto_scale=false, side::Symbol=:none)
     species = [reac ; prod]
     species_stoich = build_species_stoich(species; scaling=scaling, auto_scale=auto_scale)
     S, T = keytype(species_stoich), valtype(species_stoich)
-    if side != :sign
+    if side != :none
         return Reaction(species_stoich; equal_sign=equal_sign, properties=properties, side=side)
     else
         return Reaction(ordered_dict_with_default((k=>-v for (k,v) in species_stoich if k in reac), S, T), 
                         ordered_dict_with_default((k=>v for (k,v) in species_stoich if k in prod), S, T)
                         ; 
-                        equal_sign=equal_sign, properties=properties, side=side)
+                        equal_sign=equal_sign, properties=properties, side=:none)
     end
 end
 
@@ -274,9 +276,25 @@ end
 
 function Base.show(io::IO, r::Reaction)
     print(io, colored(r))
+    # if length(properties(r)) > 0
+    #     pad = 11
+    #     print(io, "  [ ", join(["$k = $v" for (k, v) in properties(r)], " ; "), " ]")
+    # end
+end
+
+function Base.show(io::IO, ::MIME"text/plain", r::Reaction)
+    println(io, colored(r))
+    pad = 10
+    if length(reactants(r)) > 0
+        println(io, lpad("reactants", pad), ": ", join(["$(name(k))→$v" for (k, v) in reactants(r)], ", "))
+        # println(io, lpad("reactants", pad), ": ", join(["$(name(k))→$v" for (k, v) in reactants(r)], "\n" * repeat(" ", pad + 2)))
+    end
+    if length(products(r)) > 0
+        println(io, lpad("products", pad), ": ", join(["$(name(k))→$v" for (k, v) in products(r)], ", "))
+        # println(io, lpad("products", pad), ": ", join(["$(name(k))→$v" for (k, v) in products(r)], "\n" * repeat(" ", pad + 2)))
+    end
     if length(properties(r)) > 0
-        pad = 11
-        print(io, "  [ ", join(["$k = $v" for (k, v) in properties(r)], " ; "), " ]")
+        print(io, lpad("properties", pad), ": ", join(["$k = $v" for (k, v) in properties(r)], "\n" * repeat(" ", pad + 2)))
     end
 end
 
@@ -288,7 +306,9 @@ function apply(func::Function, r::Reaction{SR, TR, SP, TP}, args... ; kwargs...)
         )
     reac = OrderedDict{SR, TR}(apply(func, k, args... ; kwargs..., name="", symbol ="") => tryfunc(v) for (k,v) ∈ reactants(r))
     prod = OrderedDict{SP, TP}(apply(func, k, args... ; kwargs..., name="", symbol ="") => tryfunc(v) for (k,v) ∈ products(r))
-    newReaction = Reaction(reac, prod; equal_sign=equal_sign(r))
+    newReaction = Reaction(reac, prod; equal_sign=get(kwargs, :equal_sign, equal_sign(r)), 
+                                       properties=get(kwargs, :properties, properties(r)),
+                                       side=get(kwargs, :side, :none))
         for (k, v) in properties(r)
         newReaction[k] = tryfunc(v)
     end

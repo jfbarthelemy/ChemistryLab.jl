@@ -109,14 +109,18 @@ Base.isequal(f1::Formula, f2::Formula) = isequal(composition(f1), composition(f2
 ==(f1::Formula, f2::Formula) = isequal(f1, f2)
 Base.hash(f::Formula, h::UInt) = hash(composition(f), hash(charge(f), h))
 
-print_formula(io::IO, s::Formula, title::String, pad::Int) = println(io, lpad(title, pad), ": ", join(unique!([expr(s),  phreeqc(s), unicode(s), colored(s)]), " ∙ "))
+function Base.show(io::IO, f::Formula)
+    print(io, join(unique!([expr(f),  phreeqc(f), unicode(f), colored(f)]), " ∙ "))
+end
 
-function Base.show(io::IO, s::Formula)
+print_formula(io::IO, f::Formula, title::String, pad::Int) = println(io, lpad(title, pad), ": ", join(unique!([expr(f),  phreeqc(f), unicode(f), colored(f)]), " ∙ "))
+
+function Base.show(io::IO, ::MIME"text/plain", f::Formula)
     pad = 11
-    println(io, typeof(s))
-    print_formula(io, s, "formula", pad)
-    println(io, lpad("composition", pad), ": ", join(["$k:$v" for (k, v) in composition(s)], ", "))
-    println(io, lpad("charge", pad), ": ", charge(s))
+    println(io, typeof(f))
+    print_formula(io, f, "formula", pad)
+    println(io, lpad("composition", pad), ": ", join(["$k→$v" for (k, v) in composition(f)], ", "))
+    println(io, lpad("charge", pad), ": ", charge(f))
 end
 
 function *(f::Formula, x::T) where {T<:Number}

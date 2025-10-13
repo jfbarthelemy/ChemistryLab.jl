@@ -107,6 +107,10 @@ function Species(s::Species; name=name(s), symbol=symbol(s), aggregate_state=agg
 end
 
 function Base.show(io::IO, s::Species)
+    print(io, name(s), " [", formula(s), "]")
+end
+
+function Base.show(io::IO, ::MIME"text/plain", s::Species)
     pad = 15
     println(io, typeof(s))
     if name(s) != formula(s) && length(name(s)) > 0
@@ -229,6 +233,10 @@ function CemSpecies(s::CemSpecies; name=name(s), symbol=symbol(s), aggregate_sta
 end
 
 function Base.show(io::IO, s::CemSpecies)
+    print(io, name(s), " [", cemformula(s), "]")
+end
+
+function Base.show(io::IO, ::MIME"text/plain", s::CemSpecies)
     pad = 15
     println(io, typeof(s))
     if name(s) != expr(s) && length(name(s)) > 0
