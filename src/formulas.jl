@@ -119,7 +119,7 @@ function Base.show(io::IO, ::MIME"text/plain", f::Formula)
     pad = 11
     println(io, typeof(f))
     print_formula(io, f, "formula", pad)
-    println(io, lpad("composition", pad), ": ", join(["$k→$v" for (k, v) in composition(f)], ", "))
+    println(io, lpad("composition", pad), ": ", join(["$k => $v" for (k, v) in composition(f)], ", "))
     println(io, lpad("charge", pad), ": ", charge(f))
 end
 

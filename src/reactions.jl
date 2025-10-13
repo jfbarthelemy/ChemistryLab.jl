@@ -286,11 +286,11 @@ function Base.show(io::IO, ::MIME"text/plain", r::Reaction)
     println(io, colored(r))
     pad = 10
     if length(reactants(r)) > 0
-        println(io, lpad("reactants", pad), ": ", join(["$(name(k))→$v" for (k, v) in reactants(r)], ", "))
+        println(io, lpad("reactants", pad), ": ", join(["$(colored(k)) => $v" for (k, v) in reactants(r)], ", "))
         # println(io, lpad("reactants", pad), ": ", join(["$(name(k))→$v" for (k, v) in reactants(r)], "\n" * repeat(" ", pad + 2)))
     end
     if length(products(r)) > 0
-        println(io, lpad("products", pad), ": ", join(["$(name(k))→$v" for (k, v) in products(r)], ", "))
+        println(io, lpad("products", pad), ": ", join(["$(colored(k)) => $v" for (k, v) in products(r)], ", "))
         # println(io, lpad("products", pad), ": ", join(["$(name(k))→$v" for (k, v) in products(r)], "\n" * repeat(" ", pad + 2)))
     end
     if length(properties(r)) > 0
