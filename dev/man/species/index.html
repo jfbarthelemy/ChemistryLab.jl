@@ -8,7 +8,7 @@ end</code></pre><h2 id="Species-construction"><a class="docs-heading-anchor" hre
 H2O = Species(fH2O)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">Species{Int64}
            name: H2O
          symbol: H2O
-        formula: H2O ∙ H2O ∙ H₂O ∙ H<span class="sgr31"><span class="sgr1">₂</span></span>O
+        formula: H2O ∙ H₂O ∙ H<span class="sgr31"><span class="sgr1">₂</span></span>O
           atoms: H:2, O:1
          charge: 0
 aggregate_state: AS_UNDEF
@@ -16,7 +16,7 @@ aggregate_state: AS_UNDEF
      properties: molar_mass = 18.015 g mol^-1</code></pre><ul><li>a string</li></ul><pre><code class="language-julia hljs">HSO4 = Species(&quot;HSO₄⁻&quot;)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">Species{Int64}
            name: HSO₄⁻
          symbol: HSO₄⁻
-        formula: HSO₄⁻ ∙ HSO4- ∙ HSO₄⁻ ∙ HSO<span class="sgr31"><span class="sgr1">₄</span></span><span class="sgr1"><span class="sgr36">⁻</span></span>
+        formula: HSO₄⁻ ∙ HSO4- ∙ HSO<span class="sgr31"><span class="sgr1">₄</span></span><span class="sgr1"><span class="sgr36">⁻</span></span>
           atoms: H:1, S:1, O:4
          charge: -1
 aggregate_state: AS_UNDEF
@@ -24,7 +24,7 @@ aggregate_state: AS_UNDEF
      properties: molar_mass = 97.06400000000001 g mol^-1</code></pre><ul><li>a dictionary</li></ul><pre><code class="language-julia hljs">CO2 = Species(Dict(:C =&gt; 1, :O =&gt; 2); name=&quot;CO₂&quot;)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">Species{Int64}
            name: CO₂
          symbol: CO₂
-        formula: CO2 ∙ CO2 ∙ CO₂ ∙ CO<span class="sgr31"><span class="sgr1">₂</span></span>
+        formula: CO2 ∙ CO₂ ∙ CO<span class="sgr31"><span class="sgr1">₂</span></span>
           atoms: O:2, C:1
          charge: 0
 aggregate_state: AS_UNDEF
@@ -32,7 +32,7 @@ aggregate_state: AS_UNDEF
      properties: molar_mass = 44.009 g mol^-1</code></pre><blockquote><p><strong><em>NOTE:</em></strong>  To add a charge when creating species with a dictionary, you must add, after the dictionary, the value of the charge (charge is considered an argument of the structure).</p></blockquote><pre><code class="language-julia hljs">CO2 = Species(Dict(:Si =&gt; 1, :O =&gt; 3),-2; name=&quot;SiO₃²⁻&quot;)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">Species{Int64}
            name: SiO₃²⁻
          symbol: SiO₃²⁻
-        formula: SiO3-2 ∙ SiO3-2 ∙ SiO₃-2 ∙ SiO<span class="sgr31"><span class="sgr1">₃</span></span><span class="sgr1"><span class="sgr36">⁻²</span></span>
+        formula: SiO3-2 ∙ SiO₃-2 ∙ SiO<span class="sgr31"><span class="sgr1">₃</span></span><span class="sgr1"><span class="sgr36">⁻²</span></span>
           atoms: Si:1, O:3
          charge: -2
 aggregate_state: AS_UNDEF
@@ -41,9 +41,9 @@ aggregate_state: AS_UNDEF
 C2S = CemSpecies(&quot;C2S&quot;)
 C3A = CemSpecies(&quot;C3A&quot;)
 C4AF = CemSpecies(Dict(:C =&gt; 4, :A =&gt; 1, :F =&gt; 1); name = &quot;C4AF&quot;)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">CemSpecies{Int64, Int64}
-     cemformula: C4AF ∙ C4AF ∙ C₄AF ∙ C<span class="sgr31"><span class="sgr1">₄</span></span>AF
+     cemformula: C4AF ∙ C₄AF ∙ C<span class="sgr31"><span class="sgr1">₄</span></span>AF
          oxides: F:1, A:1, C:4
-        formula: Ca4Al2Fe2O10 ∙ Ca4Al2Fe2O10 ∙ Ca₄Al₂Fe₂O₁₀ ∙ Ca<span class="sgr31"><span class="sgr1">₄</span></span>Al<span class="sgr31"><span class="sgr1">₂</span></span>Fe<span class="sgr31"><span class="sgr1">₂</span></span>O<span class="sgr31"><span class="sgr1">₁₀</span></span>
+        formula: Ca4Al2Fe2O10 ∙ Ca₄Al₂Fe₂O₁₀ ∙ Ca<span class="sgr31"><span class="sgr1">₄</span></span>Al<span class="sgr31"><span class="sgr1">₂</span></span>Fe<span class="sgr31"><span class="sgr1">₂</span></span>O<span class="sgr31"><span class="sgr1">₁₀</span></span>
           atoms: Fe:2, O:10, Al:2, Ca:4
          charge: 0
 aggregate_state: AS_UNDEF
@@ -53,9 +53,9 @@ using SymPy
 â, b̂, ĝ = symbols(&quot;â b̂ ĝ&quot;, real = true)
 ox = Dict(:C =&gt; â, :S =&gt; one(Sym), :A =&gt; b̂, :H =&gt; ĝ)
 CSH = CemSpecies(ox)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">CemSpecies{SymPyCore.Sym{PyCall.PyObject}, SymPyCore.Sym{PyCall.PyObject}}
-     cemformula: CâSAb̂Hĝ ∙ CâSAb̂Hĝ ∙ CâSAb̂Hĝ ∙ C<span class="sgr31"><span class="sgr1">â</span></span>SA<span class="sgr31"><span class="sgr1">b̂</span></span>H<span class="sgr31"><span class="sgr1">ĝ</span></span>
+     cemformula: CâSAb̂Hĝ ∙ C<span class="sgr31"><span class="sgr1">â</span></span>SA<span class="sgr31"><span class="sgr1">b̂</span></span>H<span class="sgr31"><span class="sgr1">ĝ</span></span>
          oxides: A:b̂, H:ĝ, S:1, C:â
-        formula: CaâAl(2b̂)SiH(2ĝ)O(â+3b̂+ĝ+2) ∙ CaâAl(2b̂)SiH(2ĝ)O(â+3b̂+ĝ+2) ∙ CaâAl(2b̂)SiH(2ĝ)O(â+3b̂+ĝ+2) ∙ Ca<span class="sgr31"><span class="sgr1">â</span></span>Al<span class="sgr31"><span class="sgr1">(2b̂)</span></span>SiH<span class="sgr31"><span class="sgr1">(2ĝ)</span></span>O<span class="sgr31"><span class="sgr1">(â+3b̂+ĝ+2)</span></span>
+        formula: CaâAl(2b̂)SiH(2ĝ)O(â+3b̂+ĝ+2) ∙ Ca<span class="sgr31"><span class="sgr1">â</span></span>Al<span class="sgr31"><span class="sgr1">(2b̂)</span></span>SiH<span class="sgr31"><span class="sgr1">(2ĝ)</span></span>O<span class="sgr31"><span class="sgr1">(â+3b̂+ĝ+2)</span></span>
           atoms: Al:2*b̂, O:â + 3*b̂ + ĝ + 2, H:2*ĝ, Si:1, Ca:â
          charge: 0
 aggregate_state: AS_UNDEF
@@ -64,9 +64,9 @@ aggregate_state: AS_UNDEF
 cemH2O = CemSpecies(H2O)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">CemSpecies{Int64, Int64}
            name: H₂O
          symbol: H₂O
-     cemformula: H ∙ H ∙ H ∙ H
+     cemformula: H
          oxides: H:1
-        formula: H2O ∙ H2O ∙ H₂O ∙ H<span class="sgr31"><span class="sgr1">₂</span></span>O
+        formula: H2O ∙ H₂O ∙ H<span class="sgr31"><span class="sgr1">₂</span></span>O
           atoms: H:2, O:1
          charge: 0
 aggregate_state: AS_UNDEF
@@ -75,4 +75,4 @@ aggregate_state: AS_UNDEF
 df_Jennite = filter(row-&gt;row.symbol == &quot;Jennite&quot;, df_substances)
 Jennite = Species(df_Jennite.formula[1]; name=df_Jennite.name[1], symbol=df_Jennite.symbol[1])
 cemJennite = CemSpecies(Jennite)
-println(unicode(Jennite), &quot; ≡ &quot;, unicode(cemJennite))</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">(SiO₂)₁(CaO)₅//₃(H₂O)₂.₁ ≡ C₅//₃SH₂.₁</code></pre><hr/></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../formula_manipulation/">« Chemical Formula Manipulation</a><a class="docs-footer-nextpage" href="../databases/">Database Interoperability »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.14.1 on <span class="colophon-date" title="Monday 13 October 2025 08:57">Monday 13 October 2025</span>. Using Julia version 1.12.0.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+println(unicode(Jennite), &quot; ≡ &quot;, unicode(cemJennite))</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">(SiO₂)₁(CaO)₅//₃(H₂O)₂.₁ ≡ C₅//₃SH₂.₁</code></pre><hr/></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../formula_manipulation/">« Chemical Formula Manipulation</a><a class="docs-footer-nextpage" href="../databases/">Database Interoperability »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.14.1 on <span class="colophon-date" title="Monday 13 October 2025 11:36">Monday 13 October 2025</span>. Using Julia version 1.12.0.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
