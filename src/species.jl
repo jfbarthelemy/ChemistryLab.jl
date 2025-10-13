@@ -124,7 +124,8 @@ function Base.show(io::IO, ::MIME"text/plain", s::Species)
     println(io, lpad("atoms", pad), ": ", join(["$k => $v" for (k, v) in atoms(s)], ", "))
     println(io, lpad("charge", pad), ": ", charge(s))
     println(io, lpad("aggregate_state", pad), ": ", aggregate_state(s))
-    println(io, lpad("class", pad), ": ", class(s))
+    pr = length(properties(s)) > 0 ? println : print
+    pr(io, lpad("class", pad), ": ", class(s))
     if length(properties(s)) > 0
         print(io, lpad("properties", pad), ": ", join(["$k = $v" for (k, v) in properties(s)], "\n" * repeat(" ", pad + 2)))
     end
@@ -255,7 +256,8 @@ function Base.show(io::IO, ::MIME"text/plain", s::CemSpecies)
     println(io, lpad("atoms", pad), ": ", join(["$k => $v" for (k, v) in atoms(s)], ", "))
     println(io, lpad("charge", pad), ": ", charge(s))
     println(io, lpad("aggregate_state", pad), ": ", aggregate_state(s))
-    println(io, lpad("class", pad), ": ", class(s))
+    pr = length(properties(s)) > 0 ? println : print
+    pr(io, lpad("class", pad), ": ", class(s))
     if length(properties(s)) > 0
         print(io, lpad("properties", pad), ": ", join(["$k = $v" for (k, v) in properties(s)], "\n" * repeat(" ", pad + 2)))
     end
