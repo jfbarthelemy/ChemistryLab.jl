@@ -109,7 +109,7 @@ end
 
 function Reaction(reactants::AbstractDict{SR, TR}, products::AbstractDict{SP, TP} ; equal_sign='=', properties::AbstractDict{Symbol,PropertyType}=OrderedDict{Symbol,PropertyType}(), side::Symbol=:none) where {SR<:AbstractSpecies, TR<:Number, SP<:AbstractSpecies, TP<:Number}
 
-    if side != :none
+    if side ∈ (:sign, :products, :reactants)
         reactants, products = split_species_by_stoich(merge_species_by_stoich(reactants, products); side=side)
     end
 
@@ -313,5 +313,4 @@ function apply(func::Function, r::Reaction{SR, TR, SP, TP}, args... ; kwargs...)
         newReaction[k] = tryfunc(v)
     end
     return newReaction
-
 end
