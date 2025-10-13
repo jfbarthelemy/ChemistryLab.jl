@@ -43,8 +43,9 @@ function Formula(expr::AbstractString="")
 end
 
 function Formula(composition::AbstractDict{Symbol,T}, charge=0; order=ATOMIC_ORDER) where {T<:Number}
+    charge_symbols = [:Zz, :Zz⁺, :e, :e⁻]
     # 1. Filter out charge symbols and convert to Vector for sorting
-    filtered_keys = setdiff(keys(composition), [:Zz, :Zz⁺, :e, :e⁻])
+    filtered_keys = setdiff(keys(composition), charge_symbols)
     sorted_keys = sort(collect(filtered_keys), by=k -> findfirst(==(k), order))
 
     # 2. Build the formula string
@@ -92,10 +93,7 @@ function Formula(composition::AbstractDict{Symbol,T}, charge=0; order=ATOMIC_ORD
     end
 
     # 4. Clean composition (remove charge keys)
-    newcomposition = copy(composition)
-    for s in [:Zz, :Zz⁺, :e, :e⁻]
-        pop!(newcomposition, s, nothing)
-    end
+    newcomposition = OrderedDict(k => v for (k,v) in composition if k ∉ charge_symbols && !iszero(v))
 
     return Formula{T}(expr, unicode_to_phreeqc(expr), uni, col_expr, newcomposition, charge)
 end
@@ -111,14 +109,11 @@ Base.isequal(f1::Formula, f2::Formula) = isequal(composition(f1), composition(f2
 ==(f1::Formula, f2::Formula) = isequal(f1, f2)
 Base.hash(f::Formula, h::UInt) = hash(composition(f), hash(charge(f), h))
 
-function print_formula(io::IO, s::Formula, title::String, pad::Int)
-    println(io, lpad(title, pad), ": ", expr(s), " ∙ ", phreeqc(s), " ∙ ", (unicode(s)), " ∙ ", (colored(s)))
-end
+print_formula(io::IO, s::Formula, title::String, pad::Int) = println(io, lpad(title, pad), ": ", join(unique!([expr(s),  phreeqc(s), unicode(s), colored(s)]), " ∙ "))
 
 function Base.show(io::IO, s::Formula)
     pad = 11
     println(io, typeof(s))
-    # println(io, lpad("formula", pad), ": ", colored_formula(expr(s)), " | ", colored_formula(phreeqc(s)), " | ", colored_formula((unicode(s))))
     print_formula(io, s, "formula", pad)
     println(io, lpad("composition", pad), ": ", join(["$k:$v" for (k, v) in composition(s)], ", "))
     println(io, lpad("charge", pad), ": ", charge(s))

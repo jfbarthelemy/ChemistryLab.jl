@@ -37,27 +37,21 @@ function Base.setproperty!(r::Reaction, sym::Symbol, value)
     return r
 end
 
-function Reaction(equation::AbstractString)
+function Reaction(equation::AbstractString, S::Type{<:AbstractSpecies} = Species)
     reactants, products, equal_sign = parse_equation(equation)
+    r = OrderedDict(S(k) => stoich_coef_round(v) for (k, v) in reactants if !iszero(v))
+    p = OrderedDict(S(k) => stoich_coef_round(v) for (k, v) in products if !iszero(v))
+    default_dict = OrderedDict{S,Number}()
     return Reaction(equation,
                     colored_equation(equation),
-                    OrderedDict(Species(k) => stoich_coef_round(v) for (k, v) in reactants),
-                    OrderedDict(Species(k) => stoich_coef_round(v) for (k, v) in products),
+                    isempty(r) ? default_dict : r,
+                    isempty(p) ? default_dict : p,
                     equal_sign,
                     OrderedDict{Symbol,PropertyType}()
                     )
 end
 
-function CemReaction(equation::AbstractString)
-    reactants, products, equal_sign = parse_equation(equation)
-    return Reaction(equation,
-                    colored_equation(equation),
-                    OrderedDict(CemSpecies(k) => stoich_coef_round(v) for (k, v) in reactants),
-                    OrderedDict(CemSpecies(k) => stoich_coef_round(v) for (k, v) in products),
-                    equal_sign,
-                    OrderedDict{Symbol,PropertyType}()
-                    )
-end
+CemReaction(equation::AbstractString) = Reaction(equation, CemSpecies)
 
 function split_species_by_stoich(species_stoich::AbstractDict{S, T}; side::Symbol=:sign) where {S<:AbstractSpecies, T<:Number}
     reactants = OrderedDict{S,T}()
@@ -74,9 +68,12 @@ function split_species_by_stoich(species_stoich::AbstractDict{S, T}; side::Symbo
     return reactants, products
 end
 
-function merge_species_by_stoich(reactants::AbstractDict{<:AbstractSpecies, <:Number}, products::AbstractDict{<:AbstractSpecies, <:Number})
-    return merge(+, OrderedDict(species => -stoich_coef_round(coef) for (species, coef) in reactants),
-                    OrderedDict(species => stoich_coef_round(coef) for (species, coef) in products))
+function merge_species_by_stoich(reactants::AbstractDict{SR,TR}, products::AbstractDict{SP,TP}) where {SR<:AbstractSpecies, TR<:Number, SP<:AbstractSpecies, TP<:Number}
+    r = OrderedDict(species => -stoich_coef_round(coef) for (species, coef) in reactants)
+    isempty(r) && (r = OrderedDict{SR,TR}())
+    p = OrderedDict(species => stoich_coef_round(coef) for (species, coef) in products)
+    isempty(p) && (p = OrderedDict{SP,TP}())
+    return merge(+, r, p)
 end
 
 function format_side(side::AbstractDict{S, T}) where {S<:AbstractSpecies, T<:Number}
@@ -158,7 +155,10 @@ function simplify_reaction(r::Reaction)
     common_species = intersect(keys(reac), keys(prod))
     for species in common_species
         coef = prod[species] - reac[species]
-        if try coef>0 catch; true end
+        if iszero(coef)
+            pop!(reac, species)
+            pop!(prod, species)
+        elseif try coef>0 catch; true end
             prod[species] = coef
             pop!(reac, species)
         else
