@@ -105,7 +105,7 @@ A, _, _ = stoich_matrix([C3S], [CSH, H, CH]; involve_all_atoms=true) ;
 simplify.(A)
 
 # Chen & Brouwers
-CSH = CemSpecies(Dict(:C => â, :S => 1, :A => b̂, :H => ĝ))
+CSH = CemSpecies(Dict(:C => â, :S => one(â), :A => b̂, :H => ĝ))
 HT = CemSpecies("M₅AH₁₃")
 HG = CemSpecies("C₆AFS₂H₈")
 AFt = CemSpecies("C₆S̄₃H₃₂")
