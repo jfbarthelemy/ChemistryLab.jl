@@ -84,7 +84,7 @@ function stoich_matrix_to_reactions(A::AbstractMatrix, indep_comp_names::Abstrac
     return eqns
 end
 
-function canonical_stoich_matrix(species::Vector{<:AbstractSpecies}; display = true)
+function canonical_stoich_matrix(species::Vector{<:AbstractSpecies}; display=true, label=:symbol)
     involved_atoms_dicts = same_components(species).(species)
     involved_atoms = union_atoms(involved_atoms_dicts, item_order(species))
     T = promote_type(valtype.(involved_atoms_dicts)...)
@@ -94,11 +94,11 @@ function canonical_stoich_matrix(species::Vector{<:AbstractSpecies}; display = t
             A[i, j] = get(atoms, atom, zero(T))
         end
     end
-    if display print_stoich_matrix(A, involved_atoms, symbol.(species)) end
+    if display print_stoich_matrix(A, involved_atoms, eval(label).(species)) end
     return A, involved_atoms
 end
 
-function stoich_matrix(vs::Vector{<:AbstractSpecies}, candidate_primaries::Vector{<:AbstractSpecies}=vs; display = true, involve_all_atoms = false, reorder_primaries=false)
+function stoich_matrix(vs::Vector{<:AbstractSpecies}, candidate_primaries::Vector{<:AbstractSpecies}=vs; display=true, label=:symbol, involve_all_atoms=false, reorder_primaries=false)
 
     safe_rank(A; rtol=1e-6) = try rank(A, rtol=rtol) catch; try rank(A) catch; min(size(A)...) end end
     safe_pinv(A) = try pinv(A) catch; inv(A) end
@@ -166,7 +166,7 @@ function stoich_matrix(vs::Vector{<:AbstractSpecies}, candidate_primaries::Vecto
         dep_comp = dep_comp[1:end-1]
     end
 
-    if display print_stoich_matrix(A, symbol.(indep_comp), symbol.(dep_comp)) end
+    if display print_stoich_matrix(A, eval(label).(indep_comp), eval(label).(dep_comp)) end
 
     return A, indep_comp, dep_comp 
 end

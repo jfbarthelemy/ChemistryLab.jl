@@ -16,6 +16,20 @@ properties(r::Reaction) = r.properties
 
 Base.getindex(r::Reaction, i::Symbol) = get(properties(r), i, nothing)
 
+function Base.getindex(r::Reaction, s::AbstractSpecies)
+    coef = get(r.products, s, nothing)
+    if isnothing(coef)
+        coef = get(r.reactants, s, nothing)
+        if !isnothing(coef)
+            coef = -coef
+        else
+            # println("$(root_type(typeof(s))) $(colored(s)) not found in the reaction $(colored(r))")
+            return 0
+        end
+    end
+    return coef
+end
+
 Base.setindex!(r::Reaction, value, i::Symbol) = setindex!(properties(r), value, i)
 
 function Base.getproperty(r::Reaction, sym::Symbol)
@@ -37,12 +51,6 @@ function Base.setproperty!(r::Reaction, sym::Symbol, value)
     return r
 end
 
-function ordered_dict_with_default(gen, key_type, val_type)
-    d = OrderedDict(gen)
-    isempty(d) && (d = OrderedDict{key_type, val_type}())
-    return d
-end
-
 function remove_zeros(d::AbstractDict)
     for (k,v) in d
         if iszero(v)
@@ -52,25 +60,30 @@ function remove_zeros(d::AbstractDict)
     return d
 end
 
-function Reaction(equation::AbstractString, S::Type{<:AbstractSpecies} = Species)
+function Reaction(equation::AbstractString, S::Type{<:AbstractSpecies} = Species; properties::AbstractDict=OrderedDict{Symbol,PropertyType}(), side::Symbol=:none)
     reactants, products, equal_sign = parse_equation(equation)
-    return Reaction(equation,
+    r = Reaction(equation,
                     colored_equation(equation),
                     ordered_dict_with_default((S(k) => stoich_coef_round(v) for (k, v) in reactants if !iszero(v)), S, Number),
                     ordered_dict_with_default((S(k) => stoich_coef_round(v) for (k, v) in products if !iszero(v)), S, Number),
                     equal_sign,
-                    OrderedDict{Symbol,PropertyType}()
+                    OrderedDict{Symbol,PropertyType}(k=>v for (k,v) in properties)
                     )
+    if side == :none
+        return r
+    else
+        return Reaction(r; side=side)
+    end
 end
 
-CemReaction(equation::AbstractString) = Reaction(equation, CemSpecies)
+CemReaction(equation::AbstractString, args...; kwargs...) = Reaction(equation, CemSpecies, args...; kwargs...)
 
 function split_species_by_stoich(species_stoich::AbstractDict{S, T}; side::Symbol=:sign) where {S<:AbstractSpecies, T<:Number}
     reactants = OrderedDict{S,T}()
     products = OrderedDict{S,T}()
     for (species, coef) in species_stoich
         if !iszero(coef)
-            if try (coef < 0 && side == :sign) || side == :reactants catch; false end
+            if try side == :reactants || side == :left || (coef < 0 && side == :sign) catch; false end
                 reactants[species] = -stoich_coef_round(coef)
             else
                 products[species] = stoich_coef_round(coef)
@@ -107,9 +120,9 @@ function format_side(side::AbstractDict{S, T}) where {S<:AbstractSpecies, T<:Num
     return join(equation, " + "), join(coleq, " + "), ch
 end
 
-function Reaction(reactants::AbstractDict{SR, TR}, products::AbstractDict{SP, TP} ; equal_sign='=', properties::AbstractDict{Symbol,PropertyType}=OrderedDict{Symbol,PropertyType}(), side::Symbol=:none) where {SR<:AbstractSpecies, TR<:Number, SP<:AbstractSpecies, TP<:Number}
+function Reaction(reactants::AbstractDict{SR, TR}, products::AbstractDict{SP, TP} ; equal_sign='=', properties::AbstractDict=OrderedDict{Symbol,PropertyType}(), side::Symbol=:none) where {SR<:AbstractSpecies, TR<:Number, SP<:AbstractSpecies, TP<:Number}
 
-    if side ∈ (:sign, :products, :reactants)
+    if side ∈ (:sign, :products, :right, :reactants, :left)
         reactants, products = split_species_by_stoich(merge_species_by_stoich(reactants, products); side=side)
     end
 
@@ -142,13 +155,13 @@ function Reaction(reactants::AbstractDict{SR, TR}, products::AbstractDict{SP, TP
                     reactants,
                     products,
                     equal_sign,
-                    properties
+                    OrderedDict{Symbol,PropertyType}(k=>v for (k,v) in properties)
                     )
 end
 
-function Reaction(species_stoich::AbstractDict{S, T}; equal_sign::Char='=', properties::AbstractDict{Symbol,PropertyType}=OrderedDict{Symbol,PropertyType}(), side::Symbol=:sign) where {S<:AbstractSpecies, T<:Number}
+function Reaction(species_stoich::AbstractDict{S, T}; equal_sign::Char='=', properties::AbstractDict=OrderedDict{Symbol,PropertyType}(), side::Symbol=:sign) where {S<:AbstractSpecies, T<:Number}
     reactants, products = split_species_by_stoich(species_stoich; side=side)
-    return Reaction(reactants, products; equal_sign=equal_sign, properties=properties)
+    return Reaction(reactants, products; equal_sign=equal_sign, properties=OrderedDict{Symbol,PropertyType}(k=>v for (k,v) in properties))
 end
 
 Base.convert(::Type{Reaction}, s::S) where {S<:AbstractSpecies} = Reaction(OrderedDict(s => 1))
@@ -156,7 +169,7 @@ Base.convert(::Type{Reaction{U,T}}, s::S) where {U<:AbstractSpecies, T<:Number, 
 Reaction(s::S) where {S<:AbstractSpecies} = Reaction(OrderedDict(s => 1))
 Reaction{U,T}(s::S) where {U<:AbstractSpecies, T<:Number, S<:AbstractSpecies} = Reaction(OrderedDict(s => 1))
 
-Reaction(r::R; equal_sign=r.equal_sign, properties=r.properties, side::Symbol=:none) where {R<:Reaction} = Reaction(reactants(r), products(r); equal_sign=equal_sign, side=side, properties=properties)
+Reaction(r::R; equal_sign=r.equal_sign, properties=r.properties, side::Symbol=:none) where {R<:Reaction} = Reaction(reactants(r), products(r); equal_sign=equal_sign, side=side, properties=OrderedDict{Symbol,PropertyType}(k=>v for (k,v) in properties))
 
 function simplify_reaction(r::Reaction)
     reac = remove_zeros(deepcopy(reactants(r)))
@@ -198,22 +211,22 @@ function build_species_stoich(species::AbstractVector{<:AbstractSpecies}; scalin
     return species_stoich
 end
 
-function Reaction(species::AbstractVector{<:AbstractSpecies}; equal_sign='=', properties::AbstractDict{Symbol,PropertyType}=OrderedDict{Symbol,PropertyType}(), scaling=1, auto_scale=false, side::Symbol=:sign)
+function Reaction(species::AbstractVector{<:AbstractSpecies}; equal_sign='=', properties::AbstractDict=OrderedDict{Symbol,PropertyType}(), scaling=1, auto_scale=false, side::Symbol=:sign)
     species_stoich = build_species_stoich(species; scaling=scaling, auto_scale=auto_scale)
-    return Reaction(species_stoich; equal_sign=equal_sign, properties=properties, side=side)
+    return Reaction(species_stoich; equal_sign=equal_sign, properties=OrderedDict{Symbol,PropertyType}(k=>v for (k,v) in properties), side=side)
 end
 
-function Reaction(reac::AbstractVector{<:AbstractSpecies}, prod::AbstractVector{<:AbstractSpecies}; equal_sign='=', properties::AbstractDict{Symbol,PropertyType}=OrderedDict{Symbol,PropertyType}(), scaling=1, auto_scale=false, side::Symbol=:none)
+function Reaction(reac::AbstractVector{<:AbstractSpecies}, prod::AbstractVector{<:AbstractSpecies}; equal_sign='=', properties::AbstractDict=OrderedDict{Symbol,PropertyType}(), scaling=1, auto_scale=false, side::Symbol=:none)
     species = [reac ; prod]
     species_stoich = build_species_stoich(species; scaling=scaling, auto_scale=auto_scale)
     S, T = keytype(species_stoich), valtype(species_stoich)
     if side != :none
-        return Reaction(species_stoich; equal_sign=equal_sign, properties=properties, side=side)
+        return Reaction(species_stoich; equal_sign=equal_sign, properties=OrderedDict{Symbol,PropertyType}(k=>v for (k,v) in properties), side=side)
     else
         return Reaction(ordered_dict_with_default((k=>-v for (k,v) in species_stoich if k in reac), S, T), 
                         ordered_dict_with_default((k=>v for (k,v) in species_stoich if k in prod), S, T)
                         ; 
-                        equal_sign=equal_sign, properties=properties, side=:none)
+                        equal_sign=equal_sign, properties=OrderedDict{Symbol,PropertyType}(k=>v for (k,v) in properties), side=:none)
     end
 end
 
@@ -312,9 +325,9 @@ function apply(func::Function, r::Reaction{SR, TR, SP, TP}, args... ; kwargs...)
     reac = OrderedDict{SR, TR}(apply(func, k, args... ; kwargs..., name="", symbol ="") => tryfunc(v) for (k,v) ∈ reactants(r))
     prod = OrderedDict{SP, TP}(apply(func, k, args... ; kwargs..., name="", symbol ="") => tryfunc(v) for (k,v) ∈ products(r))
     newReaction = Reaction(reac, prod; equal_sign=get(kwargs, :equal_sign, equal_sign(r)), 
-                                       properties=get(kwargs, :properties, properties(r)),
+                                       properties=OrderedDict{Symbol,PropertyType}(k=>v for (k,v) in get(kwargs, :properties, properties(r))),
                                        side=get(kwargs, :side, :none))
-        for (k, v) in properties(r)
+    for (k, v) in properties(r)
         newReaction[k] = tryfunc(v)
     end
     return newReaction

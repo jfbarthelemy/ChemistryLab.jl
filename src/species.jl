@@ -28,7 +28,14 @@ function atoms_charge(s::AbstractSpecies)
     end
 end
 
-Base.getindex(s::AbstractSpecies, i::Symbol) = get(atoms(s), i, get(properties(s), i, nothing))
+function Base.getindex(s::AbstractSpecies, i::Symbol)
+    coef = get(components(s), i, get(atoms(s), i, get(properties(s), i, nothing)))
+    if isnothing(coef)
+        # println("$(i) not found in $(root_type(typeof(s))) $(colored(s))")
+        return 0
+    end
+    return coef
+end
 
 Base.setindex!(s::AbstractSpecies, value, i::Symbol) = setindex!(properties(s), value, i)
 
@@ -53,6 +60,12 @@ end
 
 const PropertyType = Union{Number,AbstractVector{<:Number},Function,AbstractString}
 
+function ordered_dict_with_default(gen, key_type, val_type)
+    d = OrderedDict(gen)
+    isempty(d) && (d = OrderedDict{key_type, val_type}())
+    return d
+end
+
 struct Species{T<:Number} <: AbstractSpecies
     name::String
     symbol::String
@@ -69,17 +82,17 @@ colored(s::Species) = colored(formula(s))
 components(s::Species) = atoms_charge(s)
 mainformula(s::Species) = s.formula
 
-function Species(formula::Formula; name=expr(formula), symbol=expr(formula), aggregate_state=AS_UNDEF, class=SC_UNDEF, properties=OrderedDict{Symbol,PropertyType}())
+function Species(formula::Formula; name=expr(formula), symbol=expr(formula), aggregate_state=AS_UNDEF, class=SC_UNDEF, properties::AbstractDict=OrderedDict{Symbol,PropertyType}())
     atoms = composition(formula)
     if !haskey(properties, :molar_mass) properties[:molar_mass] = calculate_molar_mass(atoms) end
-    return Species{valtype(atoms)}(name, symbol, formula, aggregate_state, class, properties)
+    return Species{valtype(atoms)}(name, symbol, formula, aggregate_state, class, OrderedDict{Symbol,PropertyType}(k=>v for (k,v) in properties))
 end
 
-Species(; expr::AbstractString="", name=expr, symbol=expr, aggregate_state=AS_UNDEF, class=SC_UNDEF, properties=OrderedDict{Symbol,PropertyType}()) = Species(Formula(expr); name=name, symbol=symbol, aggregate_state=aggregate_state, class=class, properties=properties)
+Species(; expr::AbstractString="", name=expr, symbol=expr, aggregate_state=AS_UNDEF, class=SC_UNDEF, properties::AbstractDict=OrderedDict{Symbol,PropertyType}()) = Species(Formula(expr); name=name, symbol=symbol, aggregate_state=aggregate_state, class=class, properties=OrderedDict{Symbol,PropertyType}(k=>v for (k,v) in properties))
 
-Species(f::AbstractString; name=f, symbol=f, aggregate_state=AS_UNDEF, class=SC_UNDEF, properties=OrderedDict{Symbol,PropertyType}()) = Species(; expr=f, name=name, symbol=symbol, aggregate_state=aggregate_state, class=class, properties=properties)
+Species(f::AbstractString; name=f, symbol=f, aggregate_state=AS_UNDEF, class=SC_UNDEF, properties::AbstractDict=OrderedDict{Symbol,PropertyType}()) = Species(; expr=f, name=name, symbol=symbol, aggregate_state=aggregate_state, class=class, properties=OrderedDict{Symbol,PropertyType}(k=>v for (k,v) in properties))
 
-function Species(atoms::AbstractDict{Symbol,T}, charge=0; name="", symbol="", aggregate_state=AS_UNDEF, class=SC_UNDEF, properties=OrderedDict{Symbol,PropertyType}()) where {T}
+function Species(atoms::AbstractDict{Symbol,T}, charge=0; name="", symbol="", aggregate_state=AS_UNDEF, class=SC_UNDEF, properties::AbstractDict=OrderedDict{Symbol,PropertyType}()) where {T}
     formula = Formula(atoms, charge)
     if length(name) == 0
         name = unicode(formula)
@@ -87,23 +100,23 @@ function Species(atoms::AbstractDict{Symbol,T}, charge=0; name="", symbol="", ag
     if length(symbol) == 0
         symbol = name
     end
-    return Species(formula; name=name, symbol=symbol, aggregate_state=aggregate_state, class=class, properties=properties)
+    return Species(formula; name=name, symbol=symbol, aggregate_state=aggregate_state, class=class, properties=OrderedDict{Symbol,PropertyType}(k=>v for (k,v) in properties))
 end
 
-function Species(atoms::Pair{Symbol,T}...; name="", symbol="", aggregate_state=AS_UNDEF, class=SC_UNDEF, properties=OrderedDict{Symbol,PropertyType}()) where {T}
-    return Species(OrderedDict(atoms...); name=name, symbol=symbol, aggregate_state=aggregate_state, class=class, properties=properties)
+function Species(atoms::Pair{Symbol,T}...; name="", symbol="", aggregate_state=AS_UNDEF, class=SC_UNDEF, properties::AbstractDict=OrderedDict{Symbol,PropertyType}()) where {T}
+    return Species(OrderedDict(atoms...); name=name, symbol=symbol, aggregate_state=aggregate_state, class=class, properties=OrderedDict{Symbol,PropertyType}(k=>v for (k,v) in properties))
 end
 
 function Base.convert(::Type{Species{T}}, s::Species; name=name(s), symbol=symbol(s), aggregate_state=aggregate_state(s), class=class(s), properties=properties(s)) where {T}
-    return Species(convert(T, formula(s)); name=name, symbol=symbol, aggregate_state=aggregate_state, class=class, properties=properties)
+    return Species(convert(T, formula(s)); name=name, symbol=symbol, aggregate_state=aggregate_state, class=class, properties=OrderedDict{Symbol,PropertyType}(k=>v for (k,v) in properties))
 end
 
 function Species{T}(s::Species; name=name(s), symbol=symbol(s), aggregate_state=aggregate_state(s), class=class(s), properties=properties(s)) where {T}
-    return convert(Species{T}, s; name=name, symbol=symbol, aggregate_state=aggregate_state, class=class, properties=properties)
+    return convert(Species{T}, s; name=name, symbol=symbol, aggregate_state=aggregate_state, class=class, properties=OrderedDict{Symbol,PropertyType}(k=>v for (k,v) in properties))
 end
 
 function Species(s::Species; name=name(s), symbol=symbol(s), aggregate_state=aggregate_state(s), class=class(s), properties=properties(s))
-    return Species(formula(s); name=name, symbol=symbol, aggregate_state=aggregate_state, class=class, properties=properties)
+    return Species(formula(s); name=name, symbol=symbol, aggregate_state=aggregate_state, class=class, properties=OrderedDict{Symbol,PropertyType}(k=>v for (k,v) in properties))
 end
 
 function Base.show(io::IO, s::Species)
@@ -160,18 +173,18 @@ function oxides_charge(s::CemSpecies)
 end
 components(s::CemSpecies) = oxides_charge(s)
 
-function CemSpecies(cemformula::Formula; name=expr(cemformula), symbol=expr(cemformula), aggregate_state=AS_UNDEF, class=SC_UNDEF, properties=OrderedDict{Symbol,PropertyType}())
+function CemSpecies(cemformula::Formula; name=expr(cemformula), symbol=expr(cemformula), aggregate_state=AS_UNDEF, class=SC_UNDEF, properties::AbstractDict=OrderedDict{Symbol,PropertyType}())
     formula = Formula(to_mendeleev(composition(cemformula)), charge(cemformula))
     atoms = composition(formula)
     if !haskey(properties, :molar_mass) properties[:molar_mass] = calculate_molar_mass(atoms) end
     return CemSpecies{valtype(atoms),valtype(composition(cemformula))}(name, symbol, formula, cemformula, aggregate_state, class, properties)
 end
 
-CemSpecies(; expr::AbstractString="", name=expr, symbol=expr, aggregate_state=AS_UNDEF, class=SC_UNDEF, properties=OrderedDict{Symbol,PropertyType}()) = CemSpecies(Formula(expr); name=name, symbol=symbol, aggregate_state=aggregate_state, class=class, properties=properties)
+CemSpecies(; expr::AbstractString="", name=expr, symbol=expr, aggregate_state=AS_UNDEF, class=SC_UNDEF, properties::AbstractDict=OrderedDict{Symbol,PropertyType}()) = CemSpecies(Formula(expr); name=name, symbol=symbol, aggregate_state=aggregate_state, class=class, properties=OrderedDict{Symbol,PropertyType}(k=>v for (k,v) in properties))
 
-CemSpecies(f::AbstractString; name=f, symbol=f, aggregate_state=AS_UNDEF, class=SC_UNDEF, properties=OrderedDict{Symbol,PropertyType}()) = CemSpecies(; expr=f, name=name, symbol=symbol, aggregate_state=aggregate_state, class=class, properties=properties)
+CemSpecies(f::AbstractString; name=f, symbol=f, aggregate_state=AS_UNDEF, class=SC_UNDEF, properties::AbstractDict=OrderedDict{Symbol,PropertyType}()) = CemSpecies(; expr=f, name=name, symbol=symbol, aggregate_state=aggregate_state, class=class, properties=OrderedDict{Symbol,PropertyType}(k=>v for (k,v) in properties))
 
-function CemSpecies(oxides::AbstractDict{Symbol,T}, charge=0; name="", symbol="", aggregate_state=AS_UNDEF, class=SC_UNDEF, properties=OrderedDict{Symbol,PropertyType}()) where {T}
+function CemSpecies(oxides::AbstractDict{Symbol,T}, charge=0; name="", symbol="", aggregate_state=AS_UNDEF, class=SC_UNDEF, properties::AbstractDict=OrderedDict{Symbol,PropertyType}()) where {T}
     cemformula = Formula(oxides, charge; order=OXIDE_ORDER)
     if length(name) == 0
         name = unicode(cemformula)
@@ -179,11 +192,11 @@ function CemSpecies(oxides::AbstractDict{Symbol,T}, charge=0; name="", symbol=""
     if length(symbol) == 0
         symbol = name
     end
-    return CemSpecies(cemformula; name=name, symbol=symbol, aggregate_state=aggregate_state, class=class, properties=properties)
+    return CemSpecies(cemformula; name=name, symbol=symbol, aggregate_state=aggregate_state, class=class, properties=OrderedDict{Symbol,PropertyType}(k=>v for (k,v) in properties))
 end
 
-function CemSpecies(oxides::Pair{Symbol,T}...; name="", symbol="", aggregate_state=AS_UNDEF, class=SC_UNDEF, properties=OrderedDict{Symbol,PropertyType}()) where {T}
-    return CemSpecies(OrderedDict(oxides...); name=name, symbol=symbol, aggregate_state=aggregate_state, class=class, properties=properties)
+function CemSpecies(oxides::Pair{Symbol,T}...; name="", symbol="", aggregate_state=AS_UNDEF, class=SC_UNDEF, properties::AbstractDict=OrderedDict{Symbol,PropertyType}()) where {T}
+    return CemSpecies(OrderedDict(oxides...); name=name, symbol=symbol, aggregate_state=aggregate_state, class=class, properties=OrderedDict{Symbol,PropertyType}(k=>v for (k,v) in properties))
 end
 
 function CemSpecies(s::Species; name=name(s), symbol=symbol(s), aggregate_state=aggregate_state(s), class=class(s), properties=properties(s))
@@ -200,11 +213,11 @@ function CemSpecies(s::Species; name=name(s), symbol=symbol(s), aggregate_state=
     bcalc = stoich_coef_round.(Aoxides*x)
     if try isequal(bcalc, b) || isapprox(bcalc, b; rtol=1.e-4) catch; false end
         oxides = OrderedDict(OXIDE_ORDER[i] => vx for (i,vx) in enumerate(x) if !iszero(vx))
-        return CemSpecies(oxides, charge(s); name=name, symbol=symbol, aggregate_state=aggregate_state, class=class, properties=properties)
+        return CemSpecies(oxides, charge(s); name=name, symbol=symbol, aggregate_state=aggregate_state, class=class, properties=OrderedDict{Symbol,PropertyType}(k=>v for (k,v) in properties))
     else
         A, indep_comp, dep_comp = stoich_matrix([s], oxides_as_species; display=false)
         oxides = OrderedDict(Symbol(indep_comp[i].symbol) => A[i, 1] for i in 1:size(A, 1))
-        cemspecies = CemSpecies(oxides, charge(s); name=name, symbol=symbol, aggregate_state=aggregate_state, class=class, properties=properties)
+        cemspecies = CemSpecies(oxides, charge(s); name=name, symbol=symbol, aggregate_state=aggregate_state, class=class, properties=OrderedDict{Symbol,PropertyType}(k=>v for (k,v) in properties))
         if cemspecies == s
             return cemspecies
         else
@@ -213,24 +226,24 @@ function CemSpecies(s::Species; name=name(s), symbol=symbol(s), aggregate_state=
     end
 end
 
-Species(s::CemSpecies; name=name(s), symbol=symbol(s), aggregate_state=aggregate_state(s), class=class(s), properties=properties(s)) = Species{valtype(atoms(s))}(name, symbol, formula(s), aggregate_state, class, properties)
+Species(s::CemSpecies; name=name(s), symbol=symbol(s), aggregate_state=aggregate_state(s), class=class(s), properties=properties(s)) = Species{valtype(atoms(s))}(name, symbol, formula(s), aggregate_state, class, OrderedDict{Symbol,PropertyType}(k=>v for (k,v) in properties))
 
-Base.convert(::Type{<:Species}, s::CemSpecies; name=name(s), symbol=symbol(s), aggregate_state=aggregate_state(s), class=class(s), properties=properties(s)) = Species(s; name=name, symbol=symbol, aggregate_state=aggregate_state, class=class, properties=properties)
+Base.convert(::Type{<:Species}, s::CemSpecies; name=name(s), symbol=symbol(s), aggregate_state=aggregate_state(s), class=class(s), properties=properties(s)) = Species(s; name=name, symbol=symbol, aggregate_state=aggregate_state, class=class, properties=OrderedDict{Symbol,PropertyType}(k=>v for (k,v) in properties))
 
 function Base.convert(::Type{CemSpecies{S}}, s::CemSpecies; name=name(s), symbol=symbol(s), aggregate_state=aggregate_state(s), class=class(s), properties=properties(s)) where {S}
-    return CemSpecies(convert(S, cemformula(s)); name=name, symbol=symbol, aggregate_state=aggregate_state, class=class, properties=properties)
+    return CemSpecies(convert(S, cemformula(s)); name=name, symbol=symbol, aggregate_state=aggregate_state, class=class, properties=OrderedDict{Symbol,PropertyType}(k=>v for (k,v) in properties))
 end
 
 function CemSpecies{S}(s::CemSpecies; name=name(s), symbol=symbol(s), aggregate_state=aggregate_state(s), class=class(s), properties=properties(s)) where {S}
-    return convert(CemSpecies{S}, s; name=name, symbol=symbol, aggregate_state=aggregate_state, class=class, properties=properties)
+    return convert(CemSpecies{S}, s; name=name, symbol=symbol, aggregate_state=aggregate_state, class=class, properties=OrderedDict{Symbol,PropertyType}(k=>v for (k,v) in properties))
 end
 
 function CemSpecies{S,T}(s::CemSpecies; name=name(s), symbol=symbol(s), aggregate_state=aggregate_state(s), class=class(s), properties=properties(s)) where {S,T}
-    return convert(CemSpecies{S}, s; name=name, symbol=symbol, aggregate_state=aggregate_state, class=class, properties=properties)
+    return convert(CemSpecies{S}, s; name=name, symbol=symbol, aggregate_state=aggregate_state, class=class, properties=OrderedDict{Symbol,PropertyType}(k=>v for (k,v) in properties))
 end
 
 function CemSpecies(s::CemSpecies; name=name(s), symbol=symbol(s), aggregate_state=aggregate_state(s), class=class(s), properties=properties(s))
-    return CemSpecies(cemformula(s); name=name, symbol=symbol, aggregate_state=aggregate_state, class=class, properties=properties)
+    return CemSpecies(cemformula(s); name=name, symbol=symbol, aggregate_state=aggregate_state, class=class, properties=OrderedDict{Symbol,PropertyType}(k=>v for (k,v) in properties))
 end
 
 function Base.show(io::IO, s::CemSpecies)

@@ -432,57 +432,58 @@ function to_mendeleev(oxides::AbstractDict{Symbol,T}) where {T<:Number}
 end
 
 function parse_equation(equation::AbstractString)
-    equal_sign = nothing
+    equal_sign = '='
     for c in equation
         if c in EQUAL_REACTION_SET
             equal_sign = c
             break
         end
     end
+
     sides = strip.(split(equation, EQUAL_REACTION))
     nsides = length(sides)
     left_side = nsides > 0 ? sides[1] : ""
     right_side = nsides > 1 ? sides[2] : ""
+
     function parse_side(side::AbstractString)
-        terms = split(side, " +")  # Split input string by " +" to get each term separately
-        result = OrderedDict{String, Real}()  # Initialize dictionary to store formula => coefficient
-        
+        terms = split(side, " +")
+        result = OrderedDict{String, Real}()
+
         for term in terms
-            t = strip(term)  # Remove leading/trailing whitespace from each term
-            
-            # Regex to capture optional coefficient (integer, floating or rational a//b) at start, then formula
-            m = match(r"^(\d+//\d+|\d*\.?\d+)?\s*(.+)$", t)
-            
+            t = strip(term)
+
+            m = match(r"^\(?(?<coeff>[-+]?\d+//\d+|[-+]?\d*\.?\d+)?\)?\s*(?<formula>.+)$", t)
+
             if m !== nothing
-                coeff_str = m.captures[1]  # The coefficient substring, may be missing
-                formula = strip(m.captures[2])    # The chemical formula substring
-                
-                # If coefficient string is missing or empty, set coefficient to 1
+                coeff_str = m[:coeff]
+                formula   = strip(m[:formula])
+
                 coeff = coeff_str === nothing || coeff_str == "" ? 1 : eval(Meta.parse(coeff_str))
-                
-                # Check that coefficient is a real number (Int, Float64, Rational...)
+
                 if !(coeff isa Real)
                     error("Invalid coefficient: $coeff_str")
                 end
-                
-                # Store formula and coefficient in dictionary
+
                 result[formula] = coeff
             else
                 error("Unexpected term format: $term")
             end
         end
-        
-        return OrderedDict(k => stoich_coef_round(v) for (k, v) in result)  # Return dictionary of formula => coefficient
+
+        return OrderedDict(k => stoich_coef_round(v) for (k, v) in result)
     end
+
     reactants = left_side == "∅" || left_side == "" ? OrderedDict{String, Int}() : parse_side(left_side)
     products  = right_side == "∅" || right_side == "" ? OrderedDict{String, Int}() : parse_side(right_side)
+
     return reactants, products, equal_sign
 end
 
+
 function colored_equation(equation::AbstractString)
     reactants, products, equal_sign = parse_equation(equation)
-    left_side = join([string(COL_STOICH_EXT(string(isone(v) ? "" : v)))*colored_formula(k) for (k,v) in reactants], " + ")
-    right_side = join([string(COL_STOICH_EXT(string(isone(v) ? "" : v)))*colored_formula(k) for (k,v) in products], " + ")
+    left_side = isempty(reactants) ? "∅" : join([string(COL_STOICH_EXT(isone(v) ? "" : v<0 ? "($(v))" : string(v)))*colored_formula(k) for (k,v) in reactants], " + ")
+    right_side = isempty(products) ? "∅" : join([string(COL_STOICH_EXT(isone(v) ? "" : v<0 ? "($(v))" : string(v)))*colored_formula(k) for (k,v) in products], " + ")
     return left_side * " " * string(COL_PAR(string(equal_sign))) * " " * right_side
 end
 

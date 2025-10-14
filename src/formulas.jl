@@ -102,7 +102,15 @@ function Formula(f::Formula)
     return Formula(composition(f))
 end
 
-Base.getindex(f::Formula{T}, i::Symbol) where {T} = get(composition(f), i, zero(T))
+function Base.getindex(f::Formula{T}, i::Symbol) where {T}
+    coef = get(composition(f), i, nothing)
+    if isnothing(coef)
+        # println("$(i) not found in $(root_type(typeof(f))) $(colored(f))")
+        return zero(T)
+    end
+    return coef
+end
+
 Base.length(f::Formula) = length(composition(f))
 
 Base.isequal(f1::Formula, f2::Formula) = isequal(composition(f1), composition(f2)) && isequal(charge(f1), charge(f2))
@@ -110,7 +118,7 @@ Base.isequal(f1::Formula, f2::Formula) = isequal(composition(f1), composition(f2
 Base.hash(f::Formula, h::UInt) = hash(composition(f), hash(charge(f), h))
 
 function Base.show(io::IO, f::Formula)
-    print(io, join(unique!([expr(f),  phreeqc(f), unicode(f), colored(f)]), " ∙ "))
+    print(io, join(unique!([expr(f),  phreeqc(f), unicode(f)]), " ∙ "))
 end
 
 print_formula(io::IO, f::Formula, title::String, pad::Int) = println(io, lpad(title, pad), ": ", join(unique!([expr(f),  phreeqc(f), unicode(f), colored(f)]), " ∙ "))

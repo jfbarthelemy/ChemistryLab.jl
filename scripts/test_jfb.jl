@@ -1,5 +1,5 @@
 using Revise, CementChemistry, Unicode
-import Unitful: u, g, cm, K, J, mol, Quantity, uconvert, ustrip
+import Unitful: u, g, cm, K, J, mol, Quantity, uconvert, ustrip, unit, uparse
 using SymPy
 import Symbolics: @variables, substitute, value
 
@@ -14,20 +14,40 @@ fNa⁺ = :Na+:Zz
 
 # Species
 fH₂O = 2*:H + :O
-H₂O = Species(fH₂O; aggregate_state=AS_AQUEOUS, class=SC_AQSOLVENT)
-HSO₄⁻ = Species("HSO₄⁻")
-CO₂ = Species(Dict(:C=>1, :O=>2); name="CO₂")
+H₂O = Species(fH₂O; name="Water", symbol="H₂O&", aggregate_state=AS_AQUEOUS, class=SC_AQSOLVENT)
+HSO₄⁻ = Species("HSO₄⁻"; aggregate_state=AS_AQUEOUS, class=SC_AQSOLUTE)
+CO₂ = Species(Dict(:C=>1, :O=>2); name="Carbon dioxide", symbol="CO₂⤴", aggregate_state=AS_GAS, class=SC_GAS_FLUID)
 species = [H₂O, HSO₄⁻, CO₂] ;
-canonical_stoich_matrix(species) ;
+A, atoms = canonical_stoich_matrix(species; label=:name) ; # label only for display
+A, atoms = canonical_stoich_matrix(species; label=:symbol) ;
+A, atoms = canonical_stoich_matrix(species; label=:formula) ;
+
+water_without_name_symbol = Species("H2O"; aggregate_state=AS_AQUEOUS, class=SC_AQSOLVENT)
+water_without_name_symbol == H₂O # true since atoms, aggregate_state and class are equal despite instances are different
+vapour = Species(fH₂O; name="Vapour", symbol="H₂O⤴", aggregate_state=AS_GAS, class=SC_GAS_FLUID)
+vapour == H₂O # false since aggregate_state or class are different despite atoms are identical
 
 # CemSpecies
 OXIDE_ORDER # provides the order of oxides in cement formulas
-C3S = CemSpecies("C3S")
-C2S = CemSpecies("C2S")
-C3A = CemSpecies("C3A")
-C4AF = CemSpecies(Dict(:C=>4, :A=>1, :F=>1); name="C4AF")
+C3S = CemSpecies("C3S"; name="Alite", symbol="C₃S", aggregate_state=AS_CRYSTAL, class=SC_COMPONENT)
+C2S = CemSpecies("C₂S"; name="Belite", symbol="C₂S", aggregate_state=AS_CRYSTAL, class=SC_COMPONENT)
+C3A = CemSpecies("C3A"; name="Aluminate", symbol="C₃A", aggregate_state=AS_CRYSTAL, class=SC_COMPONENT)
+C4AF = CemSpecies(Dict(:C=>4, :A=>1, :F=>1); name="Ferrite", symbol="C₄AF", aggregate_state=AS_CRYSTAL, class=SC_COMPONENT)
 cemspecies = [C3S, C2S, C3A, C4AF]
-A, indep_comp = canonical_stoich_matrix(cemspecies) ;
+A, indep_comp = canonical_stoich_matrix(cemspecies; label=:name) ;
+A, indep_comp = canonical_stoich_matrix(cemspecies; label=:symbol) ;
+A, indep_comp = canonical_stoich_matrix(cemspecies; label=:formula) ;
+ # conversion CemSpecies → Species always possible
+spC3S = Species(C3S)
+spC3S == C3S # true since atoms, aggregate_state and class are identical
+ # conversion Species → CemSpecies possible only if the species can be decomposed in cement oxides
+spCH = Species("Ca(OH)2"; name="Portlandite", symbol="CH", aggregate_state=AS_CRYSTAL, class=SC_COMPONENT)
+CH = CemSpecies(spCH)
+spCH == CH # true
+spCH == CemSpecies("CH") # false since aggregate_state and class are undef
+spCH == CemSpecies("CH"; aggregate_state=AS_CRYSTAL, class=SC_COMPONENT) # true even though names and/or symbols do not coincide 
+try CemSpecies(Species("Ca(OH)")) catch; "ERROR: Ca(OH) cannot be decomposed in cement oxides" end
+CemSpecies(Species("CaCO3"; name="Calcite", aggregate_state=AS_CRYSTAL, class=SC_COMPONENT)) # ok here
 
 # Thermofun cemdata18
 df_elements, df_substances, df_reactions = parse_cemdata18_thermofun("data/cemdata18-merged.json")
@@ -56,17 +76,21 @@ stoich_matrix_to_reactions(A, indep_comp, dep_comp) ;
 # CemSpecies with Sym coef
 â, b̂, ĝ = symbols("â b̂ ĝ", real=true)
 ox = Dict(:C => â, :S => one(Sym), :A => b̂, :H => ĝ)
-CSH = CemSpecies(ox)
-numCSH = CemSpecies(apply(N, apply(subs, cemformula(CSH), â=>1.8, b̂=>1, ĝ=>5)))
-floatCSH = Species(convert(Float64, formula(numCSH)))
+CSH = CemSpecies(ox; aggregate_state=AS_CRYSTAL, class=SC_COMPONENT)
+numCSH = apply(N, apply(subs, CSH, â=>1.8, b̂=>1, ĝ=>5))
+floatCSH = apply(x->convert(Float64, x), numCSH) # only coefficients of oxides are converted to Float64 here not those of atoms
 
-# Conversion to cement notation
-H₂O = Species("H₂O")
+# Conversion to cement notation with species from database
 CemSpecies(H₂O)
+CemSpecies(vapour)
 df_Jennite = filter(row->row.symbol == "Jennite", df_substances)
-Jennite = Species(df_Jennite.formula[1]; name=df_Jennite.name[1], symbol=df_Jennite.symbol[1])
+Jennite = Species(df_Jennite.formula[1]; name=df_Jennite.name[1], symbol=df_Jennite.symbol[1], aggregate_state=eval(Meta.parse(df_Jennite.aggregate_state[1])), class=eval(Meta.parse(df_Jennite.class[1])))
 cemJennite = CemSpecies(Jennite)
-println(unicode(Jennite), " ≡ ", unicode(cemJennite))
+Jennite == cemJennite
+
+# Extraction of properties
+cemJennite.ΔfG = df_Jennite.ΔfG[1].values*uparse(df_Jennite.ΔfG[1].units)
+cemJennite
 
 # Equation parsing
 equation = "13H⁺ + NO₃⁻ + CO₃²⁻ + 10e⁻ = 6H₂O@ + HCN@"
@@ -135,6 +159,7 @@ println(2r)
 for vn in 1:9 println("n=$vn ⇒ ", apply(subs, r, n=>vn)) end
 println(Reaction([CₙH₂ₙ₊₂, O₂], [H₂O, CO₂]; side=:products))
 println(Reaction([CₙH₂ₙ₊₂, O₂], [H₂O, CO₂]; side=:reactants))
+@show r[O₂]
 
 # Alkane combustion with Symbolics
 @variables n
@@ -151,4 +176,4 @@ formulas = ["Ca+2", "Fe+2", "Fe|3|+3", "H+", "OH-", "SO4-2", "CaSO4@", "CaOH+", 
 species = Species.(formulas) ;
 candidate_primaries = species[1:6] ;
 A, indep_comp, dep_comp = stoich_matrix(species) ;
-stoich_matrix_to_reactions(A, indep_comp, dep_comp) ;
+lr = stoich_matrix_to_reactions(A, indep_comp, dep_comp) ;
