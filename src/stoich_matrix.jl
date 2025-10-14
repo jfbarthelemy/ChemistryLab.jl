@@ -84,7 +84,7 @@ function stoich_matrix_to_reactions(A::AbstractMatrix, indep_comp_names::Abstrac
     return eqns
 end
 
-function canonical_stoich_matrix(species::Vector{<:AbstractSpecies}; display=true, label=:symbol)
+function canonical_stoich_matrix(species::Vector{<:AbstractSpecies}; display=true, label=:symbol, mass=false)
     involved_atoms_dicts = same_components(species).(species)
     involved_atoms = union_atoms(involved_atoms_dicts, item_order(species))
     T = promote_type(valtype.(involved_atoms_dicts)...)
@@ -94,11 +94,19 @@ function canonical_stoich_matrix(species::Vector{<:AbstractSpecies}; display=tru
             A[i, j] = get(atoms, atom, zero(T))
         end
     end
+
+    if mass
+        S = promote_type(root_type.(typeof.(species))...)
+        Msp = ustrip.(getproperty.(species, :molar_mass))
+        Mat = ustrip.(getproperty.(S.(string.(involved_atoms)), :molar_mass))
+        A = Mat .* A .* inv.(Msp)'
+    end
+
     if display print_stoich_matrix(A, involved_atoms, eval(label).(species)) end
     return A, involved_atoms
 end
 
-function stoich_matrix(vs::Vector{<:AbstractSpecies}, candidate_primaries::Vector{<:AbstractSpecies}=vs; display=true, label=:symbol, involve_all_atoms=false, reorder_primaries=false)
+function stoich_matrix(vs::Vector{<:AbstractSpecies}, candidate_primaries::Vector{<:AbstractSpecies}=vs; display=true, label=:symbol, involve_all_atoms=false, reorder_primaries=false, mass=false)
 
     safe_rank(A; rtol=1e-6) = try rank(A, rtol=rtol) catch; try rank(A) catch; min(size(A)...) end end
     safe_pinv(A) = try pinv(A) catch; inv(A) end
@@ -164,6 +172,13 @@ function stoich_matrix(vs::Vector{<:AbstractSpecies}, candidate_primaries::Vecto
     if redox && Zz ∈ dep_comp
         A = A[:, 1:end-1]
         dep_comp = dep_comp[1:end-1]
+    end
+
+    if mass
+        S = promote_type(root_type.(typeof.(species))...)
+        Mdep = ustrip.(getproperty.(dep_comp, :molar_mass))
+        Mindep = ustrip.(getproperty.(indep_comp, :molar_mass))
+        A = Mindep .* A .* inv.(Mdep)'
     end
 
     if display print_stoich_matrix(A, eval(label).(indep_comp), eval(label).(dep_comp)) end

@@ -136,7 +136,7 @@ AFt = CemSpecies("C₆S̄₃H₃₂")
 ST = CemSpecies("C₂ASH₈")
 AH = CemSpecies("C₄AH₁₃")
 A, ox = canonical_stoich_matrix([CSH, HT, HG, AFt, ST, AH]);
-A = typeof(â).(A[1:end-1, 1:end])
+A = typeof(â).(A[1:end-1, 1:end]) # end-1 to remove the line corresponding to water H
 oxides = (CemSpecies∘string).(ox[1:end-1])
 hydrates = [CSH, HT, HG, AFt, ST, AH]
 print_stoich_matrix(A, symbol.(oxides), symbol.(hydrates))
@@ -144,6 +144,9 @@ print_stoich_matrix(inv(A), symbol.(hydrates), symbol.(oxides))
 Mhyd = ustrip.(getproperty.(hydrates, :molar_mass))
 Mox = ustrip.(getproperty.(oxides, :molar_mass))
 B = Mox .* A .* inv.(Mhyd)'
+# or directly
+B, ox = canonical_stoich_matrix([CSH, HT, HG, AFt, ST, AH]; mass=true) ;
+B = B[1:end-1, 1:end] # to remove the H line
 print_stoich_matrix(B, "m_" .* symbol.(oxides), "m_" .* symbol.(hydrates))
 print_stoich_matrix(subs.(inv(B), Ref(Dict(â=>1.8, b̂=>1, ĝ=>4))), "m_" .* symbol.(hydrates), "m_" .* symbol.(oxides))
 
@@ -176,4 +179,5 @@ formulas = ["Ca+2", "Fe+2", "Fe|3|+3", "H+", "OH-", "SO4-2", "CaSO4@", "CaOH+", 
 species = Species.(formulas) ;
 candidate_primaries = species[1:6] ;
 A, indep_comp, dep_comp = stoich_matrix(species) ;
+B, indep_comp, dep_comp = stoich_matrix(species; mass=true) ;
 lr = stoich_matrix_to_reactions(A, indep_comp, dep_comp) ;
