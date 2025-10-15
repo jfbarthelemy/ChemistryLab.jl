@@ -1,11 +1,11 @@
 # Bogue Calculation
 
-The way in which species and cementitious species are constructed in CementChemistry and expressed as a linear combination of reference species opens the door to equilibrium calculations. It also makes it quite natural to retrieve Bogue's formulas and use them simply.
+The way in which species and cementitious species are constructed in ChemistryLab and expressed as a linear combination of reference species opens the door to equilibrium calculations. It also makes it quite natural to retrieve Bogue's formulas and use them simply.
 
 Bogue's formulas allow us to find the masses of C3S, C2S, C3A and C4AF as a function of the oxides (CaO, SiO2, Al2O3 and Fe2O3) that are regularly found in manufacturers' cement data sheets. However, using the `stoich_matrix` functions performs a molar decomposition of the species that we wish to decompose as a function of reference species. It is therefore possible to express the anhydrous of the cement as a function of the oxides in a cement data sheet.
 
 ```@example Bogue
-using CementChemistry #hide
+using ChemistryLab #hide
 C3S = CemSpecies("C3S")
 C2S = CemSpecies("C2S")
 C3A = CemSpecies("C3A")
