@@ -1,8 +1,7 @@
-using Revise, CementChemistry, Unicode
+using Revise, ChemistryLab, Unicode
 import Unitful: u, g, cm, K, J, mol, Quantity, uconvert, ustrip, unit, uparse
 using SymPy
 import Symbolics: @variables, substitute, value
-
 
 # Formula
 fgen = Formula("A1//2B3C0.4")

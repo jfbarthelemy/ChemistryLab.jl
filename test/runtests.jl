@@ -1,6 +1,6 @@
-using CementChemistry
+using ChemistryLab
 using Test
 
-@testset "CementChemistry.jl" begin
+@testset "ChemistryLab.jl" begin
     # Write your tests here.
 end

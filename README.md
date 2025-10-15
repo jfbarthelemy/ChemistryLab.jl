@@ -1,7 +1,7 @@
-# CementChemistry [![Dev](https://img.shields.io/badge/docs-dev-blue.svg)](https://jfbarthelemy.github.io/CementChemistry.jl/dev/) [![Build Status](https://github.com/jfbarthelemy/CementChemistry.jl/actions/workflows/CI.yml/badge.svg?branch=main)](https://github.com/jfbarthelemy/CementChemistry.jl/actions/workflows/CI.yml?query=branch%3Amain)
-<!-- [![Stable](https://img.shields.io/badge/docs-stable-blue.svg)](https://jfbarthelemy.github.io/CementChemistry.jl/stable/)  -->
+# ChemistryLab [![Dev](https://img.shields.io/badge/docs-dev-blue.svg)](https://jfbarthelemy.github.io/ChemistryLab.jl/dev/) [![Build Status](https://github.com/jfbarthelemy/ChemistryLab.jl/actions/workflows/CI.yml/badge.svg?branch=main)](https://github.com/jfbarthelemy/ChemistryLab.jl/actions/workflows/CI.yml?query=branch%3Amain)
+<!-- [![Stable](https://img.shields.io/badge/docs-stable-blue.svg)](https://jfbarthelemy.github.io/ChemistryLab.jl/stable/)  -->
 
-CementChemistry.jl is a computational chemistry toolkit for modeling low-carbon cementitious materials and aqueous solutions. Designed for researchers, engineers, and developers working with cement chemistry, it provides formula handling, species management, stoichiometric matrix construction, and database interoperability (ThermoFun and Cemdata). Main features include chemical formula parsing, Unicode/Phreeqc notation conversion, reaction and equilibrium analysis, and data import/export.
+ChemistryLab.jl is a computational chemistry toolkit. Although initially dedicated to low-carbon cementitious materials and aqueous solutions and designed for researchers, engineers, and developers working with cement chemistry, its scope is actually wider. It provides formula handling, species management, stoichiometric matrix construction, and database interoperability (ThermoFun and Cemdata). Main features include chemical formula parsing, Unicode/Phreeqc notation conversion, reaction and equilibrium analysis, and data import/export.
 
 <!-- ## Table of Contents
 
@@ -33,7 +33,7 @@ CementChemistry.jl is a computational chemistry toolkit for modeling low-carbon 
 
 ```julia
 using Pkg
-Pkg.add(url="https://github.com/jfbarthelemy/CementChemistry.jl")
+Pkg.add(url="https://github.com/jfbarthelemy/ChemistryLab.jl")
 ```
 
 ## Project Status
@@ -44,7 +44,7 @@ Pkg.add(url="https://github.com/jfbarthelemy/CementChemistry.jl")
 
 ## Usage
 
-See the [documentation and tutorials](https://jfbarthelemy.github.io/CementChemistry.jl/dev/
+See the [documentation and tutorials](https://jfbarthelemy.github.io/ChemistryLab.jl/dev/
 ) for examples on formula creation, species management, reaction parsing, and database merging.
 
 ## Contributing
@@ -56,7 +56,7 @@ See GitHub Issues for current bug reports.
 
 ## FAQ
 
-Frequently asked questions are addressed in the [documentation](https://jfbarthelemy.github.io/CementChemistry.jl/dev/).
+Frequently asked questions are addressed in the [documentation](https://jfbarthelemy.github.io/ChemistryLab.jl/dev/).
 
 ## License
 

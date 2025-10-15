@@ -183,3 +183,8 @@ function apply(func::Function, f::Formula, args... ; kwargs...)
     newcomposition = OrderedDict(k => tryfunc(v) for (k,v) ∈ composition(f))
     return Formula{valtype(newcomposition)}(expr(f), phreeqc(f), unicode(f), colored(f), newcomposition, tryfunc(charge(f)))
 end
+
+function check_mendeleev(f::Formula)
+    nonatoms = filter(x -> x ∉ keys(elements.bysymbol) && x != :Zz, keys(composition(f)))
+    isempty(nonatoms) ? true : error("Invalid atoms: $(join(nonatoms," "))")
+end

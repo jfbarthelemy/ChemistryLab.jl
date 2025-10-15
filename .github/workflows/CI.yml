@@ -68,6 +68,6 @@ jobs:
         shell: julia --project=docs --color=yes {0}
         run: |
           using Documenter: DocMeta, doctest
-          using CementChemistry
-          DocMeta.setdocmeta!(CementChemistry, :DocTestSetup, :(using CementChemistry); recursive=true)
-          doctest(CementChemistry)
+          using ChemistryLab
+          DocMeta.setdocmeta!(ChemistryLab, :DocTestSetup, :(using ChemistryLab); recursive=true)
+          doctest(ChemistryLab)

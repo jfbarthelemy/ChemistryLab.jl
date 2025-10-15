@@ -16,6 +16,8 @@ charge(s::AbstractSpecies) = charge(formula(s))
 aggregate_state(s::AbstractSpecies) = s.aggregate_state
 class(s::AbstractSpecies) = s.class
 properties(s::AbstractSpecies) = s.properties
+check_mendeleev(s::AbstractSpecies) = check_mendeleev(formula(s))
+mendeleev_filter(s::AbstractSpecies) = check_mendeleev(s) ? s : nothing
 
 function atoms_charge(s::AbstractSpecies)
     z = charge(s)
@@ -85,7 +87,7 @@ mainformula(s::Species) = s.formula
 function Species(formula::Formula; name=expr(formula), symbol=expr(formula), aggregate_state=AS_UNDEF, class=SC_UNDEF, properties::AbstractDict=OrderedDict{Symbol,PropertyType}())
     atoms = composition(formula)
     if !haskey(properties, :molar_mass) properties[:molar_mass] = calculate_molar_mass(atoms) end
-    return Species{valtype(atoms)}(name, symbol, formula, aggregate_state, class, OrderedDict{Symbol,PropertyType}(k=>v for (k,v) in properties))
+    return mendeleev_filter(Species{valtype(atoms)}(name, symbol, formula, aggregate_state, class, OrderedDict{Symbol,PropertyType}(k=>v for (k,v) in properties)))
 end
 
 Species(; expr::AbstractString="", name=expr, symbol=expr, aggregate_state=AS_UNDEF, class=SC_UNDEF, properties::AbstractDict=OrderedDict{Symbol,PropertyType}()) = Species(Formula(expr); name=name, symbol=symbol, aggregate_state=aggregate_state, class=class, properties=OrderedDict{Symbol,PropertyType}(k=>v for (k,v) in properties))
@@ -177,7 +179,7 @@ function CemSpecies(cemformula::Formula; name=expr(cemformula), symbol=expr(cemf
     formula = Formula(to_mendeleev(composition(cemformula)), charge(cemformula))
     atoms = composition(formula)
     if !haskey(properties, :molar_mass) properties[:molar_mass] = calculate_molar_mass(atoms) end
-    return CemSpecies{valtype(atoms),valtype(composition(cemformula))}(name, symbol, formula, cemformula, aggregate_state, class, properties)
+    return mendeleev_filter(CemSpecies{valtype(atoms),valtype(composition(cemformula))}(name, symbol, formula, cemformula, aggregate_state, class, properties))
 end
 
 CemSpecies(; expr::AbstractString="", name=expr, symbol=expr, aggregate_state=AS_UNDEF, class=SC_UNDEF, properties::AbstractDict=OrderedDict{Symbol,PropertyType}()) = CemSpecies(Formula(expr); name=name, symbol=symbol, aggregate_state=aggregate_state, class=class, properties=OrderedDict{Symbol,PropertyType}(k=>v for (k,v) in properties))
