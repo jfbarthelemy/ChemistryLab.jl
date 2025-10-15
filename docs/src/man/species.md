@@ -1,16 +1,23 @@
 
 # Species
 
-`Species` is a `struct` and is defined by a name, symbol, structure and properties. It creates chemical species for solution or solid phases:
+`Species` is a composite type (introduced by the keyword `struct`) and is defined by a name, a symbol, a formula, an aggregate state, a class and properties. It creates chemical species for solution or solid phases:
 
 ```julia
 struct Species{T<:Number} <: AbstractSpecies
     name::String
     symbol::String
     formula::Formula{T}
-    properties::OrderedDict{Symbol,Number}
+    aggregate_state::AggregateState
+    class::Class
+    properties::OrderedDict{Symbol,PropertyType}
 end
 ```
+
+!!! info "Advanced description"
+    - `aggregate_state` denotes the state of the species (solid, liquid, gas) for which the possible keywords are AS_AQUEOUS AS_CRYSTAL AS_GAS AS_UNDEF
+    - `class` defines the role played by the species in the solution. The possible keywords are SC_AQSOLVENT SC_AQSOLUTE SC_COMPONENT SC_GAS_FLUID SC_UNDEF
+    - `properties` refers to the set of properties intrinsic to the species. These properties are detailed below ([Species properties](@ref)). 
 
 ## Species construction
 
@@ -32,16 +39,19 @@ HSO4 = Species("HSO₄⁻")
 - a dictionary
 ```@example
 using ChemistryLab #hide
-CO2 = Species(Dict(:C => 1, :O => 2); name="CO₂")
+CO2 = Species(Dict(:C => 1, :O => 2))
 ```
 
-> **_NOTE:_**  To add a charge when creating species with a dictionary, you must add, after the dictionary, the value of the charge (charge is considered an argument of the structure).
+!!! note "Add charge"
+    To add a charge when creating species with a dictionary, you must add, after the dictionary, the value of the charge (charge is considered an argument of the structure).
+
 ```@example
 using ChemistryLab #hide
-CO2 = Species(Dict(:Si => 1, :O => 3),-2; name="SiO₃²⁻")
+CO2 = Species(Dict(:Si => 1, :O => 3),-2)
 ```
 
-> **_NOTE:_** You will also have noticed that a calculation of the molar mass of the species is systematically carried out.
+!!! tip "Remark"
+    You will also have noticed that a calculation of the molar mass of the species is systematically carried out.
 
 ---
 
@@ -105,3 +115,6 @@ println(unicode(Jennite), " ≡ ", unicode(cemJennite))
 ```
 
 ---
+
+## Species properties
+

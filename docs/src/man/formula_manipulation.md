@@ -19,7 +19,7 @@ end
 - by parsing a string containing eventually fractional or decimal coefficients
 ```@example 1
 using ChemistryLab #hide
-fgen = Formula("A1//2B3C0.4")
+fgen = Formula("C3AFS5//8H4.32")
 ```
 
 - from symbols representing atoms 
@@ -28,7 +28,9 @@ using ChemistryLab #hide
 fCO2 = :C + 2 * :O
 ```
 
-> **_WARNING:_** This way of constructing formulas is only possible for a certain number of elements from Mendeleïev's table and which are found in cementitious materials. The list of the elements is as follows:
+!!! danger "Warning"
+    This way of constructing formulas is only possible for a certain number of elements from Mendeleïev's table and which are found in cementitious materials. The list of the elements is as follows:
+
 ```@example 1
 ATOMIC_ORDER
 ```
