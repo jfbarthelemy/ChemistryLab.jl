@@ -1,31 +1,31 @@
 ```@meta
-CurrentModule = CementChemistry
+CurrentModule = ChemistryLab
 ```
 
-# CementChemistry
+# ChemistryLab
 
-Documentation for [CementChemistry](https://github.com/jfbarthelemy/CementChemistry.jl).
+Documentation for [ChemistryLab](https://github.com/jfbarthelemy/ChemistryLab.jl).
 
 Computational chemistry tool for low-carbon cementitious materials
 
 ## Install
 
 ```julia-repl
-pkg> add https://github.com/jfbarthelemy/CementChemistry.jl
+pkg> add https://github.com/jfbarthelemy/ChemistryLab.jl
 ```
 
 
 
 ## Quickstart
 
-Install CementChemistry in your chosen environment by entering pkg mode by pressing `]` and then:
+Install ChemistryLab in your chosen environment by entering pkg mode by pressing `]` and then:
 
 ```julia
-pkg> add CementChemistry
+pkg> add ChemistryLab
 ```
 
-In order to use CementChemistry, it is then necessary to load the CementChemistry.jl package:
+In order to use ChemistryLab, it is then necessary to load the ChemistryLab.jl package:
 
 ```julia
-julia> using CementChemistry
+julia> using ChemistryLab
 ```

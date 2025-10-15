@@ -27,7 +27,7 @@ rC3S = CemReaction(eqC3S)
 ```
 - an operation on species
 ```@example
-using CementChemistry
+using ChemistryLab
 C3S = CemSpecies("C3S")
 H = CemSpecies("H")
 CH = CemSpecies("CH")
@@ -37,7 +37,7 @@ typeof(r)
 ```
 - a balance calculation
 ```@example
-using CementChemistry
+using ChemistryLab
 C3S = CemSpecies("C3S")
 H = CemSpecies("H")
 CH = CemSpecies("CH")
@@ -46,7 +46,7 @@ r = Reaction([C3S, H, CH, CSH]; equal_sign='→')
 ```
 - a balance calculation with symbolic numbers
 ```@example
-using CementChemistry
+using ChemistryLab
 using SymPy
 â, b̂, ĝ = symbols("â b̂ ĝ", real=true)
 CSH = CemSpecies(Dict(:C => â, :S => one(Sym), :H => ĝ))
@@ -57,7 +57,7 @@ r = Reaction([CSH, C3S, H, CH]; equal_sign='→')
 ```
 
 ```julia
-using CementChemistry
+using ChemistryLab
 C3S = CemSpecies("C3S")
 H = CemSpecies("H")
 CH = CemSpecies("CH")

@@ -1,6 +1,6 @@
 # Chemical Formula Manipulation
 
-CementChemistry allows you to create and manipulate chemical formulas. It is based on `Formula` which is a structure (`struct`) which contains an expression, a writing of the formula close to those found in the Phreeqc databases, a unicode expression as well as a composition in the form of dictionaries and a charge.
+ChemistryLab allows you to create and manipulate chemical formulas. It is based on `Formula` which is a structure (`struct`) which contains an expression, a writing of the formula close to those found in the Phreeqc databases, a unicode expression as well as a composition in the form of dictionaries and a charge.
 
 ```julia
 struct Formula{T<:Number}
@@ -18,13 +18,13 @@ end
  Formulas can be constructed:
 - by parsing a string containing eventually fractional or decimal coefficients
 ```@example 1
-using CementChemistry #hide
+using ChemistryLab #hide
 fgen = Formula("A1//2B3C0.4")
 ```
 
 - from symbols representing atoms 
 ```@example
-using CementChemistry #hide
+using ChemistryLab #hide
 fCO2 = :C + 2 * :O
 ```
 

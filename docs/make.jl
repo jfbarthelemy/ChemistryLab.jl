@@ -1,18 +1,18 @@
-using CementChemistry
+using ChemistryLab
 using Documenter
 using PrettyTables
 
-DocMeta.setdocmeta!(CementChemistry, :DocTestSetup, :(using CementChemistry); recursive=true)
+DocMeta.setdocmeta!(ChemistryLab, :DocTestSetup, :(using ChemistryLab); recursive=true)
 
 makedocs(;
-    modules=[CementChemistry],
+    modules=[ChemistryLab],
     # doctest = true,
     # linkcheck = true,
     authors="Jean-François Barthélémy and Anthony Soive",
-    # repo = "https://github.com/jfbarthelemy/CementChemistry.jl/blob/{commit}{path}#{line}",
-    sitename="CementChemistry.jl",
+    # repo = "https://github.com/jfbarthelemy/ChemistryLab.jl/blob/{commit}{path}#{line}",
+    sitename="ChemistryLab.jl",
     format=Documenter.HTML(;
-        canonical="https://jfbarthelemy.github.io/CementChemistry.jl",
+        canonical="https://jfbarthelemy.github.io/ChemistryLab.jl",
         edit_link="main",
         assets = String[],
         ),
@@ -27,12 +27,13 @@ makedocs(;
             ],
         "Examples" => [
             "example/get_stochio_matrix.md",
+            "example/bogue_calculation.md",
             ],
         "API" => "reference.md",
     ],
 )
 
 deploydocs(;
-    repo="github.com/jfbarthelemy/CementChemistry.jl",
+    repo="github.com/jfbarthelemy/ChemistryLab.jl",
     devbranch="main",
 )

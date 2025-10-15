@@ -1,14 +1,16 @@
-# Get Stoichiometric Matrix from a list of species
+# Stoichiometric Matrix
+
+## Get Stoichiometric Matrix from a list of species
 
 Let's imagine that we want to form the stochiometric matrix of a list of solid and water species. For that, we need to read the database from which these species originate and retrieve the list of primary species from that database.
 
 ```julia
-using CementChemistry
+using ChemistryLab
 using PrettyTables
 df_elements, df_substances, df_reactions = parse_cemdata18_thermofun("../../../data/cemdata18-merged.json")
 df_primaries = extract_primary_species("../../../data/CEMDATA18-31-03-2022-phaseVol.dat")
 ```
-See [`CementChemistry.parse_cemdata18_thermofun`](@ref) and [`CementChemistry.extract_primary_species`](@ref)
+See [`ChemistryLab.parse_cemdata18_thermofun`](@ref) and [`ChemistryLab.extract_primary_species`](@ref)
 
 It is then necessary to identify the list of secondary species likely to appear during the reactions.
 
@@ -31,7 +33,7 @@ candidate_primaries = [Species(f; symbol = phreeqc_to_unicode(n)) for (f, n) in 
 And construct the stoichiometric matrix
 
 ```@setup example1
-    using CementChemistry #hide
+    using ChemistryLab #hide
     using PrettyTables
     df_elements, df_substances, df_reactions = parse_cemdata18_thermofun("../../../data/cemdata18-merged.json") #hide
     df_primaries = extract_primary_species("../../../data/CEMDATA18-31-03-2022-phaseVol.dat") #hide
@@ -54,10 +56,10 @@ A, indep_comp, dep_comp = stoich_matrix(species, candidate_primaries)
 using PrettyTables #hide
 ```
 
-# Get Stoichiometric Matrix from a database file
+## Get Stoichiometric Matrix from a database file
 
 ```@example example2
-using CementChemistry
+using ChemistryLab
 using PrettyTables
 df_elements, df_substances, df_reactions = parse_cemdata18_thermofun("../../../data/cemdata18-merged.json")
 df_primaries = extract_primary_species("../../../data/CEMDATA18-31-03-2022-phaseVol.dat")
@@ -80,7 +82,7 @@ stoich_matrix_to_reactions(A, indep_comp, dep_comp) ;
 The exercise can also be done on solid species. In this case, the data filter is carried out using the keyword "AS_CRYSTAL", in accordance with the terminology adopted in Thermofun.
 
 ```@setup example3
-using CementChemistry
+using ChemistryLab
 using PrettyTables
 df_elements, df_substances, df_reactions = parse_cemdata18_thermofun("../../../data/cemdata18-merged.json")
 df_primaries = extract_primary_species("../../../data/CEMDATA18-31-03-2022-phaseVol.dat")
@@ -104,7 +106,7 @@ stoich_matrix_to_reactions(A, indep_comp, dep_comp) ; #hide
 Or with gases ("AS_GAS")
 
 ```@setup example4
-using CementChemistry
+using ChemistryLab
 using PrettyTables
 df_elements, df_substances, df_reactions = parse_cemdata18_thermofun("../../../data/cemdata18-merged.json")
 df_primaries = extract_primary_species("../../../data/CEMDATA18-31-03-2022-phaseVol.dat")

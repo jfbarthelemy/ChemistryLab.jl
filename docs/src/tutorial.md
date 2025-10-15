@@ -1,4 +1,4 @@
-This tutorial progressively introduces the main features of [CementChemistry](@ref) using practical examples.
+This tutorial progressively introduces the main features of [ChemistryLab](@ref) using practical examples.
 
 ---
 

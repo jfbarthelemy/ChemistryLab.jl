@@ -18,26 +18,26 @@ end
 - a `Formula`
 
 ```@example
-using CementChemistry #hide
+using ChemistryLab #hide
 fH2O = 2 * :H + :O
 H2O = Species(fH2O)
 ```
 
 - a string
 ```@example
-using CementChemistry #hide
+using ChemistryLab #hide
 HSO4 = Species("HSO₄⁻")
 ```
 
 - a dictionary
 ```@example
-using CementChemistry #hide
+using ChemistryLab #hide
 CO2 = Species(Dict(:C => 1, :O => 2); name="CO₂")
 ```
 
 > **_NOTE:_**  To add a charge when creating species with a dictionary, you must add, after the dictionary, the value of the charge (charge is considered an argument of the structure).
 ```@example
-using CementChemistry #hide
+using ChemistryLab #hide
 CO2 = Species(Dict(:Si => 1, :O => 3),-2; name="SiO₃²⁻")
 ```
 
@@ -50,7 +50,7 @@ CO2 = Species(Dict(:Si => 1, :O => 3),-2; name="SiO₃²⁻")
 The manipulation of chemical formulas can also be done in cement notation. Here are examples of anhydrous phases:
 
 ```@setup example_cemspecies
-    using CementChemistry
+    using ChemistryLab
 ```
 
 ```@example example_cemspecies
@@ -66,7 +66,7 @@ C4AF = CemSpecies(Dict(:C => 4, :A => 1, :F => 1); name = "C4AF")
 The previous species were constructed from integer values ​​of the number of chemical elements. However, numerical values ​​are possible (see [species](./databases.md#formulas)), as well as symbolic values. To do this, you need to use the [`SymPy`](https://github.com/JuliaPy/SymPy.jl) library:
 
 ```@example sympy1
-using CementChemistry
+using ChemistryLab
 using SymPy
 â, b̂, ĝ = symbols("â b̂ ĝ", real = true)
 ox = Dict(:C => â, :S => one(Sym), :A => b̂, :H => ĝ)

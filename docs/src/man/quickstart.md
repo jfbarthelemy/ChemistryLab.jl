@@ -2,14 +2,14 @@
 
 # Quickstart
 
-Install CementChemistry in your chosen environment by entering pkg mode by pressing `]` and then:
+Install ChemistryLab in your chosen environment by entering pkg mode by pressing `]` and then:
 
 ```julia
-pkg> add CementChemistry
+pkg> add ChemistryLab
 ```
 
-In order to use CementChemistry, it is then necessary to load the CementChemistry.jl package:
+In order to use ChemistryLab, it is then necessary to load the ChemistryLab.jl package:
 
 ```julia
-julia> using CementChemistry
+julia> using ChemistryLab
 ```
