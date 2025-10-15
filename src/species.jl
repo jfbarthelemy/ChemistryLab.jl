@@ -219,13 +219,14 @@ function CemSpecies(s::Species; name=name(s), symbol=symbol(s), aggregate_state=
     else
         A, indep_comp, dep_comp = stoich_matrix([s], oxides_as_species; display=false)
         oxides = OrderedDict(Symbol(indep_comp[i].symbol) => A[i, 1] for i in 1:size(A, 1))
-        cemspecies = CemSpecies(oxides, charge(s); name=name, symbol=symbol, aggregate_state=aggregate_state, class=class, properties=OrderedDict{Symbol,PropertyType}(k=>v for (k,v) in properties))
-        if cemspecies == s
-            return cemspecies
-        else
-            error("$(name) cannot be decomposed in cement oxides")
+        if !isempty(oxides)
+            cemspecies = CemSpecies(oxides, charge(s); name=name, symbol=symbol, aggregate_state=aggregate_state, class=class, properties=OrderedDict{Symbol,PropertyType}(k=>v for (k,v) in properties))
+            if cemspecies == s
+                return cemspecies
+            end
         end
     end
+    error("$(name) cannot be decomposed in cement oxides")
 end
 
 Species(s::CemSpecies; name=name(s), symbol=symbol(s), aggregate_state=aggregate_state(s), class=class(s), properties=properties(s)) = Species{valtype(atoms(s))}(name, symbol, formula(s), aggregate_state, class, OrderedDict{Symbol,PropertyType}(k=>v for (k,v) in properties))
