@@ -35,13 +35,16 @@ using ChemistryLab #hide
 CO2 = Species(Dict(:C => 1, :O => 2); name="CO₂")
 ```
 
-> **_NOTE:_**  To add a charge when creating species with a dictionary, you must add, after the dictionary, the value of the charge (charge is considered an argument of the structure).
+!!! note "Add charge"
+    To add a charge when creating species with a dictionary, you must add, after the dictionary, the value of the charge (charge is considered an argument of the structure).
+
 ```@example
 using ChemistryLab #hide
 CO2 = Species(Dict(:Si => 1, :O => 3),-2; name="SiO₃²⁻")
 ```
 
-> **_NOTE:_** You will also have noticed that a calculation of the molar mass of the species is systematically carried out.
+!!! tip "Remark"
+    You will also have noticed that a calculation of the molar mass of the species is systematically carried out.
 
 ---
 
