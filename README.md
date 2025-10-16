@@ -1,4 +1,7 @@
-![ChemistryLab Logo](https://raw.githubusercontent.com/jfbarthelemy/ChemistryLab.jl/main/docs/src/assets/logo.svg)
+<!-- ![ChemistryLab Logo](https://raw.githubusercontent.com/jfbarthelemy/ChemistryLab.jl/main/docs/src/assets/logo.svg) -->
+<p align="center">
+  <img src="./docs/src/assets/logo.svg" width="100">
+</p>
 
 # ChemistryLab
 
