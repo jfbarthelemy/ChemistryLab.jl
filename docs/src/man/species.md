@@ -118,3 +118,4 @@ println(unicode(Jennite), " ≡ ", unicode(cemJennite))
 
 ## Species properties
 
+Species properties are open and left to the discretion of users. Only the molar mass is systematically calculated and integrated into the species properties, for now. We can of course imagine that these properties could contain thermodynamic properties such as the Gibbs energy of formation, the heat capacity or even the entropy variation, these properties themselves being temperature dependent. These properties must nevertheless respect one of the following types: `Number`, `AbstractVector{<:Number}`, `Function`, `AbstractString`.
