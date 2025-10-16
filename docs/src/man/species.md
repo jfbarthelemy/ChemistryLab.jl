@@ -160,7 +160,7 @@ Species properties are open and left to the discretion of users. Only the molar 
 
 Imagine, for example, that we wanted to construct the jennite ($C_{1.67}SH_{2.1}$) molecule with some of its thermodynamic properties. The Gibbs energy of formation of this species is equal to -2480.81 KJ/mol. This property, intrinsic to the species, can be added simply as follows:
 
-```@example CSH
+```julia
 import Unitful: u, g, cm, K, J, mol, Quantity, uconvert, ustrip, unit, uparse
 jennite.ΔfG⁰ = -2480.81*uparse("K * J/mol")
 ```
