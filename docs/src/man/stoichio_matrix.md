@@ -28,7 +28,7 @@ using PrettyTables #hide
 
 A cement species vector can also be expressed in terms of other species on which they depend. Here, the cement species are expressed in terms of the oxides from which they are composed.
 
-```@example
+```@example stoich
 using ChemistryLab #hide
 C3S = CemSpecies("C3S")
 C2S = CemSpecies("C2S")
@@ -44,16 +44,20 @@ using PrettyTables #hide
 
 ## Stochiometric matrix for species and primary species
 
-The decomposition can also be done according to the primary species previously defined.
+The decomposition of a set of species can also be done according to a base of primary species.
 
-```@example
+```@example stoich
 using ChemistryLab #hide
 fH2O = 2 * :H + :O
 H2O = Species(fH2O)
 HSO4 = Species("HSO₄⁻")
 CO2 = Species(Dict(:C => 1, :O => 2); symbol="CO₂")
 species = [H2O, HSO4, CO2]
-A, indep_comp, dep_comp = stoich_matrix(species)
+H⁺ = Species("H⁺")
+SO₄²⁻ = Species("SO₄²⁻")
+CO₃²⁻ = Species("CO₃²⁻")
+primary_species = [H⁺, SO₄²⁻, CO₃²⁻, H2O]
+A, indep_comp, dep_comp = stoich_matrix(species, primary_species)
 
 using PrettyTables #hide
 ```
