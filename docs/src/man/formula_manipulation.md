@@ -28,9 +28,6 @@ using ChemistryLab #hide
 fCO2 = :C + 2 * :O
 ```
 
-!!! danger "Warning"
-    This way of constructing formulas is only possible for a certain number of elements from Mendeleïev's table and which are found in cementitious materials. The list of the elements is as follows:
-
 ```@example 1
 ATOMIC_ORDER
 ```
@@ -54,12 +51,12 @@ typeof(Formula("H2O"))
 ```
 
 ```@example 1
-typeof(Formula("A1//2B3C0.4"))
+typeof(Formula("C3AFS5//8H4.32"))
 ```
 
 ## Change of type
 
-Coefficient types can be changed *a posteriori*.
+Coefficient types can be converted *a posteriori*.
 
 ```@example 1
 convert(Float64, Formula("H2O"))

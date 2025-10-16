@@ -1,5 +1,5 @@
 <!-- ![ChemistryLab Logo](https://raw.githubusercontent.com/jfbarthelemy/ChemistryLab.jl/main/docs/src/assets/logo.svg) -->
-<p align="center">
+<p>
   <img src="./docs/src/assets/logo.svg" width="100">
 </p>
 
@@ -34,7 +34,7 @@ ChemistryLab.jl is a computational chemistry toolkit. Although initially dedicat
 ## Prerequisites
 
 - Julia 1.6 or higher
-- Dependencies: JSON, JSON3, CSV, DataFrames, Unicode, Unitful, PeriodicTable, PhysicalConstants.CODATA2022, PrettyTables
+- Dependencies: JSON3, CSV, DataFrames, Unicode, Unitful, PeriodicTable, PrettyTables
 - No API account or special access required 
 
 ## Installation

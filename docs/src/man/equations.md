@@ -9,12 +9,13 @@ struct Reaction{SR<:AbstractSpecies, TR<:Number, SP<:AbstractSpecies, TP<:Number
     reactants::OrderedDict{SR, TR}
     products::OrderedDict{SP, TP}
     equal_sign::Char
+    properties::OrderedDict{Symbol,PropertyType}
 end
 ```
 
 ## Parsing reactions
 
-`Reaction` is a structure which can be build from:
+`Reaction` is a composite type `struct` which can be build from:
 - a string containing [species](./databases.md#species)
 ```julia
 equation = "13H⁺ + NO₃⁻ + CO₃²⁻ + 10e⁻ = 6H₂O@ + HCN@"
