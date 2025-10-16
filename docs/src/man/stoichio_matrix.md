@@ -58,6 +58,13 @@ A, indep_comp, dep_comp = stoich_matrix(species)
 using PrettyTables #hide
 ```
 
+!!! note "Display of the stoichiometric matrix"
+    The stochiometric matrix can be displayed with different column and row labels. Simply add the keyword 'label', which can take the following values: *:name*, *:symbol*, *:formula*
+
+    ```julia
+    A, indep_comp, dep_comp = stoich_matrix(species, label=:name)
+    ```
+
 The primary species of Cemdata18 can be listed with the following command:
 
 ```julia
