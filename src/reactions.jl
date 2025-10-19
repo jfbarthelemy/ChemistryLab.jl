@@ -54,7 +54,7 @@ end
 function remove_zeros(d::AbstractDict)
     for (k,v) in d
         if iszero(v)
-            pop!(d, k)
+            delete!(d, k)
         end
     end
     return d
@@ -178,14 +178,14 @@ function simplify_reaction(r::Reaction)
     for species in common_species
         coef = prod[species] - reac[species]
         if iszero(coef)
-            pop!(reac, species)
-            pop!(prod, species)
+            delete!(reac, species)
+            delete!(prod, species)
         elseif try coef>0 catch; true end
             prod[species] = coef
-            pop!(reac, species)
+            delete!(reac, species)
         else
             reac[species] = -coef
-            pop!(prod, species)
+            delete!(prod, species)
         end
     end
     return Reaction(reac, prod; equal_sign=equal_sign(r), properties=properties(r))

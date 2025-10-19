@@ -488,9 +488,9 @@ function merge_json(json_path, dat_path, output_path)
 end
 
 """
-    parse_cemdata18_thermofun(filename)
+    read_thermofun(filename)
 
-Parse a ThermoFun JSON file and return DataFrames for elements, substances, and reactions.
+Read a ThermoFun JSON file and return DataFrames for elements, substances, and reactions.
 
 # Arguments
 - `filename`: Path to the ThermoFun JSON file.
@@ -500,7 +500,7 @@ Parse a ThermoFun JSON file and return DataFrames for elements, substances, and 
 - `df_substances`: DataFrame of substances.
 - `df_reactions`: DataFrame of reactions.
 """
-function parse_cemdata18_thermofun(filename)
+function read_thermofun(filename)
     # 1. Read the JSON file
     data = open(JSON3.read, filename)
 
@@ -582,12 +582,18 @@ function parse_cemdata18_thermofun(filename)
     # 3. Create the DataFrame for substances
     substances = data.substances
     df_substances = DataFrame(
+        species = [try Species(s.formula;
+                       name = s.name,
+                       symbol = s.symbol,
+                       aggregate_state = try eval(Meta.parse(only(values(s.aggregate_state)))) catch; AS_UNDEF end,
+                       class = try eval(Meta.parse(only(values(s.class_)))) catch; SC_UNDEF end,
+                       )
+                    catch; missing end for s in substances],
         name = [get(s, "name", missing) for s in substances],
         symbol = [get(s, "symbol", missing) for s in substances],
-        formula_ox = [get(s, "formula", missing) for s in substances],
-        formula = [replace(get(s, "formula", missing), r"\|\-?\d+\|" => "") for s in substances],
+        formula = [get(s, "formula", missing) for s in substances],
+        # formula = [replace(get(s, "formula", missing), r"\|\-?\d+\|" => "") for s in substances],
         charge = [get(s, "formula_charge", missing) for s in substances],
-        atoms = [parse_formula(get(s, "formula", missing)) for s in substances],
         aggregate_state = [only(values(get(s, "aggregate_state", Dict("" => missing)))) for s in substances],
         class = [only(values(get(s, "class_", Dict("" => missing)))) for s in substances],
         Tst = [get(s, "Tst", missing) for s in substances],
@@ -601,8 +607,17 @@ function parse_cemdata18_thermofun(filename)
         ΔfH = [extract_field_with_units(s, "sm_enthalpy") for s in substances],
         S = [extract_field_with_units(s, "sm_entropy_abs") for s in substances],
         Vm = [extract_field_with_units(s, "sm_volume") for s in substances],
-        datasources = [get(s, "datasources", missing) for s in substances]
+        datasources = [get(s, "datasources", missing) for s in substances],
     )
+    trycemspecies(s) = try CemSpecies(s) catch; missing end
+    insertcols!(df_substances, 2, :cemspecies => trycemspecies.(df_substances.species))
+    print_title("Property completion"; crayon=Crayon(foreground=:blue), style=:box, indent="")
+    for row in eachrow(df_substances)
+        s = row.species
+        val, unit = row.ΔfG.values, row.ΔfG.units
+        if iszero(val) || ismissing(unit) println("$s => ΔfG=$val $unit") end
+        s.ΔfG = val*(try uparse(unit) catch; J/mol end)
+    end
 
     # 4. Create the DataFrame for reactions
     reactions = data.reactions

@@ -60,7 +60,7 @@ function Base.setproperty!(s::AbstractSpecies, sym::Symbol, value)
     return s
 end
 
-const PropertyType = Union{Number,AbstractVector{<:Number},Function,AbstractString}
+const PropertyType = Union{Number,AbstractVector{<:Number},Function,Callable,AbstractString}
 
 function ordered_dict_with_default(gen, key_type, val_type)
     d = OrderedDict(gen)

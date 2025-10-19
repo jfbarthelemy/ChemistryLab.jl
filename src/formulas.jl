@@ -118,10 +118,10 @@ Base.isequal(f1::Formula, f2::Formula) = isequal(composition(f1), composition(f2
 Base.hash(f::Formula, h::UInt) = hash(composition(f), hash(charge(f), h))
 
 function Base.show(io::IO, f::Formula)
-    print(io, join(unique!([expr(f),  phreeqc(f), unicode(f)]), " ∙ "))
+    print(io, join(unique!([expr(f),  phreeqc(f), unicode(f)]), " ◆ "))
 end
 
-print_formula(io::IO, f::Formula, title::String, pad::Int) = println(io, lpad(title, pad), ": ", join(unique!([expr(f),  phreeqc(f), unicode(f), colored(f)]), " ∙ "))
+print_formula(io::IO, f::Formula, title::String, pad::Int) = println(io, lpad(title, pad), ": ", join(unique!([expr(f),  phreeqc(f), unicode(f), colored(f)]), " ◆ "))
 
 function Base.show(io::IO, ::MIME"text/plain", f::Formula)
     pad = 11

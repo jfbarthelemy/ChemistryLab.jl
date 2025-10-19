@@ -17,9 +17,9 @@ H₂O = Species(fH₂O; name="Water", symbol="H₂O&", aggregate_state=AS_AQUEOU
 HSO₄⁻ = Species("HSO₄⁻"; aggregate_state=AS_AQUEOUS, class=SC_AQSOLUTE)
 CO₂ = Species(Dict(:C=>1, :O=>2); name="Carbon dioxide", symbol="CO₂⤴", aggregate_state=AS_GAS, class=SC_GAS_FLUID)
 species = [H₂O, HSO₄⁻, CO₂] ;
-A, atoms = canonical_stoich_matrix(species; label=:name) ; # label only for display
-A, atoms = canonical_stoich_matrix(species; label=:symbol) ;
-A, atoms = canonical_stoich_matrix(species; label=:formula) ;
+A, atomlist = canonical_stoich_matrix(species; label=:name) ; # label only for display
+A, atomlist = canonical_stoich_matrix(species; label=:symbol) ;
+A, atomlist = canonical_stoich_matrix(species; label=:formula) ;
 
 water_without_name_symbol = Species("H2O"; aggregate_state=AS_AQUEOUS, class=SC_AQSOLVENT)
 water_without_name_symbol == H₂O # true since atoms, aggregate_state and class are equal despite instances are different
@@ -49,13 +49,13 @@ try CemSpecies(Species("Ca(OH)")) catch; "ERROR: Ca(OH) cannot be decomposed in 
 CemSpecies(Species("CaCO3"; name="Calcite", aggregate_state=AS_CRYSTAL, class=SC_COMPONENT)) # ok here
 
 # Thermofun cemdata18
-df_elements, df_substances, df_reactions = parse_cemdata18_thermofun("data/cemdata18-merged.json")
+df_elements, df_substances, df_reactions = read_thermofun("data/cemdata18-merged.json")
 df_primaries = extract_primary_species("data/CEMDATA18-31-03-2022-phaseVol.dat")
 
 # Construction of stoich matrix with species from database
 given_species = filter(row->row.symbol ∈ split("C3S Portlandite Jennite H2O@"), df_substances)
 secondaries = filter(row->row.aggregate_state == "AS_AQUEOUS" 
-                          && all(k->first(k) ∈ union_atoms(given_species.atoms), row.atoms)
+                          && all(k->first(k) ∈ union_atoms(atoms.(given_species.species)), atoms(row.species))
                           && row.symbol ∉ split("H2@ O2@"),
                           df_substances)
 all_species = unique(vcat(given_species, secondaries), :symbol)
@@ -180,3 +180,8 @@ candidate_primaries = species[1:6] ;
 A, indep_comp, dep_comp = stoich_matrix(species) ;
 B, indep_comp, dep_comp = stoich_matrix(species; mass=true) ;
 lr = stoich_matrix_to_reactions(A, indep_comp, dep_comp) ;
+
+# Callable
+cemJennite.Cp = Cp(210.0J/K/mol, 0.120J/mol/K^2, -3.07e6J*K/mol, 0.0J/mol/√K)
+@show cemJennite.Cp.a0 ;
+cemJennite.Cp(298.15K)
