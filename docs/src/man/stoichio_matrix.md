@@ -73,17 +73,17 @@ Finally, primary species candidates can be found in a database. Those from Cemda
 
 ```julia
 using ChemistryLab #hide
-df_elements, df_substances, df_reactions = parse_cemdata18_thermofun("../../../data/cemdata18-merged.json") #hide
+df_elements, df_substances, df_reactions = read_thermofun("../../../data/cemdata18-merged.json") #hide
 df_primaries = extract_primary_species("../../../data/CEMDATA18-31-03-2022-phaseVol.dat")
 candidate_primaries = [Species(f; symbol=phreeqc_to_unicode(n)) for (f,n) in zip(df_primaries.formula, df_primaries.symbol)]
 ```
-See [`ChemistryLab.parse_cemdata18_thermofun`](@ref) and [`ChemistryLab.extract_primary_species`](@ref)
+See [`ChemistryLab.read_thermofun`](@ref) and [`ChemistryLab.extract_primary_species`](@ref)
 
 Stoichiometric matrix can then be obtained based on an set of independent primary species.
 
 ```@example stoich
 using ChemistryLab #hide
-df_elements, df_substances, df_reactions = parse_cemdata18_thermofun("../../../data/cemdata18-merged.json") #hide
+df_elements, df_substances, df_reactions = read_thermofun("../../../data/cemdata18-merged.json") #hide
 df_primaries = extract_primary_species("../../../data/CEMDATA18-31-03-2022-phaseVol.dat") #hide
 candidate_primaries = [Species(f; symbol=phreeqc_to_unicode(n)) for (f,n) in zip(df_primaries.formula, df_primaries.symbol)] #hide
 A, indep_comp, dep_comp = stoich_matrix(species, candidate_primaries)

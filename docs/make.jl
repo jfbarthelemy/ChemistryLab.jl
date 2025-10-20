@@ -26,7 +26,7 @@ makedocs(;
             "man/equations.md",
             ],
         "Examples" => [
-            "example/get_stochio_matrix.md",
+            "example/get_stoichio_matrix.md",
             "example/bogue_calculation.md",
             ],
         "API" => "reference.md",

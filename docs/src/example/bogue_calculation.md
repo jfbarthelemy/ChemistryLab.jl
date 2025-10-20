@@ -6,16 +6,8 @@ Bogue's formulas allow us to find the masses of C3S, C2S, C3A and C4AF as a func
 
 ```@example Bogue
 using ChemistryLab #hide
-C3S = CemSpecies("C3S")
-C2S = CemSpecies("C2S")
-C3A = CemSpecies("C3A")
-C4AF = CemSpecies("C4AF")
-cemspecies = [C3S, C2S, C3A, C4AF]
-CaO = CemSpecies("C")
-SiO2 = CemSpecies("S")
-Al2O3 = CemSpecies("A")
-Fe2O3 = CemSpecies("F")
-oxides = [CaO, SiO2, Al2O3, Fe2O3]
+cemspecies = CemSpecies.(split("C3S C2S C3A C4AF"))
+oxides = CemSpecies.(split("C S A F"))
 A, indep_comp = stoich_matrix(cemspecies,oxides)
 
 using PrettyTables #hide

@@ -500,7 +500,7 @@ Read a ThermoFun JSON file and return DataFrames for elements, substances, and r
 - `df_substances`: DataFrame of substances.
 - `df_reactions`: DataFrame of reactions.
 """
-function read_thermofun(filename)
+function read_thermofun(filename; debug=false)
     # 1. Read the JSON file
     data = open(JSON3.read, filename)
 
@@ -611,11 +611,11 @@ function read_thermofun(filename)
     )
     trycemspecies(s) = try CemSpecies(s) catch; missing end
     insertcols!(df_substances, 2, :cemspecies => trycemspecies.(df_substances.species))
-    print_title("Property completion"; crayon=Crayon(foreground=:blue), style=:box, indent="")
+    if debug print_title("Property completion"; crayon=Crayon(foreground=:blue), style=:box, indent="") end
     for row in eachrow(df_substances)
         s = row.species
         val, unit = row.ΔfG.values, row.ΔfG.units
-        if iszero(val) || ismissing(unit) println("$s => ΔfG=$val $unit") end
+        if debug if iszero(val) || ismissing(unit) println("$s => ΔfG=$val $unit") end end
         s.ΔfG = val*(try uparse(unit) catch; J/mol end)
     end
 

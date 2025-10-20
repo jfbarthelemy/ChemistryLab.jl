@@ -2,7 +2,6 @@
 ChemistryLab = "f346e401-14f9-407c-a0e2-c4f64a3e574a"
 Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
 PeriodicTable = "7b2266bf-644c-5ea3-82d8-af4bbd25a884"
-PhysicalConstants = "5ad8b20f-a522-5ce9-bfc9-ddf1d5bda6ab"
 PrettyTables = "08abe8d2-0d0c-5749-adfa-8a2ac140af0d"
 SymPy = "24249f21-da20-56a4-8eb1-6a02cf4ae2e6"
 Unitful = "1986cc42-f94f-5a68-af5c-568840ba703d"

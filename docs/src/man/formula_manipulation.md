@@ -28,10 +28,6 @@ using ChemistryLab #hide
 fCO2 = :C + 2 * :O
 ```
 
-```@example 1
-ATOMIC_ORDER
-```
-
 Charges can also be included during the creation in two different ways:
 ```@example 1
 fHSO₄⁻ = :H+:S+4*:O+:e

@@ -21,10 +21,10 @@ With ChemistryLab, you can parse a ThermoFun-like json file and return DataFrame
 - elements:
 
 ```@example database_interoperability
-df_elements, df_substances, df_reactions = parse_cemdata18_thermofun("../../../data/cemdata18-merged.json")
+df_elements, df_substances, df_reactions = read_thermofun("../../../data/cemdata18-merged.json")
 show(df_elements, allcols=true, allrows=true)
 ```
-[`ChemistryLab.parse_cemdata18_thermofun`](@ref)
+[`ChemistryLab.read_thermofun`](@ref)
 
 - species (aqueous, solid or gaseous phases):
 

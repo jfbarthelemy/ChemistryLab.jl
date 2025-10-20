@@ -7,18 +7,18 @@ Let's imagine that we want to form the stochiometric matrix of a list of solid a
 ```julia
 using ChemistryLab
 using PrettyTables
-df_elements, df_substances, df_reactions = parse_cemdata18_thermofun("../../../data/cemdata18-merged.json")
+df_elements, df_substances, df_reactions = read_thermofun("../../../data/cemdata18-merged.json")
 df_primaries = extract_primary_species("../../../data/CEMDATA18-31-03-2022-phaseVol.dat")
 ```
-See [`ChemistryLab.parse_cemdata18_thermofun`](@ref) and [`ChemistryLab.extract_primary_species`](@ref)
+See [`ChemistryLab.read_thermofun`](@ref) and [`ChemistryLab.extract_primary_species`](@ref)
 
 It is then necessary to identify the list of secondary species likely to appear during the reactions.
 
 ```julia
 given_species = filter(row -> row.symbol ∈ split("C3S Portlandite Jennite H2O@"), df_substances)
-secondaries = filter(row -> row.aggregate_state == "AS_AQUEOUS" &&
-                          all(k -> first(k) ∈ union_atoms(given_species.atoms), row.atoms) &&
-                          row.symbol ∉ split("H2@ O2@"),
+secondaries = filter(row->row.aggregate_state == "AS_AQUEOUS" 
+                          && all(k->first(k) ∈ union_atoms(atoms.(given_species.species)), atoms(row.species))
+                          && row.symbol ∉ split("H2@ O2@"),
                           df_substances)
 ```
 
@@ -35,14 +35,14 @@ And construct the stoichiometric matrix
 ```@setup example1
     using ChemistryLab #hide
     using PrettyTables
-    df_elements, df_substances, df_reactions = parse_cemdata18_thermofun("../../../data/cemdata18-merged.json") #hide
+    df_elements, df_substances, df_reactions = read_thermofun("../../../data/cemdata18-merged.json") #hide
     df_primaries = extract_primary_species("../../../data/CEMDATA18-31-03-2022-phaseVol.dat") #hide
 
     given_species = filter(row -> row.symbol ∈ split("C3S Portlandite Jennite H2O@"), df_substances) #hide
-    secondaries = filter(row -> row.aggregate_state == "AS_AQUEOUS" &&
-                            all(k -> first(k) ∈ union_atoms(given_species.atoms), row.atoms) &&
-                            row.symbol ∉ split("H2@ O2@"),
-                            df_substances) #hide
+    secondaries = filter(row->row.aggregate_state == "AS_AQUEOUS" 
+                            && all(k->first(k) ∈ union_atoms(atoms.(given_species.species)), atoms(row.species))
+                            && row.symbol ∉ split("H2@ O2@"),
+                            df_substances)
 
 
     all_species = unique(vcat(given_species, secondaries), :symbol) #hide
@@ -61,7 +61,7 @@ using PrettyTables #hide
 ```@example example2
 using ChemistryLab
 using PrettyTables
-df_elements, df_substances, df_reactions = parse_cemdata18_thermofun("../../../data/cemdata18-merged.json")
+df_elements, df_substances, df_reactions = read_thermofun("../../../data/cemdata18-merged.json")
 df_primaries = extract_primary_species("../../../data/CEMDATA18-31-03-2022-phaseVol.dat")
 aqueous_species = filter(row->row.aggregate_state == "AS_AQUEOUS", df_substances)
 species = [Species(f; symbol=phreeqc_to_unicode(n)) for (f,n) in zip(aqueous_species.formula, aqueous_species.symbol)]
@@ -84,7 +84,7 @@ The exercise can also be done on solid species. In this case, the data filter is
 ```@setup example3
 using ChemistryLab
 using PrettyTables
-df_elements, df_substances, df_reactions = parse_cemdata18_thermofun("../../../data/cemdata18-merged.json")
+df_elements, df_substances, df_reactions = read_thermofun("../../../data/cemdata18-merged.json")
 df_primaries = extract_primary_species("../../../data/CEMDATA18-31-03-2022-phaseVol.dat")
 aqueous_species = filter(row->row.aggregate_state == "AS_CRYSTAL", df_substances)
 species = [Species(f; symbol=phreeqc_to_unicode(n)) for (f,n) in zip(aqueous_species.formula, aqueous_species.symbol)]
@@ -108,7 +108,7 @@ Or with gases ("AS_GAS")
 ```@setup example4
 using ChemistryLab
 using PrettyTables
-df_elements, df_substances, df_reactions = parse_cemdata18_thermofun("../../../data/cemdata18-merged.json")
+df_elements, df_substances, df_reactions = read_thermofun("../../../data/cemdata18-merged.json")
 df_primaries = extract_primary_species("../../../data/CEMDATA18-31-03-2022-phaseVol.dat")
 aqueous_species = filter(row->row.aggregate_state == "AS_GAS", df_substances)
 species = [Species(f; symbol=phreeqc_to_unicode(n)) for (f,n) in zip(aqueous_species.formula, aqueous_species.symbol)]

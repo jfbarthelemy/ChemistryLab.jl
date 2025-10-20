@@ -26,7 +26,7 @@ println("Phreeqc to Unicode: ", unicode)
 println("Unicode to Phreeqc: ", unicode_to_phreeqc(unicode))
 
 # 5. Test filtering database for solid phases only
-df_elements, df_substances, df_reactions = parse_cemdata18_thermofun("../data/cemdata18-merged.json")
+df_elements, df_substances, df_reactions = read_thermofun("../data/cemdata18-merged.json")
 solid_species = filter(row->row.symbol == "M15SH", df_substances)
 solid_species = filter(row->row.aggregate_state == "AS_CRYSTAL", df_substances)
 println("Number of solid species: ", nrow(solid_species))
