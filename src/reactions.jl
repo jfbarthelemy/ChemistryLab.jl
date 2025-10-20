@@ -42,6 +42,10 @@ function Base.getproperty(r::Reaction, sym::Symbol)
     end
 end
 
+function Base.haskey(r::Reaction, sym::Symbol)
+    return haskey(properties(r), sym)
+end
+
 function Base.setproperty!(r::Reaction, sym::Symbol, value)
     if sym in fieldnames(typeof(r))
         error("Cannot modify field '$sym' directly. Use constructor or dedicated methods.")

@@ -49,7 +49,10 @@ try CemSpecies(Species("Ca(OH)")) catch; "ERROR: Ca(OH) cannot be decomposed in 
 CemSpecies(Species("CaCO3"; name="Calcite", aggregate_state=AS_CRYSTAL, class=SC_COMPONENT)) # ok here
 
 # Thermofun cemdata18
-df_elements, df_substances, df_reactions = read_thermofun("data/cemdata18-merged.json")
+df_elements, df_substances, df_reactions = read_thermofun("data/cemdata18-merged.json"; debug=true) ;
+dict_species = Dict(zip(df_substances.symbol, df_substances.species))
+filter(p->!haskey(p.second, :Cp), dict_species)
+filter(p->haskey(p.second, :Cp) && !iszero(p.second.Cp.a3), dict_species)
 df_primaries = extract_primary_species("data/CEMDATA18-31-03-2022-phaseVol.dat")
 
 # Construction of stoich matrix with species from database

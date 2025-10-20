@@ -51,6 +51,10 @@ function Base.getproperty(s::AbstractSpecies, sym::Symbol)
     end
 end
 
+function Base.haskey(s::AbstractSpecies, sym::Symbol)
+    return haskey(properties(s), sym)
+end
+
 function Base.setproperty!(s::AbstractSpecies, sym::Symbol, value)
     if sym in fieldnames(typeof(s))
         error("Cannot modify field '$sym' directly. Use constructor or dedicated methods.")
@@ -122,7 +126,7 @@ function Species(s::Species; name=name(s), symbol=symbol(s), aggregate_state=agg
 end
 
 function Base.show(io::IO, s::Species)
-    print(io, name(s), " [", formula(s), "]")
+    print(io, symbol(s), " {", name(s), "} [", formula(s), "]")
 end
 
 function Base.show(io::IO, ::MIME"text/plain", s::Species)
@@ -250,7 +254,7 @@ function CemSpecies(s::CemSpecies; name=name(s), symbol=symbol(s), aggregate_sta
 end
 
 function Base.show(io::IO, s::CemSpecies)
-    print(io, name(s), " [", cemformula(s), "]")
+    print(io, symbol(s), " {", name(s), "} [", cemformula(s), "]")
 end
 
 function Base.show(io::IO, ::MIME"text/plain", s::CemSpecies)

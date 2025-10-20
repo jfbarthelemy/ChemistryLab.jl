@@ -615,8 +615,35 @@ function read_thermofun(filename; debug=false)
     for row in eachrow(df_substances)
         s = row.species
         val, unit = row.ΔfG.values, row.ΔfG.units
-        if debug if iszero(val) || ismissing(unit) println("$s => ΔfG=$val $unit") end end
+        if debug
+            if iszero(val) || ismissing(unit)
+                println(crayon"blue"("$s => ΔfG=$val $unit"))
+                print(crayon"reset")
+            end
+        end
         s.ΔfG = val*(try uparse(unit) catch; J/mol end)
+        val, unit = row.ΔfH.values, row.ΔfH.units
+        if debug
+            if iszero(val) || ismissing(unit)
+                println(crayon"red"("$s => ΔfH=$val $unit"))
+                print(crayon"reset")
+            end
+        end
+        s.ΔfH = val*(try uparse(unit) catch; J/mol end)
+        TPMethods = row.TPMethods
+        idx = findfirst(d -> haskey(d, "method") && d["method"] == "cp_ft_equation", TPMethods)
+        if !isnothing(idx)
+            d = TPMethods[idx]
+            tuple_coefs = d["m_heat_capacity_ft_coeffs"]
+            values = tuple_coefs.values
+            units = tuple_coefs.units
+            s.Cp = Cp([values[i]*uparse(units[i]) for i=1:min(length(values), length(units))]...)
+            if !iszero(max(abs.(values[5:end])...))
+                println(crayon"green"("$s => Cp=$values"))
+            end
+        else
+            
+        end
     end
 
     # 4. Create the DataFrame for reactions
