@@ -70,14 +70,14 @@ function stoich_matrix_to_reactions(A::AbstractMatrix, indep_comp_names::Abstrac
     for (j, sp) in enumerate(dep_comp_names)
         if sp in indep_comp_names
             if display
-                println(rpad("$(symbol(sp))", pad), "| $(colored(sp)) $(string(COL_PAR(string(equal_sign)))) $(colored(sp))")
+                println(rpad("$(symbol(sp))", pad), "│ $(colored(sp)) $(string(COL_PAR(string(equal_sign)))) $(colored(sp))")
             end
         else
             coeffs = OrderedDict(zip([sp ; indep_comp_names], [1 ; -A[:, j]]))
             eqn = scaling*Reaction(coeffs)
             push!(eqns, eqn)
             if display
-                println(rpad("$(symbol(sp))", pad), "| ", colored(eqn))
+                println(rpad("$(symbol(sp))", pad), "│ ", colored(eqn))
             end
         end
     end

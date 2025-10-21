@@ -612,24 +612,17 @@ function read_thermofun(filename; debug=false)
     trycemspecies(s) = try CemSpecies(s) catch; missing end
     insertcols!(df_substances, 2, :cemspecies => trycemspecies.(df_substances.species))
     if debug print_title("Property completion"; crayon=Crayon(foreground=:blue), style=:box, indent="") end
-    for row in eachrow(df_substances)
-        s = row.species
-        val, unit = row.ΔfG.values, row.ΔfG.units
-        if debug
-            if iszero(val) || ismissing(unit)
-                println(crayon"blue"("$s => ΔfG=$val $unit"))
-                print(crayon"reset")
-            end
+
+    function get_value_unit(row, field::Symbol; debug=false, crayon=Crayon(), default_unit=unit(1))            
+        val, unit = row[field].values, row[field].units
+        if debug && (iszero(val) || ismissing(unit))
+            println(crayon("$(row.symbol) => $field=$val $unit"))
+            print(crayon"reset")
         end
-        s.ΔfG = val*(try uparse(unit) catch; J/mol end)
-        val, unit = row.ΔfH.values, row.ΔfH.units
-        if debug
-            if iszero(val) || ismissing(unit)
-                println(crayon"red"("$s => ΔfH=$val $unit"))
-                print(crayon"reset")
-            end
-        end
-        s.ΔfH = val*(try uparse(unit) catch; J/mol end)
+        return val*(try uparse(unit) catch; default_unit end)
+    end
+
+    function get_Cp_coef(row; debug=false, crayon=Crayon())            
         TPMethods = row.TPMethods
         idx = findfirst(d -> haskey(d, "method") && d["method"] == "cp_ft_equation", TPMethods)
         if !isnothing(idx)
@@ -637,13 +630,19 @@ function read_thermofun(filename; debug=false)
             tuple_coefs = d["m_heat_capacity_ft_coeffs"]
             values = tuple_coefs.values
             units = tuple_coefs.units
-            s.Cp = Cp([values[i]*uparse(units[i]) for i=1:min(length(values), length(units))]...)
-            if !iszero(max(abs.(values[5:end])...))
-                println(crayon"green"("$s => Cp=$values"))
-            end
+            if debug && !iszero(max(abs.(values[5:end])...)) println(crayon("$(row.symbol) => Cp=$values")) end
+            return [values[i]*uparse(units[i]) for i=1:min(length(values), length(units))]
         else
-            
+            return [get_value_unit(row, :Cp; debug=debug, crayon=crayon, default_unit=J/(mol*K))]
         end
+    end
+
+    for row in eachrow(df_substances)
+        s = row.species
+        s.ΔfG = get_value_unit(row, :ΔfG; debug=debug, crayon=crayon"blue", default_unit=J/mol)     
+        s.ΔfH = get_value_unit(row, :ΔfH; debug=debug, crayon=crayon"red", default_unit=J/mol)   
+        # s.Cp = Cp(get_Cp_coef(row; debug=debug, crayon=crayon"green")...; Tref=row.Tst*K)
+        s.Cp = thermo_function(:Cp, get_Cp_coef(row; debug=debug, crayon=crayon"green"); Tref=row.Tst*K)
     end
 
     # 4. Create the DataFrame for reactions

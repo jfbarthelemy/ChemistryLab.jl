@@ -51,8 +51,8 @@ CemSpecies(Species("CaCO3"; name="Calcite", aggregate_state=AS_CRYSTAL, class=SC
 # Thermofun cemdata18
 df_elements, df_substances, df_reactions = read_thermofun("data/cemdata18-merged.json"; debug=true) ;
 dict_species = Dict(zip(df_substances.symbol, df_substances.species))
-filter(p->!haskey(p.second, :Cp), dict_species)
-filter(p->haskey(p.second, :Cp) && !iszero(p.second.Cp.a3), dict_species)
+# filter(p->!haskey(p.second, :Cp), dict_species)
+# filter(p->haskey(p.second, :Cp) && !iszero(p.second.Cp.a3), dict_species)
 df_primaries = extract_primary_species("data/CEMDATA18-31-03-2022-phaseVol.dat")
 
 # Construction of stoich matrix with species from database
@@ -185,6 +185,6 @@ B, indep_comp, dep_comp = stoich_matrix(species; mass=true) ;
 lr = stoich_matrix_to_reactions(A, indep_comp, dep_comp) ;
 
 # Callable
-cemJennite.Cp = Cp(210.0J/K/mol, 0.120J/mol/K^2, -3.07e6J*K/mol, 0.0J/mol/√K)
+cemJennite.Cp = thermo_function(:Cp, [210.0J/K/mol, 0.120J/mol/K^2, -3.07e6J*K/mol, 0.0J/mol/√K])
 @show cemJennite.Cp.a0 ;
 cemJennite.Cp(298.15K)
