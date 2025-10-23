@@ -49,7 +49,8 @@ try CemSpecies(Species("Ca(OH)")) catch; "ERROR: Ca(OH) cannot be decomposed in 
 CemSpecies(Species("CaCO3"; name="Calcite", aggregate_state=AS_CRYSTAL, class=SC_COMPONENT)) # ok here
 
 # Thermofun cemdata18
-df_elements, df_substances, df_reactions = read_thermofun("data/cemdata18-merged.json"; debug=true) ;
+df_elements, df_substances, df_reactions = read_thermofun("data/cemdata18-merged.json")
+df_substances = build_species_database(df_substances; debug=false, with_units=true) ; # debug only for conception phase (not to be put in the doc)
 dict_species = Dict(zip(df_substances.symbol, df_substances.species))
 # filter(p->!haskey(p.second, :Cp), dict_species)
 # filter(p->haskey(p.second, :Cp) && !iszero(p.second.Cp.a3), dict_species)
@@ -186,5 +187,15 @@ lr = stoich_matrix_to_reactions(A, indep_comp, dep_comp) ;
 
 # Callable
 cemJennite.Cp = thermo_function(:Cp, [210.0J/K/mol, 0.120J/mol/K^2, -3.07e6J*K/mol, 0.0J/mol/√K])
-@show cemJennite.Cp.a0 ;
-cemJennite.Cp(298.15K)
+@show cemJennite.Cp ;
+@show fieldnames(typeof(cemJennite.Cp)) ;
+@show fieldnames(typeof(cemJennite.Cp)) ;
+@show cemJennite.Cp(298.15K) ;
+@show cemJennite.Cp() ; # application by default à Tref
+ # same without unit
+cemJennite.Cp = thermo_function(:Cp, [210.0, 0.120, -3.07e6, 0.0]; with_units=false)
+@show cemJennite.Cp ;
+@show fieldnames(typeof(cemJennite.Cp)) ;
+@show fieldnames(typeof(cemJennite.Cp)) ;
+@show cemJennite.Cp(298.15) ;
+@show cemJennite.Cp() ; # application by default à Tref

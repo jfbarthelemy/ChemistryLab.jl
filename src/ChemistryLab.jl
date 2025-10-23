@@ -10,7 +10,9 @@ using OrderedCollections
 using PeriodicTable
 using PrettyTables
 using Unicode
-import Unitful: u, g, cm, K, J, mol, Quantity, uconvert, ustrip, unit, uparse
+import Unitful: u, g, cm, K, J, mol, bar, Quantity, uconvert, ustrip, unit, uparse, upreferred, preferunits, @u_str
+
+preferunits(u"g, cm, K, mol, s"...)
 
 const COL_CHARGE = crayon"cyan bold"
 const COL_PAR = crayon"magenta bold"
@@ -19,7 +21,6 @@ const COL_STOICH_EXT = crayon"yellow bold"
 
 function print_title(title; crayon=:none, indent="", style=:none)
     draw = crayon !=:none ? x->println(crayon(x)) : println
-    println()
     if style == :underline
         width = length(title)
         draw(indent * "$title")
@@ -50,7 +51,7 @@ export AggregateState, AS_UNDEF, AS_AQUEOUS, AS_CRYSTAL, AS_GAS
 export Class, SC_UNDEF, SC_AQSOLVENT, SC_AQSOLUTE, SC_COMPONENT, SC_GAS_FLUID
 export AbstractSpecies, Species, CemSpecies
 export name, symbol, formula, mendeleev_filter, cemformula, atoms, atoms_charge, oxides, oxides_charge, components, aggregate_state, class, properties
-export merge_json, read_thermofun, extract_primary_species
+export merge_json, read_thermofun, build_species_database, extract_primary_species
 export union_atoms, print_stoich_matrix, canonical_stoich_matrix, stoich_matrix, stoich_matrix_to_equations, stoich_matrix_to_reactions
 export Reaction, CemReaction, reactants, products, simplify_reaction
 @eval export $(Symbol.(EQUAL_OPS)...) 

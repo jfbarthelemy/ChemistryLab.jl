@@ -5,8 +5,8 @@ lib_func(::Val{-1}) = T -> inv(T)
 lib_func(::Val{-2}) = T -> inv(T^2)
 lib_func(::Val{-3}) = T -> inv(T^3)
 lib_func(::Val{0}) = T -> 1
-lib_func(::Val{:log}) = T -> log(T/1K)
-lib_func(::Val{:logdivT}) = T -> log(T/1K)/T
+lib_func(::Val{:log}) = T -> log(ustrip(T))
+lib_func(::Val{:logdivT}) = T -> log(ustrip(T))/T
 
 lib_func_derivative(::Val{α}) where {α} = T -> α * T^(α - 1)
 lib_func_derivative(::Val{0}) = T -> 0
@@ -14,40 +14,41 @@ lib_func_derivative(::Val{-1}) = T -> -inv(T^2)
 lib_func_derivative(::Val{-2}) = T -> -2inv(T^3)
 lib_func_derivative(::Val{-3}) = T -> -3inv(T^4)
 lib_func_derivative(::Val{:log}) = T -> 1 / T
-lib_func_derivative(::Val{:logdivT}) = T -> (1 - log(T/1K)) / T^2
+lib_func_derivative(::Val{:logdivT}) = T -> (1 - log(ustrip(T))) / T^2
 
 lib_func_primitive(::Val{α}) where {α} = T -> T^(α + 1) / (α + 1)
-lib_func_primitive(::Val{-1}) = T -> log(T / 1.0K)
+lib_func_primitive(::Val{-1}) = T -> log(ustrip(T))
 lib_func_primitive(::Val{-2}) = T -> -inv(T)
 lib_func_primitive(::Val{-3}) = T -> -inv(T^2)/2
-lib_func_primitive(::Val{:log}) = T -> T * (log(T/1K) - 1)
-lib_func_primitive(::Val{:logdivT}) = T -> (log(T/1K))^2 / 2
+lib_func_primitive(::Val{:log}) = T -> T * (log(ustrip(T)) - 1)
+lib_func_primitive(::Val{:logdivT}) = T -> (log(ustrip(T)))^2 / 2
 
 lib_func_double_primitive(::Val{α}) where {α} = T -> T^(α + 2) / ((α+1)*(α+2))
-lib_func_double_primitive(::Val{-1}) = T -> (log(T/1K))^2 / 2
-lib_func_double_primitive(::Val{-2}) = T -> -log(T/1K)
+lib_func_double_primitive(::Val{-1}) = T -> T * (log(ustrip(T)) - 1)
+lib_func_double_primitive(::Val{-2}) = T -> -log(ustrip(T))
 lib_func_double_primitive(::Val{-3}) = T -> inv(T)/2
-lib_func_double_primitive(::Val{:log}) = T -> (T/2)*(log(T/1K))^2 - 2*T*log(T/1K) + (3/2)*T
-lib_func_double_primitive(::Val{:logdivT}) = T -> (1/6)*(log(T/1K))^3
-
-lib_func(αs) = (lib_func∘Val).(αs)
+lib_func_double_primitive(::Val{:log}) = T -> T^2*log(ustrip(T))/2-3T^2/4
+lib_func_double_primitive(::Val{:logdivT}) = T -> T*(log(ustrip(T)))^2/2-T*log(ustrip(T))+T
 
 const dict_functions = Dict(
-    :Cp => (lib_func([0, 1, -2, -0.5, 2, 3, 4, -3, -1, 0.5, :log]), :a, J/(mol*K))
+    :Cp => ((lib_func∘Val).([0, 1, -2, -0.5, 2, 3, 4, -3, -1, 0.5, :log]), :a, J/(mol*K)),
+    :H => (vcat([lib_func(Val(0))],(lib_func_primitive∘Val).([0, 1, -2, -0.5, 2, 3, 4, -3, -1, 0.5, :log])), :aH, J/mol),
+    :S => (vcat([lib_func(Val(0))],(lib_func_primitive∘Val).([-1, 0, -3, -1.5, 1, 2, 3, -4, -2, -0.5, :logdivT])), :aS, J/(mol*K)),
+    :G => (vcat((lib_func∘Val).([0, 1]),(lib_func_double_primitive∘Val).([-1, 0, -3, -1.5, 1, 2, 3, -4, -2, -0.5, :logdivT])), :aG, J/mol),
 )
 
-function thermo_function(var::Symbol, coeffs::AbstractVector{<: Number}; Tref=298.15K)
+function thermo_function(var::Symbol, coeffs::AbstractVector{<:Number}; with_units=true, Tref=with_units ? 298.15K : 298.15, startindex=0)
     funcs, param, varunit = dict_functions[var]
-    var_types = typeof.([varunit/f(1.0K) for f in funcs])
-    non_zero_indices = [i-1 for (i, c) in enumerate(coeffs) if i==1 || !iszero(c)]
-    type_name = Symbol("Custom$(var)_$(join(string.(non_zero_indices), '_'))")
+    var_types = with_units ? typeof.([varunit/f(1.0K) for f in funcs]) : typeof.(coeffs)
+    non_zero_indices = [i-1+startindex for (i, c) in enumerate(coeffs) if i==1 || !iszero(c)]
+    type_name = Symbol("Custom$(var)_$(join(string.(non_zero_indices), '_'))"*(with_units ? "" : "_nounit"))
     fields = [Symbol(param, "$i") for i in non_zero_indices]
-    field_decls = [:(($(f)::$(var_types[i+1]))) for (i, f) in zip(non_zero_indices, fields)]
+    field_decls = [:(($(f)::$(var_types[i+1-startindex]))) for (i, f) in zip(non_zero_indices, fields)]
 
     return @eval begin
         struct $type_name <: Callable
             $(field_decls...)
-            Tref::typeof(1.0K)
+            Tref::typeof($Tref)
             function $type_name($(fields...); Tref=$Tref)
                 new($(fields...), Tref)
             end
@@ -55,12 +56,15 @@ function thermo_function(var::Symbol, coeffs::AbstractVector{<: Number}; Tref=29
 
         function (X::$type_name)(T)
             $(Expr(:call, :+,
-                [:(X.$(Symbol(param, "$i")) * $funcs[$(i+1)](T))
+                [:(X.$(Symbol(param, "$i")) * $funcs[$(i+1-startindex)](T))
                  for i in non_zero_indices]...))
         end
 
+        function (X::$type_name)()
+            X(X.Tref)
+        end
+
         function Base.show(io::IO, X::$type_name)
-            # print(io, $(string(var)), "[", $(join(string.(non_zero_indices), ",")), "](")
             print(io, $(string(var)), "(T) with {")
             first = true
             for i in $non_zero_indices
@@ -74,6 +78,6 @@ function thermo_function(var::Symbol, coeffs::AbstractVector{<: Number}; Tref=29
             print(io, "; Tref=", X.Tref, "}")
         end
 
-        $type_name($(coeffs[non_zero_indices .+ 1]...); Tref=$Tref)
+        $type_name($(coeffs[non_zero_indices .+ (1-startindex)]...); Tref=$Tref)
     end
 end
