@@ -9,6 +9,7 @@ using LinearAlgebra
 using OrderedCollections
 using PeriodicTable
 using PrettyTables
+using ProgressBars
 using Unicode
 import Unitful: u, g, cm, K, J, mol, bar, Quantity, uconvert, ustrip, unit, uparse, upreferred, preferunits, @u_str
 

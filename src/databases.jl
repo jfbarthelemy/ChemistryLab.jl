@@ -500,7 +500,7 @@ Read a ThermoFun JSON file and return DataFrames for elements, substances, and r
 - `df_substances`: DataFrame of substances.
 - `df_reactions`: DataFrame of reactions.
 """
-function read_thermofun(filename)
+function read_thermofun(filename; with_units=true, debug=false, all_properties=false)
     # 1. Read the JSON file
     data = open(JSON3.read, filename)
 
@@ -602,6 +602,7 @@ function read_thermofun(filename)
         Vm = [extract_field_with_units(s, "sm_volume") for s in substances],
         datasources = [get(s, "datasources", missing) for s in substances],
     )
+    complete_species_database!(df_substances; with_units=with_units, debug=debug, all_properties=all_properties)
 
     # 4. Create the DataFrame for reactions
     reactions = data.reactions
@@ -641,9 +642,7 @@ function read_thermofun(filename)
     return df_elements, df_substances, df_reactions
 end
 
-function build_species_database(df_substances; with_units=true, debug=false)
-    df_species = copy(df_substances)
-
+function complete_species_database!(df_substances; with_units=true, debug=false, all_properties=false)
     colspecies = [try Species(s.formula;
                        name = s.name,
                        symbol = s.symbol,
@@ -652,14 +651,14 @@ function build_species_database(df_substances; with_units=true, debug=false)
                        )
                     catch; missing end for s in eachrow(df_substances)]
 
-    insertcols!(df_species, 1, :species => colspecies)
+    insertcols!(df_substances, 1, :species => colspecies)
 
-    print_title("Property completion"; crayon=Crayon(foreground=:blue), style=:box, indent="")
+    if debug print_title("Property completion"; crayon=Crayon(foreground=:blue), style=:box, indent="") end
 
     function get_value(row, field::Symbol; debug=debug, crayon=Crayon(), with_units=with_units, default_unit=unit(1))            
         val = row[field].values
         vunit = row[field].units
-        if debug && (iszero(val) || (with_units && ismissing(vunit)))
+        if debug>1 && (iszero(val) || (with_units && ismissing(vunit)))
             println(crayon("$(row.symbol) => $field=$val $vunit"))
             print(crayon"reset")
         end
@@ -676,7 +675,7 @@ function build_species_database(df_substances; with_units=true, debug=false)
             d = TPMethods[idx]
             tuple_coefs = d["m_heat_capacity_ft_coeffs"]
             values = tuple_coefs.values
-            if debug && !iszero(max(abs.(values[5:end])...)) println(crayon("$(row.symbol) => Cp=$values")) end
+            if debug>1 && !iszero(max(abs.(values[5:end])...)) println(crayon("$(row.symbol) => Cp=$values")) end
             if with_units
                 units = tuple_coefs.units
                 values = [values[i]*uparse(units[i]) for i=1:min(length(values), length(units))]
@@ -687,46 +686,54 @@ function build_species_database(df_substances; with_units=true, debug=false)
         end
     end
 
-    for row in eachrow(df_species)
+    iters = debug ? eachrow(df_substances) : ProgressBar(eachrow(df_substances))
+
+    for row in iters
         s = row.species
-        println(s)
+        if debug println(s) end
         Tref = with_units ? row.Tst*K : row.Tst
         s.Tref = Tref
         if !with_units
             s.molar_mass = ustrip(s.molar_mass)
         end
 
-        coeffa = float.(get_Cp_coef(row; debug=debug, crayon=crayon"green"))
-        s.Cp = thermo_function(:Cp, coeffa; Tref=Tref, with_units=with_units)
+        if all_properties
+            coeffa = float.(get_Cp_coef(row; debug=debug, crayon=crayon"green"))
+            s.Cp = thermo_function(:Cp, coeffa; Tref=Tref, with_units=with_units)
 
-        ΔfH0 = get_value(row, :ΔfH; debug=debug, crayon=crayon"red", with_units=with_units, default_unit=J/mol)
-        coeffaH = [float(zero(ΔfH0)); coeffa]
-        fH = thermo_function(:H, coeffaH; Tref=Tref, with_units=with_units)
-        coeffaH[1] = ΔfH0-Base.invokelatest(fH, Tref)
-        s.ΔfH = thermo_function(:H, coeffaH; Tref=Tref, with_units=with_units)
+            ΔfH0 = get_value(row, :ΔfH; debug=debug, crayon=crayon"red", with_units=with_units, default_unit=J/mol)
+            coeffaH = [float(zero(ΔfH0)); coeffa]
+            fH = thermo_function(:H, coeffaH; Tref=Tref, with_units=with_units)
+            coeffaH[1] = ΔfH0-Base.invokelatest(fH, Tref)
+            s.ΔfH = thermo_function(:H, coeffaH; Tref=Tref, with_units=with_units)
 
-        S0 = get_value(row, :S; debug=debug, crayon=crayon"red", with_units=with_units, default_unit=J/(mol*K))
-        coeffaS = [float(zero(S0)); coeffa]
-        fS = thermo_function(:S, coeffaS; Tref=Tref, with_units=with_units)
-        coeffaS[1] = S0-Base.invokelatest(fS, Tref)
-        s.S = thermo_function(:S, coeffaS; Tref=Tref, with_units=with_units)
+            S0 = get_value(row, :S; debug=debug, crayon=crayon"red", with_units=with_units, default_unit=J/(mol*K))
+            coeffaS = [float(zero(S0)); coeffa]
+            fS = thermo_function(:S, coeffaS; Tref=Tref, with_units=with_units)
+            coeffaS[1] = S0-Base.invokelatest(fS, Tref)
+            s.S = thermo_function(:S, coeffaS; Tref=Tref, with_units=with_units)
 
-        ΔfG0 = get_value(row, :ΔfG; debug=debug, crayon=crayon"blue", with_units=with_units, default_unit=J/mol)
-        coeffaG = [float(zero(ΔfG0)); float(zero(S0)); -coeffa]
-        fG = thermo_function(:G, coeffaG; Tref=Tref, with_units=with_units)
-        coeffaG[1] = ΔfG0+coeffaS[1]*Tref-Base.invokelatest(fG, Tref)
-        coeffaG[2] = -coeffaS[1]
-        s.ΔfG = thermo_function(:G, coeffaG; Tref=Tref, with_units=with_units)
+            ΔfG0 = get_value(row, :ΔfG; debug=debug, crayon=crayon"blue", with_units=with_units, default_unit=J/mol)
+            coeffaG = [float(zero(ΔfG0)); float(zero(S0)); -coeffa]
+            fG = thermo_function(:G, coeffaG; Tref=Tref, with_units=with_units)
+            coeffaG[1] = ΔfG0+coeffaS[1]*Tref-Base.invokelatest(fG, Tref)
+            coeffaG[2] = -coeffaS[1]
+            s.ΔfG = thermo_function(:G, coeffaG; Tref=Tref, with_units=with_units)
 
-        Vm = uconvert(cm^3 , get_value(row, :Vm; crayon=crayon"blue", with_units=true, default_unit=J/bar))
-        s.Vm = with_units ? Vm/mol : ustrip(Vm)
+            Vm = uconvert(cm^3 , get_value(row, :Vm; crayon=crayon"blue", with_units=true, default_unit=J/bar))
+            s.Vm = with_units ? Vm/mol : ustrip(Vm)
+        end
     end
 
     colcemspecies = [try CemSpecies(s) catch; missing end for s in colspecies]                
-    insertcols!(df_species, 2, :cemspecies => colcemspecies)
+    insertcols!(df_substances, 2, :cemspecies => colcemspecies)
 
-    return df_species
+    return df_substances
 
+end
+
+function build_species_database(df_substances; kwargs...)
+    return complete_species_database!(copy(df_substances); kwargs...)
 end
 
 
