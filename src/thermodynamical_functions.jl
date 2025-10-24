@@ -82,7 +82,7 @@ function ThermoFunction(name::Symbol, coeffs::AbstractVector{<:Number}; Tref=298
     funcs, param, varunit = dict_functions[name]
 
     nonzero = findall(!iszero, coeffs)
-    kept_names = Symbol.(string.(param), string.("_", nonzero .+ (startindex - 1)))
+    kept_names = Symbol.(string.(param), string.(nonzero .+ (startindex - 1)))
     kept_funcs = funcs[nonzero]
     kept_coefs = coeffs[nonzero]
 
@@ -93,7 +93,7 @@ function ThermoFunction(name::Symbol, coeffs::AbstractVector{<:Number}; Tref=298
 end
 
 function Base.show(io::IO, lf::ThermoFunction)
-    print(io, lf.name, "(T) with ")
-    print(io, lf.coeffs)
-    print(io, " and Tref = ", lf.Tref)
+    print(io, lf.name, "(T) with {")
+    print(io, replace(string(lf.coeffs), "("=>"", ")"=>"", " = "=>"="))
+    print(io, " ; Tref=", lf.Tref,"}")
 end
