@@ -41,13 +41,15 @@ const Cp_func = (lib_func∘Val).([0, 1, -2, -0.5, 2, 3, 4, -3, -1, 0.5, :log])
 const H_func = (lib_func_primitive∘Val).([0, 1, -2, -0.5, 2, 3, 4, -3, -1, 0.5, :log])
 const S_func = (lib_func_primitive∘Val).([-1, 0, -3, -1.5, 1, 2, 3, -4, -2, -0.5, :logdivT])
 const G_func = (lib_func_double_primitive∘Val).([-1, 0, -3, -1.5, 1, 2, 3, -4, -2, -0.5, :logdivT])
+const logKr_func = (lib_func∘Val).([0, 1, -1, :log, -2, 2, 0.5])
 
 # Dictionary mapping thermodynamic properties to their function sets, parameter names, and units
 const dict_functions = Dict(
     :Cp => (Cp_func, :a, J/(mol*K)),  # Heat capacity functions
     :H => (vcat([lib_func(Val(0))], H_func), :aH, J/mol),  # Enthalpy functions (integrals of Cp)
     :S => (vcat([lib_func(Val(0))], S_func), :aS, J/(mol*K)),  # Entropy functions
-    :G => (vcat((lib_func∘Val).([0, 1]), G_func), :aG, J/mol),  # Gibbs energy functions (double integrals)
+    :G => (vcat((lib_func∘Val).([0, 1]), G_func), :aG, J/mol),
+    :logKr => (logKr_func, :aK, unit(1))  # Gibbs energy functions (double integrals)
 )
 
 struct ThermoFunction{F<:NamedTuple,C<:NamedTuple,T<:Number,Z<:Number} <: Callable

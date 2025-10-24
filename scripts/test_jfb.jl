@@ -203,3 +203,17 @@ cemJennite.Cp = ThermoFunction(:Cp, [210.0, 0.120, -3.07e6, 0.0])
 using Plots
 lT = ((0:1:100) .+ 273.15).*K
 @time plot(lT, dict_species["Jennite"].Cp.(lT))
+
+# Check which species involved in reactions have not been previously constructed in the list of substances (in this case they are built on-the-fly and don't have thermo properties)
+for row in eachrow(df_reactions)
+    re = row.reaction
+    for s in keys(re.products)
+        if !haskey(s, :Cp) println(s) end
+    end
+    for s in keys(re.reactants)
+        if !haskey(s, :Cp) println(s) end
+    end
+end
+
+# Check consistency of logKr at Tref and logKr0 of the database
+for r in df_reactions.reaction println(r.logKr(), " == ", r.logKr0) end

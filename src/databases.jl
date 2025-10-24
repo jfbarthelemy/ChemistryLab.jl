@@ -628,6 +628,7 @@ function read_thermofun(filename; with_units=true, debug=false, all_properties=f
         ΔrV = [extract_field_with_units(r, "drsm_volume") for r in reactions],
         datasources = [get(r, "datasources", missing) for r in reactions]
     )
+    complete_reaction_database!(df_reactions, df_substances; with_units=with_units, debug=debug, all_properties=all_properties)
 
     # 5. Create the DataFrame for elements
     elements = data.elements
@@ -642,7 +643,38 @@ function read_thermofun(filename; with_units=true, debug=false, all_properties=f
     return df_elements, df_substances, df_reactions
 end
 
-function complete_species_database!(df_substances; with_units=true, debug=false, all_properties=false)
+function get_value(row, field::Symbol; debug=false, crayon=Crayon(), with_units=true, default_unit=unit(1))            
+    val = row[field].values
+    vunit = row[field].units
+    if debug>1 && (iszero(val) || (with_units && ismissing(vunit)))
+        println(crayon("$(row.symbol) => $field=$val $vunit"))
+        print(crayon"reset")
+    end
+    if with_units
+        val = val*(try uparse(vunit) catch; default_unit end)
+    end
+    return val
+end
+
+function get_Cp_coef(row; debug=false, crayon=Crayon(), with_units=true)            
+    TPMethods = row.TPMethods
+    idx = findfirst(d -> haskey(d, "method") && d["method"] == "cp_ft_equation", TPMethods)
+    if !isnothing(idx)
+        d = TPMethods[idx]
+        tuple_coefs = d["m_heat_capacity_ft_coeffs"]
+        values = tuple_coefs.values
+        if debug>1 && !iszero(max(abs.(values[5:end])...)) println(crayon("$(row.symbol) => Cp=$values")) end
+        if with_units
+            units = tuple_coefs.units
+            values = [values[i]*uparse(units[i]) for i=1:min(length(values), length(units))]
+        end
+        return values
+    else
+        return [get_value(row, :Cp; debug=debug, crayon=crayon, with_units=with_units, default_unit=J/(mol*K))]
+    end
+end
+
+function complete_species_database!(df_substances::DataFrame; with_units=true, debug=false, all_properties=false)
     colspecies = [try Species(s.formula;
                        name = s.name,
                        symbol = s.symbol,
@@ -653,38 +685,7 @@ function complete_species_database!(df_substances; with_units=true, debug=false,
 
     insertcols!(df_substances, 1, :species => colspecies)
 
-    if debug print_title("Property completion"; crayon=Crayon(foreground=:blue), style=:box, indent="") end
-
-    function get_value(row, field::Symbol; debug=debug, crayon=Crayon(), with_units=with_units, default_unit=unit(1))            
-        val = row[field].values
-        vunit = row[field].units
-        if debug>1 && (iszero(val) || (with_units && ismissing(vunit)))
-            println(crayon("$(row.symbol) => $field=$val $vunit"))
-            print(crayon"reset")
-        end
-        if with_units
-            val = val*(try uparse(vunit) catch; default_unit end)
-        end
-        return val
-    end
-
-    function get_Cp_coef(row; debug=debug, crayon=Crayon(), with_units=with_units)            
-        TPMethods = row.TPMethods
-        idx = findfirst(d -> haskey(d, "method") && d["method"] == "cp_ft_equation", TPMethods)
-        if !isnothing(idx)
-            d = TPMethods[idx]
-            tuple_coefs = d["m_heat_capacity_ft_coeffs"]
-            values = tuple_coefs.values
-            if debug>1 && !iszero(max(abs.(values[5:end])...)) println(crayon("$(row.symbol) => Cp=$values")) end
-            if with_units
-                units = tuple_coefs.units
-                values = [values[i]*uparse(units[i]) for i=1:min(length(values), length(units))]
-            end
-            return values
-        else
-            return [get_value(row, :Cp; debug=debug, crayon=crayon, with_units=with_units, default_unit=J/(mol*K))]
-        end
-    end
+    print_title("Species property completion"; crayon=Crayon(foreground=:blue), style=:box, indent="")
 
     iters = debug ? eachrow(df_substances) : ProgressBar(eachrow(df_substances))
 
@@ -732,10 +733,62 @@ function complete_species_database!(df_substances; with_units=true, debug=false,
 
 end
 
-function build_species_database(df_substances; kwargs...)
-    return complete_species_database!(copy(df_substances); kwargs...)
+function get_logKr_coef(row; debug=false, crayon=Crayon(), with_units=true)            
+    TPMethods = row.TPMethods
+    idx = findfirst(d -> haskey(d, "method") && d["method"] == "logk_ft_coeffs", TPMethods)
+    if !isnothing(idx)
+        d = TPMethods[idx]
+        tuple_coefs = d["m_heat_capacity_ft_coeffs"]
+        values = tuple_coefs.values
+        if debug>1 && !iszero(max(abs.(values[8:end])...)) println(crayon("$(row.symbol) => logKr=$values")) end
+        if with_units
+            units = [unit(1), 1/K, K, unit(1), K^2, 1/K^2, 1/√K]
+            values = [values[i]*units[i] for i=1:min(length(values), length(units))]
+        end
+        return values
+    else
+        return [get_value(row, :logKr; debug=debug, crayon=crayon, with_units=false)]
+    end
 end
 
+
+function complete_reaction_database!(df_reactions::DataFrame, df_substances::DataFrame; with_units=true, debug=false, all_properties=false)
+    d1 = Dict(zip(df_substances.formula, df_substances.species))
+    d2 = Dict(zip(df_substances.symbol, df_substances.species))
+    d3 = Dict(zip(parse_formula.(df_substances.formula), df_substances.species))
+    
+    find_species(k) = try d1[k] catch; try d2[k] catch; try d3[parse_formula(k)] catch; Species(k) end end end
+
+    print_title("Reaction property completion"; crayon=Crayon(foreground=:red), style=:box, indent="")
+
+    iters = debug ? eachrow(df_reactions) : ProgressBar(eachrow(df_reactions))
+
+    reactions = [Reaction(Dict(find_species(k) => v for (k,v) in r.reactants if k != "e-")) for r in iters]
+    insertcols!(df_reactions, :reaction => reactions)
+
+    for row in iters
+        r = row.reaction
+        if debug println(r) end
+        Tref = with_units ? row.Tst*K : row.Tst
+        r.Tref = Tref
+
+        if all_properties
+            coefflogKr = float.(get_logKr_coef(row; debug=debug, crayon=crayon"green"))
+            r.logKr = ThermoFunction(:logKr, coefflogKr; Tref=Tref)
+
+            r.ΔrCp0 = get_value(row, :ΔrCp; debug=debug, crayon=crayon"red", with_units=with_units, default_unit=J/(mol*K))
+            r.ΔrH0 = get_value(row, :ΔrH; debug=debug, crayon=crayon"red", with_units=with_units, default_unit=J/mol)
+            r.ΔrG0 = get_value(row, :ΔrG; debug=debug, crayon=crayon"red", with_units=with_units, default_unit=J/mol)
+            r.ΔrS0 = get_value(row, :ΔrS; debug=debug, crayon=crayon"red", with_units=with_units, default_unit=J/(mol*K))
+            ΔVm = uconvert(cm^3 , get_value(row, :ΔrV; debug=debug, crayon=crayon"red", with_units=with_units, default_unit=J/bar))
+            r.ΔrV = with_units ? ΔVm/mol : ustrip(ΔVm)
+            r.logKr0 = get_value(row, :logKr; debug=debug, crayon=crayon"red", with_units=with_units, default_unit=unit(1))
+
+        end
+    end
+
+    return df_reactions
+end
 
 """
     extract_primary_species(file_path)
