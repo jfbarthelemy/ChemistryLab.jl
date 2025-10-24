@@ -185,16 +185,21 @@ B, indep_comp, dep_comp = stoich_matrix(species; mass=true) ;
 lr = stoich_matrix_to_reactions(A, indep_comp, dep_comp) ;
 
 # Callable
-cemJennite.Cp = thermo_function(:Cp, [210.0J/K/mol, 0.120J/mol/K^2, -3.07e6J*K/mol, 0.0J/mol/√K])
+ # with units (coefficient units should be consistent with the basis of functions provided in thermofun database)
+cemJennite.Cp = ThermoFunction(:Cp, [210.0J/K/mol, 0.120J/mol/K^2, -3.07e6J*K/mol, 0.0J/mol/√K])
 @show cemJennite.Cp ;
 @show fieldnames(typeof(cemJennite.Cp)) ;
 @show fieldnames(typeof(cemJennite.Cp)) ;
 @show cemJennite.Cp(298.15K) ;
 @show cemJennite.Cp() ; # application by default on Tref
- # same without unit
-cemJennite.Cp = thermo_function(:Cp, [210.0, 0.120, -3.07e6, 0.0]; with_units=false)
+ # same without units
+cemJennite.Cp = ThermoFunction(:Cp, [210.0, 0.120, -3.07e6, 0.0])
 @show cemJennite.Cp ;
 @show fieldnames(typeof(cemJennite.Cp)) ;
 @show fieldnames(typeof(cemJennite.Cp)) ;
 @show cemJennite.Cp(298.15) ;
 @show cemJennite.Cp() ; # application by default on Tref
+
+using Plots
+lT = ((0:1:100) .+ 273.15).*K
+@time plot(lT, dict_species["Jennite"].Cp.(lT))

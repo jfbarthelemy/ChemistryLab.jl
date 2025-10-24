@@ -50,117 +50,50 @@ const dict_functions = Dict(
     :G => (vcat((lib_func∘Val).([0, 1]), G_func), :aG, J/mol),  # Gibbs energy functions (double integrals)
 )
 
-# Cache for generated types to avoid redefinition
-const ThermoTypeCache = Dict{Tuple, DataType}()
-
-"""
-    generate_thermo_type(var::Symbol, non_zero_indices::Vector{Int}, with_units::Bool, Tref)
-
-Generate a unique callable struct type for the thermodynamic property `var` with given non-zero coefficient indices.
-
-This function performs dynamic type and method generation at global module level,
-and caches the generated type for future construction.
-"""
-function generate_thermo_type(var::Symbol, non_zero_indices::Vector{Int}, default_types::Vector{DataType}; with_units=true, Tref=with_units ? 298.15K : 298.15, startindex=0)
-    key = (var, tuple(non_zero_indices...), with_units, startindex)
-    if haskey(ThermoTypeCache, key)
-        return ThermoTypeCache[key]
-    end
-
-    funcs, param, varunit = dict_functions[var]
-    var_types = with_units ? typeof.([varunit / f(1.0K) for f in funcs]) : default_types
-
-    fields = [Symbol(param, "$i") for i in non_zero_indices]
-    field_decls = [:(($(f)::$(var_types[i+1-startindex]))) for (i, f) in zip(non_zero_indices, fields)]
-
-    type_name = Symbol("Custom$(var)_$(join(string.(non_zero_indices), '_'))" * (with_units ? "" : "_nounit"))
-
-    # Define struct
-    type_expr = :(
-        struct $type_name <: Callable
-            $(field_decls...)
-            Tref::typeof($Tref)
-            function $type_name($(fields...); Tref=$Tref)
-                new($(fields...), Tref)
-            end
-        end
-    )
-
-    # Define call method optimized for single or multiple coefficients
-    if length(non_zero_indices) == 1
-        call_expr = :(
-            function (X::$type_name)(T)
-                @inbounds X.$(Symbol(param, "$(non_zero_indices[1])")) * $(funcs[non_zero_indices[1]+1-startindex])(T)
-            end
-        )
-    else
-        call_expr = :(
-            function (X::$type_name)(T)
-                    @inbounds $(Expr(:call, :+,
-                        [:(X.$(Symbol(param, "$i")) * $(funcs[i+1-startindex])(T))
-                         for i in non_zero_indices]...))
-            end
-        )
-    end
-
-    # Define show method
-    show_exprs = Expr[]
-    for (idx, i) in enumerate(non_zero_indices)
-        field = Symbol(param, "$i")
-        push!(show_exprs, :(print(io, $(QuoteNode(field)), "=", getfield(X, $(QuoteNode(field))))))
-        if idx < length(non_zero_indices)
-            push!(show_exprs, :(print(io, ", ")))
-        end
-    end
-
-    show_expr = :(
-        function Base.show(io::IO, X::$type_name)
-            print(io, $(string(var)), "(T) with {")
-            $(show_exprs...)
-            print(io, "; Tref=", X.Tref, "}")
-        end
-    )
-
-    # Define method call without argument (uses reference temperature)
-    call_no_arg_expr = :(
-        function (X::$type_name)()
-            X(X.Tref)
-        end
-    )
-
-    # Evaluate expressions *globally* in the module to avoid world-age issues
-    Base.eval(@__MODULE__, type_expr)
-    Base.eval(@__MODULE__, call_expr)
-    Base.eval(@__MODULE__, show_expr)
-    Base.eval(@__MODULE__, call_no_arg_expr)
-
-    # Cache and return the generated type, using invokelatest to avoid world age issues when accessing binding
-    ThermoTypeCache[key] = Base.invokelatest(getfield, @__MODULE__, type_name)
-    return ThermoTypeCache[key]
+struct ThermoFunction{F<:NamedTuple,C<:NamedTuple,T<:Number,Z<:Number} <: Callable
+    name::Symbol
+    bases::F
+    coeffs::C
+    Tref::T
+    zeroinit::Z
 end
 
-"""
-    thermo_function(var::Symbol, coeffs::AbstractVector{<:Number}; with_units=true, Tref=298.15K, startindex=0)
-
-Create an instance of callable thermodynamic function for property `var` with specified coefficients.
-
-This function calls `generate_thermo_type` once per unique coefficient pattern,
-then quickly constructs and returns an instance of the generated type.
-"""
-function thermo_function(var::Symbol, coeffs::AbstractVector{<:Number}; with_units=true, Tref=with_units ? 298.15K : 298.15, startindex=0)
-    # Identify indices of non-zero coefficients (always include the first)
-    non_zero_indices = [i-1+startindex for (i,c) in enumerate(coeffs) if i == 1 || !iszero(c)]
-    non_zero_coeffs = [coeffs[i+1-startindex] for i in non_zero_indices]
-
-    # Generate or reuse the callable struct type for these coefficients
-    type_t = generate_thermo_type(var, non_zero_indices, typeof.(coeffs); with_units=with_units, Tref=Tref, startindex=startindex)
-
-    # Construct and return an instance with given coefficients and reference temperature
-    return Base.invokelatest(type_t, non_zero_coeffs...; Tref=Tref)
+function (lf::ThermoFunction)(T)
+    s = lf.zeroinit
+    @inbounds @simd for name in keys(lf.coeffs)
+        s += getfield(lf.coeffs, name) * getfield(lf.bases, name)(T)
+    end
+    return s
 end
 
+function (lf::ThermoFunction)()
+    return lf(lf.Tref)
+end
 
-# Example usage:
-# cp = thermo_function(:Cp, [1.0, 0.0, 2.0, 0.0, 3.0])
-# val_at_300 = cp(300.0)
-# println(cp)
+coefficients(lf::ThermoFunction) = lf.coeffs
+
+function ThermoFunction(name::Symbol, coeffs::AbstractVector{<:Number}; Tref=298.15, startindex=0)
+
+    with_units = promote_type(typeof.(coeffs)...) <: Quantity
+    if with_units && !(Tref isa Quantity)
+        Tref *= K
+    end
+
+    funcs, param, varunit = dict_functions[name]
+
+    nonzero = findall(!iszero, coeffs)
+    kept_names = Symbol.(string.(param), string.("_", nonzero .+ (startindex - 1)))
+    kept_funcs = funcs[nonzero]
+    kept_coefs = coeffs[nonzero]
+
+    base_nt = NamedTuple{Tuple(kept_names)}(Tuple(kept_funcs))
+    coef_nt = NamedTuple{Tuple(kept_names)}(Tuple(kept_coefs))
+
+    return ThermoFunction(name, base_nt, coef_nt, Tref, with_units ? 0*varunit : 0)
+end
+
+function Base.show(io::IO, lf::ThermoFunction)
+    print(io, lf.name, "(T) with ")
+    print(io, lf.coeffs)
+    print(io, " and Tref = ", lf.Tref)
+end

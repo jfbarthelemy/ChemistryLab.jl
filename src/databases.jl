@@ -699,26 +699,26 @@ function complete_species_database!(df_substances; with_units=true, debug=false,
 
         if all_properties
             coeffa = float.(get_Cp_coef(row; debug=debug, crayon=crayon"green"))
-            s.Cp = thermo_function(:Cp, coeffa; Tref=Tref, with_units=with_units)
+            s.Cp = ThermoFunction(:Cp, coeffa; Tref=Tref)
 
             ΔfH0 = get_value(row, :ΔfH; debug=debug, crayon=crayon"red", with_units=with_units, default_unit=J/mol)
             coeffaH = [float(zero(ΔfH0)); coeffa]
-            fH = thermo_function(:H, coeffaH; Tref=Tref, with_units=with_units)
+            fH = ThermoFunction(:H, coeffaH; Tref=Tref)
             coeffaH[1] = ΔfH0-Base.invokelatest(fH, Tref)
-            s.ΔfH = thermo_function(:H, coeffaH; Tref=Tref, with_units=with_units)
+            s.ΔfH = ThermoFunction(:H, coeffaH; Tref=Tref)
 
             S0 = get_value(row, :S; debug=debug, crayon=crayon"red", with_units=with_units, default_unit=J/(mol*K))
             coeffaS = [float(zero(S0)); coeffa]
-            fS = thermo_function(:S, coeffaS; Tref=Tref, with_units=with_units)
+            fS = ThermoFunction(:S, coeffaS; Tref=Tref)
             coeffaS[1] = S0-Base.invokelatest(fS, Tref)
-            s.S = thermo_function(:S, coeffaS; Tref=Tref, with_units=with_units)
+            s.S = ThermoFunction(:S, coeffaS; Tref=Tref)
 
             ΔfG0 = get_value(row, :ΔfG; debug=debug, crayon=crayon"blue", with_units=with_units, default_unit=J/mol)
             coeffaG = [float(zero(ΔfG0)); float(zero(S0)); -coeffa]
-            fG = thermo_function(:G, coeffaG; Tref=Tref, with_units=with_units)
+            fG = ThermoFunction(:G, coeffaG; Tref=Tref)
             coeffaG[1] = ΔfG0+coeffaS[1]*Tref-Base.invokelatest(fG, Tref)
             coeffaG[2] = -coeffaS[1]
-            s.ΔfG = thermo_function(:G, coeffaG; Tref=Tref, with_units=with_units)
+            s.ΔfG = ThermoFunction(:G, coeffaG; Tref=Tref)
 
             Vm = uconvert(cm^3 , get_value(row, :Vm; crayon=crayon"blue", with_units=true, default_unit=J/bar))
             s.Vm = with_units ? Vm/mol : ustrip(Vm)

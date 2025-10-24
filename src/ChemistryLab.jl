@@ -46,7 +46,7 @@ include("stoich_matrix.jl")
 include("reactions.jl")
 
 export ATOMIC_ORDER, OXIDE_ORDER, stoich_coef_round, phreeqc_to_unicode, colored_formula, unicode_to_phreeqc, parse_formula, extract_charge, calculate_molar_mass, to_mendeleev, parse_equation, format_equation, colored_equation
-export Callable, thermo_function
+export Callable, ThermoFunction
 export Formula, expr, phreeqc, unicode, colored, composition, charge, apply, check_mendeleev
 export AggregateState, AS_UNDEF, AS_AQUEOUS, AS_CRYSTAL, AS_GAS
 export Class, SC_UNDEF, SC_AQSOLVENT, SC_AQSOLUTE, SC_COMPONENT, SC_GAS_FLUID
