@@ -442,7 +442,7 @@ function activity_model(cs::ChemicalSystem, model::HKFActivityModel)
             I = I + mᵢ * zv[i]^2
         end
         I = I / 2
-        sqrtI = sqrt(I + ϵ)              # regularised to avoid Dual NaN at I=0
+        sqrtI = sqrt(I + ϵ)              # regularized to avoid Dual NaN at I=0
 
         # ── Effective radius å_eff for osmotic coefficient ─────────────────
         sum_mz2a = zero(eltype(_n))
@@ -687,7 +687,7 @@ Fill `out[i]` with `ln aᵢ = ln xᵢ + ln γᵢ` for all solid-solution end-mem
 
 `ss_groups[k]` and `ss_models[k]` describe the k-th solid-solution phase.
 `T` is the temperature in K (only relevant for non-ideal models).
-`ϵ` is a regularisation floor to avoid `log(0)`.
+`ϵ` is a regularization floor to avoid `log(0)`.
 
 ForwardDiff-compatible.
 """

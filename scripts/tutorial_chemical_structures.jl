@@ -311,7 +311,7 @@ for lsp in [
 end
 plot(p1, p2, layout = (1, 2))
 
-# Vapour pressure of water
+# Vapor pressure of water
 l = dict_species_aq17["H2O@"]
 v = dict_species_aq17["H2O"]
 T0 = 373.15

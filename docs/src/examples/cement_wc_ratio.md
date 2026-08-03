@@ -77,7 +77,7 @@ solver = EquilibriumSolver(
 ## Scanning the w/c ratio
 
 For each value of w/c, the initial composition is set from scratch and the equilibrium is
-computed.  The total mass is normalised to 1 kg (cement + water) so that all amounts are
+computed.  The total mass is normalized to 1 kg (cement + water) so that all amounts are
 directly comparable across the scan.
 
 ```julia

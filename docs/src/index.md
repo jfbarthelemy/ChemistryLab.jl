@@ -48,7 +48,7 @@ If you use ChemistryLab in your work, please cite the following:
 - Build canonical stoichiometric matrices and convert them to `Reaction` objects.
 - Read, merge and write ThermoFun / Cemdata sources and extract species and reactions programmatically.
 - Combine, simplify and transform reactions using the `Reaction` API.
-- Solve thermodynamic equilibrium problems by Gibbs energy minimisation (`equilibrate`, `EquilibriumSolver`).
+- Solve thermodynamic equilibrium problems by Gibbs energy minimization (`equilibrate`, `EquilibriumSolver`).
 - Built-in activity models (`DiluteSolutionModel`, `HKFActivityModel`, `DaviesActivityModel`) and extension API for custom models.
 - Temperature-dependent thermodynamic sweeps and speciation diagrams.
 

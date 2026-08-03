@@ -35,7 +35,7 @@ species = speciation(
 cs = ChemicalSystem(species, CEMDATA_PRIMARIES)
 
 # ── Initial state ────────────────────────────────────────────────────────────
-# Clinker + gypsum + MgSO4 additive, w/c = 0.4, normalised to 1 kg total
+# Clinker + gypsum + MgSO4 additive, w/c = 0.4, normalized to 1 kg total
 
 state = ChemicalState(cs)
 compo = [

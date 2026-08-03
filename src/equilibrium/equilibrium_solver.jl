@@ -86,7 +86,7 @@ Units are stripped — compatible with ForwardDiff dual numbers.
   - `ΔₐG⁰overT`: vector of standard Gibbs energies divided by RT (dimensionless).
   - `T`: temperature in K (plain number, Dual-safe).
   - `P`: pressure in Pa (plain number, Dual-safe).
-  - `ϵ`: regularisation floor (default `1e-16`).
+  - `ϵ`: regularization floor (default `1e-16`).
 
 `T` and `P` are included so that temperature-dependent activity models
 (e.g. [`HKFActivityModel`](@ref) with `temperature_dependent=true`) can
@@ -141,7 +141,7 @@ const _DEFAULT_SOLVER_FACTORY = Ref{Union{Nothing, Function}}(nothing)
     equilibrate(state::ChemicalState, solver; model=..., variable_space=..., ϵ=...) -> ChemicalState
     equilibrate(state::ChemicalState; kwargs...) -> ChemicalState
 
-Compute the chemical equilibrium state by minimising the Gibbs free energy.
+Compute the chemical equilibrium state by minimizing the Gibbs free energy.
 
 **Two-argument form** (solver explicit, always available once an extension is loaded):
 
@@ -167,7 +167,7 @@ When both extensions are loaded, `OptimaSolverExt` always takes priority.
   - `solver`: any SciML-compatible solver (e.g. `IpoptOptimizer()`, `OptimaOptimizer()`).
   - `model`: activity model (default: `DiluteSolutionModel()`).
   - `variable_space`: `Val(:linear)` (default) or `Val(:log)`.
-  - `ϵ`: regularisation floor for mole amounts (default: `1e-16`).
+  - `ϵ`: regularization floor for mole amounts (default: `1e-16`).
   - `kwargs...`: forwarded to the underlying solver.
 """
 function equilibrate(

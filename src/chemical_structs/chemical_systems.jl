@@ -83,7 +83,7 @@ consistent for the lifetime of the object.
     Rate functions must be callable as `(T, P, t, n, lna, n_initial) → Real [mol/s]`
     (see [`KineticFunc`](@ref)). The rate is given per mole of kinetic species
     (stoichiometric coefficient = 1); the constructor corrects by `1/|νₖ|` automatically.
-    When provided, the nullspace N of the stoichiometric matrix is diagonalised so that
+    When provided, the nullspace N of the stoichiometric matrix is diagonalized so that
     each kinetic species appears in exactly one reaction. Those reactions are stored in
     the `reactions` field with their rate attached via `rxn[:rate]`.
   - `solid_solutions`: vector of [`SolidSolutionPhase`](@ref) (default: `nothing`).
@@ -144,7 +144,7 @@ function ChemicalSystem(
     CSM = CanonicalStoichMatrix(species)
     SM = StoichMatrix(species, primaries; kinetic_species = kin_keys)
 
-    # Build kinetic reactions from diagonalised nullspace
+    # Build kinetic reactions from diagonalized nullspace
     idx_kinetic = isnothing(kin_keys) ? Int[] : _resolve_kinetic_indices(kin_keys, SM.species)
     kin_reactions = if isempty(idx_kinetic)
         Reaction[]

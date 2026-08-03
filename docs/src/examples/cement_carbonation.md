@@ -98,7 +98,7 @@ sp_idx = Dict(symbol(s) => i for (i, s) in enumerate(cs.species))
 
 Before scanning the carbonation, the reference state of the fully hydrated paste is
 established by solving the equilibrium without any CO₂ input.
-This gives the initial portlandite inventory, which is used to normalise the CO₂ axis.
+This gives the initial portlandite inventory, which is used to normalize the CO₂ axis.
 
 ```@example carbonation_setup
 compo = ["C3S" => 0.678, "C2S" => 0.166, "C3A" => 0.040, "C4AF" => 0.072, "Gp" => 0.028]
@@ -137,11 +137,11 @@ println("  Porosity    = ", round(porosity(ref)*100), " %")
 
 For each CO₂ level, the clinker phases and water are set as in the reference state and
 an additional amount of `CO2@` is added.
-The solver finds the equilibrium that minimises the total Gibbs free energy,
+The solver finds the equilibrium that minimizes the total Gibbs free energy,
 distributing CO₂ between the dissolved carbonate species, calcite and the AFm carbonate
 phases while consuming portlandite and, at higher dosages, CSH.
 
-The CO₂ axis is normalised by `n_port0` so that **ξ = n(CO₂)/n(Portlandite)₀**.
+The CO₂ axis is normalized by `n_port0` so that **ξ = n(CO₂)/n(Portlandite)₀**.
 Full carbonation of portlandite alone corresponds to ξ = 1.
 
 ```julia
@@ -268,7 +268,7 @@ Key observations:
 - **Zone III**: The depletion of portlandite at ξ ≈ 1 triggers a sharp pH drop, crossing
   the steel passivation threshold (9.5).  This is the thermodynamic equivalent of the
   **carbonation front** passing through the concrete cover.
-- **Zone IV**: Above ξ = 1, CSH (Jennite) is decalcified; pH stabilises around 9–10
+- **Zone IV**: Above ξ = 1, CSH (Jennite) is decalcified; pH stabilizes around 9–10
   before eventually reaching the CO₂/HCO₃⁻ equilibrium (~8.3).
 
 !!! tip "From equilibrium to service life"

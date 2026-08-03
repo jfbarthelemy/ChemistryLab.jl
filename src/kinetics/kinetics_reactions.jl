@@ -375,7 +375,7 @@ step — correct for variable-temperature semi-adiabatic calorimetry.
   - `cs`: [`ChemicalSystem`](@ref) supplying `ΔₐG⁰` callables for aqueous species.
   - `rxn`: `AbstractReaction` defining stoichiometry and the mineral species.
   - `surface_model`: [`AbstractSurfaceModel`](@ref) — captures area as a function of `n`.
-  - `ϵ`: regularisation floor near Ω = 1 (default `1e-16`).
+  - `ϵ`: regularization floor near Ω = 1 (default `1e-16`).
 
 # Returns
 
@@ -447,7 +447,7 @@ mechanism. Useful as a minimal test case or for empirical fits.
     [`arrhenius_rate_constant`](@ref)).
   - `cs`, `rxn`, `surface_model`: same as [`transition_state`](@ref).
   - `p`, `q`: saturation exponents (defaults `1.0`).
-  - `ϵ`: regularisation floor (default `1e-16`).
+  - `ϵ`: regularization floor (default `1e-16`).
 
 # Examples
 

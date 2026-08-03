@@ -76,7 +76,7 @@ plot!(p2, θ -> dict_reactions_calcite["Cal"].logK⁰(T = θ*ua"degC"), 0:0.1:10
 
 ## Equilibrium solving
 
-The previous section computed thermodynamic properties of reactions analytically. ChemistryLab can go further and solve the full **thermodynamic equilibrium** — that is, find the species amounts that minimise the Gibbs free energy of the system given initial conditions.
+The previous section computed thermodynamic properties of reactions analytically. ChemistryLab can go further and solve the full **thermodynamic equilibrium** — that is, find the species amounts that minimize the Gibbs free energy of the system given initial conditions.
 
 Three objects are needed:
 
@@ -84,7 +84,7 @@ Three objects are needed:
 |--------|------|
 | [`ChemicalSystem`](@ref) | Immutable description of the system: species list, primary species, stoichiometric matrices, and derived index maps. Built once and reused. |
 | [`ChemicalState`](@ref) | Mutable thermodynamic state: amounts `n` (mol), temperature `T` and pressure `P`. Modified in-place before and after solving. |
-| `equilibrate` | Convenience function that wraps a `ChemicalSystem` + `ChemicalState` into an optimisation problem and solves it. Returns a new equilibrated `ChemicalState`. |
+| `equilibrate` | Convenience function that wraps a `ChemicalSystem` + `ChemicalState` into an optimization problem and solves it. Returns a new equilibrated `ChemicalState`. |
 
 ```@example from_scratch
 using Optimization, OptimizationIpopt

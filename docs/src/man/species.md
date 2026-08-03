@@ -70,7 +70,7 @@ CO₂ = Species(Dict(:C=>1, :O=>2); name="Carbon dioxide", symbol="CO₂⤴", ag
 ```
 
 !!! note "Comparison between species"
-    Comparison between species (or cemspecies) are done by comparing atoms, aggregate_state and class. In the example below, vapour is not equal to H₂O since *aggregate_state* and *class* are different despite atoms are identical.
+    Comparison between species (or cemspecies) are done by comparing atoms, aggregate_state and class. In the example below, vapor is not equal to H₂O since *aggregate_state* and *class* are different despite atoms are identical.
     ```julia
     vapour = Species("H2O"; name="Vapour", symbol="H₂O⤴", aggregate_state=AS_GAS, class=SC_GASFLUID)
     vapour == H₂O

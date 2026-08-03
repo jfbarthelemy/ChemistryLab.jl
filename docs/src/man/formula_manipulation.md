@@ -1,6 +1,6 @@
 # Chemical Formula Manipulation
 
-ChemistryLab allows you to create and manipulate chemical formulas. It provides the `Formula` type (holds a formula string, multiple string representations, an atom composition map and a charge) and `AtomGroup` helper values, plus utilities to convert between notations (Phreeqc ↔ Unicode), to format/colour formulas, to perform arithmetic on formulas, and to validate atom symbols.
+ChemistryLab allows you to create and manipulate chemical formulas. It provides the `Formula` type (holds a formula string, multiple string representations, an atom composition map and a charge) and `AtomGroup` helper values, plus utilities to convert between notations (Phreeqc ↔ Unicode), to format/color formulas, to perform arithmetic on formulas, and to validate atom symbols.
 
 ```julia
 struct Formula{T<:Number}

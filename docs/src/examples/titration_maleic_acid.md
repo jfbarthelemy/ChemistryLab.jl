@@ -176,10 +176,10 @@ The titration curve shows five characteristic zones:
 | Excess base | > 10 mL | A²⁻ + OH⁻ | Controlled by excess NaOH |
 
 - **V = 0 mL** — The pH is low, determined mainly by the first dissociation (pKₐ₁ = 1.92).
-- **V = 5 mL (PE₁)** — The first proton is fully neutralised; the dominant species transitions from H₂A to HA⁻.
+- **V = 5 mL (PE₁)** — The first proton is fully neutralized; the dominant species transitions from H₂A to HA⁻.
 - **V = 2.5 mL (half-equivalence 1)** — pH ≈ pKₐ₁ = 1.92 (Henderson–Hasselbalch condition).
 - **5 mL < V < 10 mL** — The HA⁻/A²⁻ couple acts as a buffer; at V = 7.5 mL, pH ≈ pKₐ₂ = 6.27.
-- **V = 10 mL (PE₂)** — The second proton is fully neutralised; the dominant species is A²⁻.
+- **V = 10 mL (PE₂)** — The second proton is fully neutralized; the dominant species is A²⁻.
 - **V > 10 mL** — pH rises steeply, controlled by the concentration of free OH⁻ from excess NaOH.
 
 !!! note "Δ pKₐ and resolution"

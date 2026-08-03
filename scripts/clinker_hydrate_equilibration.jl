@@ -2,7 +2,7 @@
 # clinker_hydrate_equilibration.jl
 #
 # Compute the equilibrium mineral assemblage of a hydrated OPC clinker paste
-# (C3S, C2S, C3A, C4AF + gypsum + water) by Gibbs energy minimisation.
+# (C3S, C2S, C3A, C4AF + gypsum + water) by Gibbs energy minimization.
 # Compares the result against a Reaktoro reference solution.
 #
 # Solver: OptimaSolver (default) or Ipopt — selected via USE_OPTIMA flag.

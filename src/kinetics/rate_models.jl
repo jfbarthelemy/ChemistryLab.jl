@@ -148,7 +148,7 @@ Each entry maps a model name (`:arrhenius`, …) to a `Dict` containing:
   - `:units` — list of `Symbol => Quantity` pairs for parameters and variables.
   - `:output_unit` — `Quantity` representing the output unit.
 
-At package initialisation, every entry is compiled into a `ThermoFactory`
+At package initialization, every entry is compiled into a `ThermoFactory`
 stored in [`KINETICS_RATE_FACTORIES`](@ref).
 
 # Example
@@ -446,7 +446,7 @@ Three competing mechanisms determine the rate (Parrot & Killoh 1984):
 | Diffusion | `r_D = 3K₃(1-ξ)^(2/3) / (N₃·(1-(1-ξ)^(1/3)))` |
 
 The rate [mol/s] is `n_initial × Aₜ × min(max(r_NG, r_I), r_D)` where
-`ξ = α / α_max` is the normalised degree of hydration and
+`ξ = α / α_max` is the normalized degree of hydration and
 `Aₜ = exp(-Ea/R × (1/T - 1/T_ref))` is the Arrhenius factor.
 
 `α_max` can be set to apply the Powers (1948) water/cement ratio limit:

@@ -63,7 +63,7 @@ cs_base = ChemicalSystem(species_base, CEMDATA_PRIMARIES)
 #   Auto-computed molar mass: M = 222 g/mol.
 #   |ΔᵣH⁰| = 250 J/g × 222 g/mol ≈ 55 500 J/mol  (Lothenbach 2011)
 #
-# Dummy ΔₐG⁰: very negative → Ω ≈ 0 (dissolution always favoured).
+# Dummy ΔₐG⁰: very negative → Ω ≈ 0 (dissolution always favored).
 # Parrot-Killoh ignores Ω; the value does not affect kinetic rates.
 
 const _dummy_G = NumericFunc((T, P) -> -1_200_000.0, (:T, :P), u"J/mol")

@@ -1,6 +1,6 @@
 # [Chemical Equilibrium](@id sec-equilibrium)
 
-ChemistryLab computes thermodynamic equilibrium by minimising the Gibbs free energy of the system subject to element-conservation constraints. The workflow always follows the same four steps:
+ChemistryLab computes thermodynamic equilibrium by minimizing the Gibbs free energy of the system subject to element-conservation constraints. The workflow always follows the same four steps:
 
 1. Build a [`ChemicalSystem`](@ref) (species + stoichiometric matrix).
 2. Create an initial [`ChemicalState`](@ref) (temperature, pressure, initial amounts).
@@ -128,9 +128,9 @@ end
 
 ---
 
-## Scaling and normalisation
+## Scaling and normalization
 
-It is often useful to express a composition relative to a reference amount — per mole, per kilogram, or per cubic metre of system. Two mechanisms are provided.
+It is often useful to express a composition relative to a reference amount — per mole, per kilogram, or per cubic meter of system. Two mechanisms are provided.
 
 ### Scalar multiplication
 
@@ -171,7 +171,7 @@ println("pH   = ", pH(state_pkg))   # intensive quantities are invariant
 
 ### Variable space: `:linear` vs `:log`
 
-[`equilibrate`](@ref) accepts a `variable_space` keyword that selects the optimisation variable space:
+[`equilibrate`](@ref) accepts a `variable_space` keyword that selects the optimization variable space:
 
 | `variable_space`        | Variables | Recommended when |
 |------------------|-----------|-----------------|
@@ -300,7 +300,7 @@ plot(p1, p2, layout = (1, 2), size = (700, 350))
 ## Activity models
 
 All activity models inherit from [`AbstractActivityModel`](@ref). Three built-in
-models are provided, covering ideal behaviour through to the extended Debye-Hückel
+models are provided, covering ideal behavior through to the extended Debye-Hückel
 level used by standard geochemical codes.
 
 ### Choosing a model

@@ -5,13 +5,13 @@ using Crayons
 using DynamicQuantities
 using ForwardDiff
 
-"""Terminal colour for charge display (cyan bold)."""
+"""Terminal color for charge display (cyan bold)."""
 const COL_CHARGE = crayon"cyan bold"
-"""Terminal colour for parentheses (magenta bold)."""
+"""Terminal color for parentheses (magenta bold)."""
 const COL_PAR = crayon"magenta bold"
-"""Terminal colour for internal stoichiometric coefficients (red bold)."""
+"""Terminal color for internal stoichiometric coefficients (red bold)."""
 const COL_STOICH_INT = crayon"red bold"
-"""Terminal colour for external stoichiometric coefficients (yellow bold)."""
+"""Terminal color for external stoichiometric coefficients (yellow bold)."""
 const COL_STOICH_EXT = crayon"yellow bold"
 
 """
