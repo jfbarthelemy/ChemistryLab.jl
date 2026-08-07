@@ -11,9 +11,7 @@
 - Confirmed each GitHub Release keeps archiving automatically to Zenodo's
   existing concept DOI `10.5281/zenodo.17756074` via the native
   GitHub↔Zenodo integration (no workflow or token needed).
-- Retired the Codeberg return path (`.forgejo/` workflows and
-  `docs/deploy_docs.jl` removed); MPCM-Registry deprecated in favor of the
-  General registry.
+- MPCM-Registry deprecated in favor of the General registry.
 
 ## v0.3.0 — Chemical kinetics module
 
