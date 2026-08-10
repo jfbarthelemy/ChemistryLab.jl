@@ -228,7 +228,7 @@ state_eq = equilibrate(state0; model = DaviesActivityModel()) # Davies equation
 
 #### Solid solutions
 
-Mineral solid solutions (e.g. C-S-H, AFm) are modelled by grouping end-member species into a `SolidSolutionPhase`. Database species with `SC_COMPONENT` class can be passed directly — requalification to `SC_SSENDMEMBER` is handled automatically:
+Mineral solid solutions (e.g. C-S-H, AFm) are modeled by grouping end-member species into a `SolidSolutionPhase`. Database species with `SC_COMPONENT` class can be passed directly — requalification to `SC_SSENDMEMBER` is handled automatically:
 
 ```julia
 substances = build_species("data/cemdata18-thermofun.json")
@@ -250,7 +250,7 @@ cs = ChemicalSystem(species_list, primaries; solid_solutions = ss_phases)
 
 A pre-built `data/solid_solutions.toml` (CSHQ, AFm, Hydrogarnet, Ettringite_ss, Hydrotalcite) is shipped with ChemistryLab for use with the cemdata18 database.
 
-#### Scaling and normalisation
+#### Scaling and normalization
 
 A `ChemicalState` supports scalar multiplication and in-place rescaling to a target total:
 
@@ -293,7 +293,7 @@ See [`LICENSE`](LICENSE) for the full notice and
 [`COPYING.LESSER`](COPYING.LESSER) for the full LGPL-2.1 text.
 
 **Practical note for downstream users.** The LGPL permits `using ChemistryLab`
-from Julia code of **any** licence (MIT, Apache-2.0, proprietary). The
+from Julia code of **any** license (MIT, Apache-2.0, proprietary). The
 copyleft applies only to modifications of ChemistryLab.jl itself, which must
 remain LGPL.
 

@@ -54,7 +54,7 @@ end
     Ω = saturation_ratio(stoich, lna, G_over_T)
     @test isapprox(Ω, 1.0; rtol = 1.0e-12)
 
-    # Ω > 1: excess A → forward reaction is favoured
+    # Ω > 1: excess A → forward reaction is favored
     lna2 = [-1.0, 0.0]
     Ω2 = saturation_ratio(stoich, lna2, G_over_T)
     @test Ω2 > 1.0

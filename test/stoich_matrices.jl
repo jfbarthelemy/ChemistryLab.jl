@@ -53,7 +53,7 @@ using LinearAlgebra
         A, atoms = CSM.A, CSM.primaries
         @test size(A) == (2, 3)   # 2 elements (H, O) × 3 species
 
-        # Mass conservation: each column (species) sums to 1.0 (normalised mass)
+        # Mass conservation: each column (species) sums to 1.0 (normalized mass)
         h2o_idx = findfirst(s -> s == h2o, species)
         @test sum(A[:, h2o_idx]) ≈ 1.0 atol = 1.0e-10
     end

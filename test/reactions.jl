@@ -64,7 +64,7 @@ using Test
         @test length(products(rs)) == 2
         @test haskey(reactants(rs), Species("OH⁻"))
         @test haskey(products(rs), Species("H⁺"))
-        # H2O appears only once per side after simplification (not cancelled here
+        # H2O appears only once per side after simplification (not canceled here
         # because it has coeff -1 in reac and +1 in prod, creating net zero which
         # simplify_reaction keeps on the products side with coeff 1)
         @test !haskey(reactants(rs), Species("H2O"))
