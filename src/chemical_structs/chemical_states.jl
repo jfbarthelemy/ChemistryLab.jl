@@ -274,8 +274,10 @@ function ChemicalState(
     # from T alone, as an earlier version did, silently forced `Float64` on the
     # composition: a dual number could not be stored, so nothing downstream of a
     # `ChemicalState` was differentiable.
-    Q = mapreduce(typeof, promote_type, n_conv;
-                  init = promote_type(typeof(T_q), typeof(P_q)))
+    Q = mapreduce(
+        typeof, promote_type, n_conv;
+        init = promote_type(typeof(T_q), typeof(P_q))
+    )
     R = _realtype(Q)
     T_q = convert(Q, T_q)
     P_q = convert(Q, P_q)

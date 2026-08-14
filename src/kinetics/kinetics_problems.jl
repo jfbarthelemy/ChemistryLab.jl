@@ -303,8 +303,10 @@ function build_kinetics_params(kp::KineticsProblem; ϵ::Float64 = 1.0e-30)
         es = kp.equilibrium_solver
         (
             sys_e,
-            EquilibriumSolver(sys_e, kp.activity_model, es.solver;
-                              variable_space = es.variable_space, es.kwargs...),
+            EquilibriumSolver(
+                sys_e, kp.activity_model, es.solver;
+                variable_space = es.variable_space, es.kwargs...
+            ),
             Float64[n_initial_full[i] for i in kp.idx_equilibrium],
         )
     end
@@ -456,7 +458,7 @@ function respeciate!(p, u)
         p.eq_failures[] += 1
         if p.eq_failures[] == 1
             @warn """re-speciation failed; the composition is left frozen for \
-                     this step. Later failures are counted, not reported.""" exception = err
+            this step. Later failures are counted, not reported.""" exception = err
         end
         return false
     end

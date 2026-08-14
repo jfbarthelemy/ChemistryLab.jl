@@ -515,9 +515,12 @@ end
 # and is left untouched.
 function _normalise_to_mineral!(stoich::AbstractVector{<:Real}, idx::Integer)
     ν = stoich[idx]
-    iszero(ν) && throw(ArgumentError(
-        "the controlling species has a zero stoichiometric coefficient; " *
-            "the reaction cannot define its kinetics"))
+    iszero(ν) && throw(
+        ArgumentError(
+            "the controlling species has a zero stoichiometric coefficient; " *
+                "the reaction cannot define its kinetics"
+        )
+    )
     stoich ./= -ν            # ν < 0 → scale only; ν > 0 → scale and flip
     return stoich
 end
