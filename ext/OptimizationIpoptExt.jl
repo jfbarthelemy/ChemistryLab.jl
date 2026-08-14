@@ -19,6 +19,7 @@ using OptimizationIpopt
 using SciMLBase
 using LinearAlgebra: dot, mul!
 using DynamicQuantities
+using ForwardDiff
 
 # ── OptimizationProblem conversions ──────────────────────────────────────────
 
@@ -131,11 +132,25 @@ function SciMLBase.solve(
         esolver::EquilibriumSolver,
         state::ChemicalState;
         ϵ::Float64 = 1.0e-16,
+        b = nothing,
     )
+    # A composition carrying dual numbers takes the implicit-function route:
+    # primal solve, then sensitivities from the optimality conditions. No solver
+    # is asked to iterate on dual numbers.
+    if eltype(state.n) <: DynamicQuantities.AbstractQuantity{<:ForwardDiff.Dual}
+        return ChemistryLab._solve_dual(esolver, state, ϵ; b = b)
+    end
+
     n0 = max.(_build_n0(state), ϵ)
     p = _build_params(state; ϵ = ϵ)
 
-    prob = EquilibriumProblem(state.system.SM.A, esolver.μ, n0; p = p)
+    # `b` given explicitly is Leal's φ(b): minimize G subject to A n = b, with
+    # `state` supplying only the starting guess and the T, P conditions. The
+    # element totals then come from the caller — the ODE state of a kinetics
+    # run — instead of being derived from a composition that may not carry them.
+    prob = isnothing(b) ?
+        EquilibriumProblem(state.system.SM.A, esolver.μ, n0; p = p) :
+        EquilibriumProblem(state.system.SM.A, esolver.μ, n0; b = collect(b), p = p)
     sol = SciMLBase.solve(prob, esolver.solver; variable_space = esolver.variable_space, esolver.kwargs...)
 
     state_eq = copy(state)

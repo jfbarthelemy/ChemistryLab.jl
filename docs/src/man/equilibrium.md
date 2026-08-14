@@ -58,6 +58,77 @@ ChemistryLab provides two solver extensions. Load whichever fits your workflow:
 
 When both are loaded, `OptimaSolver` always takes priority for `equilibrate(state)`.
 
+That default is measured, not assumed. On the cement equilibria this package
+targets, scored on two quantities neither solver defines — the element balance
+`‖A·n − A·n₀‖∞`, a hard physical constraint, and the Gibbs objective itself —
+both back-ends reach a balance of the order of `1e-14`, and OptimaSolver is 3 to
+26 times faster. Pass a solver explicitly to override the choice.
+
+## Differentiating an equilibrium
+
+A `ChemicalState` carries whatever number type its amounts have, so a
+composition built from `ForwardDiff.Dual` values propagates through the
+speciation, and `pH`, `pOH`, `porosity` and `saturation` come back as duals too.
+
+Crossing the **solve** works as well, and without asking any solver to iterate on
+dual numbers — Ipopt is a C library and never could. The equilibrium is solved
+once at the primal values, and the sensitivities come from the optimality
+conditions, the implicit-function-theorem route:
+
+```math
+\begin{bmatrix} H & A^{\mathsf T} \\ A & 0 \end{bmatrix}
+\begin{bmatrix} \dot n \\ \dot y \end{bmatrix}
+=
+\begin{bmatrix} -\partial_\theta \nabla G \\ \dot b \end{bmatrix},
+\qquad H = \nabla^2 G(n^\star),
+```
+
+restricted to the species actually present. One factorization serves every
+partial derivative, and the result is exact — no step size to choose.
+
+```julia
+using ChemistryLab, DynamicQuantities, ForwardDiff, OptimaSolver
+
+f(x) = begin
+    n = Any[fill(0.0u"mol", length(cs.species))...]
+    n[i_h2o] = 55.5u"mol";  n[i_cal] = 0.05u"mol";  n[i_co2] = x * u"mol"
+    eq = equilibrate(ChemicalState(cs, n), OptimaOptimizer())
+    ustrip(us"mol", eq.n[i_ca])
+end
+
+ForwardDiff.derivative(f, 0.01)     # → 0.15193
+```
+
+!!! note "Why the complementarity conditions cannot be skipped"
+    The stationarity conditions are `∇G − Aᵀy − z = 0`, `A n = b`, `nᵢzᵢ = 0`,
+    with `z ≥ 0` the stability multipliers. The last block partitions the
+    species, and dropping it does not degrade the answer gently — it destroys
+    it. On calcite + CO₂ in water with a gas phase declared, the unreduced
+    system puts the whole response into the **absent** gas species
+    (`n = 5×10⁻¹¹` mol), returning a sensitivity that satisfies the element
+    balance to `4×10⁻¹⁶` and means nothing.
+
+    No back-end returns `z`, so the active set is recovered internally: a
+    species negligible on the scale of the system that nonetheless takes a
+    leading share of the response is pinned, and the system re-solved.
+
+!!! note "Verified against Reaktoro"
+    On calcite + CO₂ + water, `∂n/∂(CO₂)` from this route agrees with the
+    package's own finite differences to `9×10⁻⁵` — the finite-difference
+    truncation error — and with [Reaktoro](https://reaktoro.org) to about 6 %,
+    the two using different thermodynamic databases (Cemdata18 here,
+    `phreeqc.dat` there):
+
+    | species | ChemistryLab (AD) | Reaktoro (FD) |
+    |:--|--:|--:|
+    | Ca²⁺ | +0.1519 | +0.1622 |
+    | calcite | −0.1813 | −0.1622 |
+    | HCO₃⁻ | +0.3333 | +0.3245 |
+    | CO₂(aq) | +0.8187 | +0.8377 |
+
+    The absent gas species gets exactly zero from the active-set treatment,
+    against `2×10⁻⁹` by finite differences.
+
 ### Explicit solver (always works)
 
 Pass the solver as the **second positional argument**:

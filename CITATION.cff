@@ -19,7 +19,7 @@ keywords:
   - "solid solutions"
   - "chemical kinetics"
   - "cement"
-version: "0.3.1"
+version: 0.4.0
 date-released: "2026-07-22"
 doi: "10.5281/zenodo.17756074"
 url: "https://github.com/MicroPoroChemoMechanics/ChemistryLab.jl"

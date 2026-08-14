@@ -36,7 +36,7 @@ where
 | `t` | s | Current integration time |
 | `n` | mol | Moles of all species — named access via [`StateView`](@ref) |
 | `lna` | — | Log-activities — named access via `StateView` |
-| `n_initial` | mol | Initial moles — named access via `StateView` (always `Float64`) |
+| `n_initial` | mol | Initial moles — named access via `StateView` |
 
 [`StateView`](@ref) provides O(1) named access to a species vector via a pre-built
 dictionary (`sv["C3S"]` — no per-step dict allocation):
@@ -391,10 +391,85 @@ end
 ```
 
 !!! tip "Choosing `equilibrium_solver`"
-    Setting `equilibrium_solver = nothing` skips the Gibbs minimization at each ODE
-    step, which is appropriate for the [ParrotKilloh1984](@cite) model (it does not use
-    solution chemistry).  For `transition_state` models, pass an `EquilibriumSolver`
-    to re-speciate the aqueous phase at every ODE evaluation.
+    Setting `equilibrium_solver = nothing` skips the Gibbs minimization, which is
+    appropriate for the [ParrotKilloh1984](@cite) model: its rate closure ignores
+    the `lna` argument, so re-speciation cannot change `α(t)` or the calorimetry.
+    It does change what the *products* are — with `nothing`, the hydrate
+    assemblage is whatever the hand-written reaction stoichiometry says, not what
+    thermodynamics gives. For `transition_state` models, whose rate depends on the
+    saturation ratio `Ω = IAP/K`, an `EquilibriumSolver` is required for the rates
+    themselves to mean anything.
+
+    The solver may be passed on the [`KineticsProblem`](@ref) or on the
+    [`KineticsSolver`](@ref); both work. If it is set on both, the one on the
+    problem is used and the conflict is reported.
+
+## The equilibrium–kinetics coupling
+
+The coupling is the partitioned formulation of [Leal2017](@cite), the one
+Reaktoro implements. Species are split into a **kinetic partition** — the
+minerals carrying a rate law — and an **equilibrium partition**, everything
+else: the aqueous phase and any mineral free to precipitate or dissolve
+instantaneously.
+
+The ODE state is `(bₑ, nₖ)`: the element amounts held by the equilibrium
+partition, and the moles of the kinetic minerals. It advances as
+
+```math
+\frac{\mathrm{d} n_k}{\mathrm{d} t} = \nu_k^{\mathsf T} r,
+\qquad
+\frac{\mathrm{d} b_e}{\mathrm{d} t} = A_e \, \nu_e^{\mathsf T} r ,
+```
+
+and the composition of the equilibrium partition is recovered at each step by
+
+```math
+n_e = \varphi(b_e) \;=\; \arg\min_{n} \; G(n)
+\quad \text{s.t.} \quad A_e\, n = b_e , \; n \ge 0 .
+```
+
+Three points are worth stating, because each is a way the coupling can be got
+wrong and look plausible:
+
+**The minimization runs over the equilibrium partition only.** Posing it on the
+whole system would equilibrate the kinetic minerals instantaneously, which is
+what a kinetic description exists to prevent. `KineticsProblem` therefore builds
+a sub-system restricted to the partition, sharing the parent's primary species
+so that `bₑ`, `dbₑ/dt` and the solve all live in one conservation basis.
+
+**`bₑ` is integrated, not `nₑ`.** Along the way an individual species may want
+to go negative — the generated dissolution reactions are written in `H⁺`, and a
+cement paste contains no acid — and it is the minimizer, not the caller, that
+redistributes the elements over a feasible set. Element amounts are what is
+conserved; species amounts are what is solved for.
+
+**The rate sign is fixed by the stoichiometry.** Each kinetic reaction is
+normalized so its controlling mineral carries `ν = −1`: a positive rate is a
+dissolution. A reaction generated from the nullspace comes out with an arbitrary
+orientation, and taken as-is the ODE grows the clinker instead of consuming it.
+
+!!! note "How the two are coupled in time — operator splitting"
+    The equilibrium is **not** solved inside the ODE right-hand side. The ODE
+    advances the kinetic minerals with the speciation held frozen, and
+    `respeciate!` re-equilibrates the equilibrium partition once per accepted
+    step, wired as a `DiscreteCallback`.
+
+    This is deliberate. A stiff solver evaluates the right-hand side many times
+    per step and differentiates it to build its Jacobian; a Gibbs minimization in
+    there makes the cost per step unpredictable and leaves the Jacobian
+    describing a different model from the one being integrated. Splitting the two
+    is first-order accurate in the step size — the standard arrangement in
+    reactive transport — and keeps residual and Jacobian consistent.
+
+    The element amounts `bₑ` carried by the ODE state are handed to the solver
+    as the constraint of the sub-problem, not derived from a starting
+    composition. The composition passed alongside is a starting guess only.
+
+!!! warning "A failed re-speciation is reported, not hidden"
+    If the equilibrium solve fails, that step keeps its frozen composition, the
+    first failure is reported with its exception, and `integrate` states how many
+    steps were affected. A run in which re-speciation never succeeded must not
+    look like a healthy one.
 
 !!! tip "Calorimetry and ΔᵣH⁰"
     The calorimeter computes the heat generation rate as `q̇ = Σ rᵢ × (−ΔᵣH⁰ᵢ)`,
