@@ -61,7 +61,7 @@ const N_H2O, N_CAL, N_CO2 = 55.5, 0.05, 0.01
     @testset "sensitivities agree with Reaktoro" begin
         # Species carrying a resolvable share of the response are compared
         # relatively; the rest only have to stay within the oracle's own noise.
-        scale = maximum(abs, values(map(v -> v.dn, REAKTORO)))
+        scale = maximum(abs(v.dn) for v in values(REAKTORO))
         for (k, name) in enumerate(names)
             ref = REAKTORO[name].dn
             if abs(ref) > 1.0e-3 * scale

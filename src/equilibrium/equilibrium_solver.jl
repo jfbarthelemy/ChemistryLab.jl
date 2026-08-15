@@ -217,6 +217,38 @@ function _equilibrium_sensitivity(A, H, gθ, bdot, nstar; maxpin::Int = 8)
 end
 
 """
+    _check_converged(sol, what) -> sol
+
+Return `sol` if the optimizer converged, and throw otherwise.
+
+A non-converged iterate is *not* an approximate equilibrium — it is an
+arbitrary point on the way to one, and it satisfies neither the element balance
+nor the mass-action conditions. Returning it silently is worse than failing:
+the major species look plausible while the trace species, which is where the
+pH lives, can be off by an order of magnitude.
+
+The interior-point back-end reports this faithfully (`ReturnCode.MaxIters`);
+the extensions merely have to look.
+"""
+const STRICT_CONVERGENCE = Ref(true)
+
+function _check_converged(sol, what::AbstractString)
+    SciMLBase.successful_retcode(sol) && return sol
+    STRICT_CONVERGENCE[] || (@warn "$what returned `$(sol.retcode)`"; return sol)
+    throw(
+        ErrorException(
+            """
+            $what did not converge: the optimizer returned `$(sol.retcode)`.
+
+            The result would satisfy neither the element balance nor the
+            mass-action conditions, so it is not returned. Raise `max_iter`, \
+            loosen `tol`, or start from a better-conditioned composition.
+            """
+        ),
+    )
+end
+
+"""
     _solve_dual(esolver, state, ϵ) -> ChemicalState
 
 Equilibrium of a composition carrying dual numbers.

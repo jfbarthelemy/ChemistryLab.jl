@@ -87,7 +87,10 @@ function SciMLBase.solve(
         EquilibriumProblem(state.system.SM.A, esolver.μ, n0; b = collect(b), p = p)
     opt_prob = _build_optima_opt_prob(prob, esolver.μ, esolver.variable_space)
 
-    sol = SciMLBase.solve(opt_prob, esolver.solver; esolver.kwargs...)
+    sol = ChemistryLab._check_converged(
+        SciMLBase.solve(opt_prob, esolver.solver; esolver.kwargs...),
+        "equilibrium solve",
+    )
     transform = _solution_transform(esolver.variable_space)
 
     state_eq = copy(state)

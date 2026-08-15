@@ -94,7 +94,10 @@ function SciMLBase.solve(
         kwargs...,
     )
     opt_prob = SciMLBase.OptimizationProblem(ep, variable_space)
-    sol = SciMLBase.solve(opt_prob, solver; kwargs...)
+    sol = ChemistryLab._check_converged(
+        SciMLBase.solve(opt_prob, solver; kwargs...),
+        "equilibrium solve",
+    )
     transform = _solution_transform(variable_space)
     sol.u .= transform.(sol.u)
     return sol
