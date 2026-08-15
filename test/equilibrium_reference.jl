@@ -126,8 +126,10 @@ const N_H2O, N_CAL, N_CO2 = 55.5, 0.05, 0.01
         # exactly, whatever Kw happens to be. It is a pure statement about the
         # solve. This failed — 4.03 instead of 1 — while the back-end was
         # steering on an approximated Hessian diagonal.
-        csw = ChemicalSystem([dict[s] for s in ["H2O@", "H+", "OH-"]],
-                             ["H2O@", "H+", "Zz"])
+        csw = ChemicalSystem(
+            [dict[s] for s in ["H2O@", "H+", "OH-"]],
+            ["H2O@", "H+", "Zz"]
+        )
         nw = symbol.(csw.species)
         n = Any[fill(0.0u"mol", length(nw))...]
         n[findfirst(==("H2O@"), nw)] = 55.5u"mol"
