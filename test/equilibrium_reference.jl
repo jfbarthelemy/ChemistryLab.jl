@@ -10,14 +10,14 @@
 # finite-difference spread across h ∈ {1e-3, 1e-4, 1e-5}: 7.12e-4
 const REAKTORO = Dict(
     "H2O@" => (n = 55.4961389, dn = -0.181397291),
-    "H+" => (n = 3.69286738e-07, dn = 3.25691398e-05),
-    "OH-" => (n = 2.70633096e-08, dn = -2.38767062e-06),
+    "H+" => (n = 3.69286738e-7, dn = 3.25691398e-5),
+    "OH-" => (n = 2.70633096e-8, dn = -2.38767062e-6),
     "CO2@" => (n = 0.00613892838, dn = 0.818600249),
     "HCO3-" => (n = 0.00738915525, dn = 0.333426734),
-    "CO3-2" => (n = 9.37864261e-07, dn = -4.03977783e-05),
+    "CO3-2" => (n = 9.37864261e-7, dn = -4.03977783e-5),
     "Ca+2" => (n = 0.00352901991, dn = 0.151986657),
-    "CaOH+" => (n = 1.58551676e-09, dn = -7.15930328e-08),
-    "Ca(CO3)@" => (n = 5.54793457e-06, dn = -1.8134238e-08),
+    "CaOH+" => (n = 1.58551676e-9, dn = -7.15930328e-8),
+    "Ca(CO3)@" => (n = 5.54793457e-6, dn = -1.8134238e-8),
     "Ca(HCO3)+" => (n = 0.000332647348, dn = 0.029337739),
     "Cal" => (n = 0.0461327832, dn = -0.181324306),
 )
@@ -82,8 +82,10 @@ const N_H2O, N_CAL, N_CO2 = 55.5, 0.05, 0.01
         # Calcium has no source or sink here, so the sensitivities of every
         # Ca-bearing species must cancel. A finite difference only manages this
         # approximately; the KKT route is exact.
-        ca = Dict("Ca+2" => 1, "Cal" => 1, "CaOH+" => 1,
-                  "Ca(CO3)@" => 1, "Ca(HCO3)+" => 1)
+        ca = Dict(
+            "Ca+2" => 1, "Cal" => 1, "CaOH+" => 1,
+            "Ca(CO3)@" => 1, "Ca(HCO3)+" => 1
+        )
         budget = sum(derivs[k] * get(ca, name, 0) for (k, name) in enumerate(names))
         @test abs(budget) < 1.0e-12
     end
