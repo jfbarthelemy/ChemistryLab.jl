@@ -122,10 +122,10 @@ like a healthy one. Silence is not success — if the count is nonzero, the
 trajectory is not the one the equations describe.
 
 !!! note "Validation status"
-    The coupling is currently verified against itself, not against an
-    independent code — see [Validation against Reaktoro](@ref) for what is and
-    is not checked, including a known defect on trace species that affects the
-    pH of systems containing a solid.
+    Both halves are checked against Reaktoro: the **equilibrium** species by
+    species, and the **coupling** along a constant-rate dissolution trajectory,
+    where the two agree to 4.3 % or better — see
+    [Validation against Reaktoro](@ref).
 
 ## See also
 

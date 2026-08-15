@@ -75,129 +75,86 @@ differences.
 
 ## What does not agree
 
-!!! danger "Trace species are wrong"
-    Species below about `10⁻⁵` mol do **not** agree, and the discrepancy is not
-    small:
+One species, and it is inconsequential.
 
-    | species | ChemistryLab | Reaktoro | ratio |
-    |:--|--:|--:|--:|
-    | H⁺ | 4.590×10⁻⁷ | 3.693×10⁻⁷ | 1.24 |
-    | OH⁻ | 8.623×10⁻⁸ | 2.706×10⁻⁸ | **3.19** |
-    | CO₃²⁻ | 1.033×10⁻⁶ | 9.379×10⁻⁷ | 1.10 |
-    | Ca(CO₃)@ | 5.645×10⁻⁶ | 5.548×10⁻⁶ | 1.02 |
-    | CaOH⁺ | 3.295×10⁻⁸ | 1.586×10⁻⁹ | **20.8** |
+| species | ChemistryLab | Reaktoro | ratio |
+|:--|--:|--:|--:|
+| H₂O, Cal, Ca²⁺, HCO₃⁻, CO₂, Ca(HCO₃)⁺, Ca(CO₃)@ | — | — | 1.000 ± 0.0003 |
+| H⁺ | 3.714×10⁻⁷ | 3.693×10⁻⁷ | 1.006 |
+| CO₃²⁻ | 9.403×10⁻⁷ | 9.379×10⁻⁷ | 1.003 |
+| OH⁻ | 2.829×10⁻⁸ | 2.706×10⁻⁸ | 1.045 |
+| **CaOH⁺** | 3.914×10⁻⁹ | 1.586×10⁻⁹ | **2.47** |
 
-    On this system the water autoprotolysis therefore still comes out at
-    `pKw = 13.40` instead of `14.00`. **This matters for cement**: a pore
-    solution sits at pH 13, and it is exactly these species that set it. Treat
-    any pH, pOH or trace-ion figure from a system containing a solid as
-    indicative until this is fixed.
-
-    An **aqueous-only** system is a different matter — see below.
-
-### Aqueous-only systems are fixed
-
-Pure water used to come out at `[H⁺]/[OH⁻] = 3.78`, an electroneutrality
-violation that no thermodynamic database can excuse. It now gives **1.0**, with
+`pKw` on this system is **13.979**. Pure water gives `[H⁺]/[OH⁻] = 1.0` and
 `pKw = 13.9994`.
 
-The cause was the Newton step, not the chemistry. The back-end formed the Schur
-complement `S = A H⁻¹ Aᵀ`, which requires `H` invertible — and a pure phase has
-unit activity, hence `∂²G/∂nᵢ² = 0` exactly. `OptimaSolver` 0.2.5 computes the
-step by the **nullspace** method instead: with `Z` a basis of `null(A)`,
+`CaOH⁺` is 2.5× high at `4×10⁻⁹` mol. Ipopt lands on the same value (×2.46), so
+that residual belongs to neither back-end; at that amount it moves nothing.
+
+### How it was fixed
+
+Two defects in the back-end's Newton iteration, both now corrected in
+`OptimaSolver` 0.2.5.
+
+**The step inverted the Hessian.** It formed the Schur complement
+`S = A H⁻¹ Aᵀ`, which needs `H` invertible — and a pure phase has unit activity,
+hence `∂²G/∂nᵢ² = 0` exactly. The step degenerates. The nullspace method is used
+instead: with `Z` a basis of `null(A)`,
 
 ```math
 (Z^{\mathsf T} H Z)\, \delta z = -Z^{\mathsf T}(e_x + H\, \delta n_p),
 ```
 
-in which `H` appears only as a product and is never inverted. This is what the
-C++ Optima does by default; its `Rangespace` counterpart — the Schur complement
-— is documented there as suitable for invertible diagonal Hessians only.
+in which `H` appears only as a product. This is what the C++ Optima does by
+default; its `Rangespace` counterpart is documented there as suitable for
+invertible diagonal Hessians only. Pure water went from `[H⁺]/[OH⁻] = 3.78` to
+`1.0`.
 
-Mixed solid/aqueous systems are **unchanged** by this, which is why the table
-above still stands for calcite + CO₂.
+**The convergence test skipped the trace species.** A variable was judged "at
+its bound" when its slack fell below `10⁻⁸ × max_slack` — a threshold scaled by
+the *largest* variable in the problem. With a solvent at 55 mol that threshold
+is `5.5×10⁻⁷`, so every trace ion below it was declared to sit on a bound of
+`10⁻¹⁶`, nine orders of magnitude away, and **its stationarity was never
+enforced**. The correlation was exact: the three species below the threshold
+were the three wrong ones.
 
-### What remains: conditioning, not thermodynamics
+| species | amount | below the old threshold? | before | after |
+|:--|--:|:--|--:|--:|
+| CaOH⁺ | 3×10⁻⁸ | yes | ×20.8 | ×2.47 |
+| OH⁻ | 9×10⁻⁸ | yes | ×3.19 | ×1.045 |
+| H⁺ | 5×10⁻⁷ | yes | ×1.24 | ×1.006 |
+| CO₃²⁻ | 1×10⁻⁶ | no | ×1.10 | ×1.003 |
+| Ca(CO₃)@ | 6×10⁻⁶ | no | ×1.02 | ×1.0004 |
 
-Three observations locate the residual cause:
+The criterion is now relative to the variable's own bound, which is what
+"sitting on it" means.
 
-1. **The standard-state data is right.** Pure water on its own gives
-   `pKw = 13.99` and `[H⁺] = [OH⁻]` to six digits.
-2. **The element balance is satisfied** to `4×10⁻¹⁶` in every case above. What
-   fails is the *stationarity* — the solver returns feasible points that are
-   not the Gibbs minimum.
-3. **A second, independent solver hits the same wall.** Ipopt does markedly
-   better but still does not reach Reaktoro:
+### What the diagnosis cost, and what to skip next time
 
-   | | CaOH⁺ | OH⁻ | H⁺ | worst |
-   |:--|--:|--:|--:|--:|
-   | OptimaSolver (linear) | ×20.8 | ×3.19 | ×1.24 | 19.8 |
-   | Ipopt (linear) | ×2.46 | ×1.31 | ×1.03 | 1.46 |
-
-   That a mature interior-point code is also off rules out a defect specific to
-   one back-end.
-
-The difficulty is scale, and it can be measured rather than supposed. By
-Gibbs–Duhem the Hessian of the Gibbs energy is the Jacobian of the chemical
-potentials, ``\nabla^2 G = \partial\mu/\partial n``. Evaluated at Reaktoro's
-solution for this system:
-
-```
-cond = 1.1e22        eigmin = 5.7e-14
-H2O@   ∂²G/∂n² = 5.6e-6    (against 1/n = 0.018 — a factor 3200)
-Cal    ∂²G/∂n² = 0         exactly, a pure phase has unit activity
-CaOH+  ∂²G/∂n² = 6.3e8
-```
-
-A condition number of `10²²` is beyond what double precision (`10¹⁶`) carries.
-That is the whole story: no interior-point method can be relied on to solve this
-in the natural variables, which is why a second, mature solver is also off.
-
-### What has been ruled out
-
-Getting to the nullspace step took eight attempts, seven of which were disproved
-by measurement. They are recorded so the next attempt on the *remaining* defect
-does not repeat them:
+Eight attempts, seven disproved by measurement. Recorded so the next one does
+not repeat them:
 
 | attempt | result |
 |:--|:--|
-| more iterations (300 → 200 000) | identical answer; the iteration is stalled, not slow |
+| more iterations (300 → 200 000) | identical answer; stalled, not slow |
 | relative finite-difference step for the Hessian | worse (×20 → ×922) |
 | exact Hessian `∂μ/∂n` by AD | fixes water, breaks the mixed case (×3750) |
-| regularizing the pure-phase zero curvature | no effect at any magnitude tried |
+| regularizing the pure-phase zero curvature | no effect at any magnitude |
 | capping the inverse curvature spread | no effect over five orders of magnitude |
-| supplying the analytic gradient `∂G/∂nᵢ = μᵢ` | correct in itself, changes nothing here |
-| Ipopt instead of the default back-end | 8× closer, still short of Reaktoro |
-| log-space parameterization | does not work in either back-end |
-| **nullspace Newton step** | **fixes water, mixed case unchanged** |
+| analytic gradient `∂G/∂nᵢ = μᵢ` | correct in itself, changed nothing here |
+| Ipopt instead of the default back-end | 8× closer, still short |
+| log-space parameterization | works in neither back-end |
+| **nullspace step + bound criterion** | **both defects, both fixed** |
 
-The lesson that finally paid: a Hessian affects the *rate* of Newton's method,
-not its limit, so a merely slow solver would still land on the right answer. It
-did not — which placed the fault in the linear algebra of the step rather than
-in the curvature, and that is where it was.
-
-!!! tip "If you need trace species now"
-    Use Ipopt, which is roughly eight times closer on this system:
-
-    ```julia
-    using Optimization, OptimizationIpopt
-    state_eq = equilibrate(state, IpoptOptimizer())
-    ```
-
-    It is 3 to 26 times slower than the default on cement equilibria, which is
-    why the default is what it is — but on this evidence the default is the
-    faster wrong answer for anything below `10⁻⁵` mol.
+What finally pointed the right way was comparing the *Gibbs energies* of the two
+answers rather than the compositions: ours was consistently **lower** on our own
+objective, which rules out "the solver failed to minimize" and puts the fault in
+what the solver was allowed to stop on.
 
 ## The kinetics/equilibrium coupling
 
-**Not yet validated against Reaktoro.** The coupling is checked only against
-itself: the partition constraint holds to `‖Aₑnₑ − bₑ‖∞ = 8.7×10⁻⁸` over a
-seven-day hydration run with no failed re-speciation, and the resulting
-assemblage is physically sensible. That is internal consistency, not agreement
-with an independent code.
-
-`test/reference/reaktoro_coupling.py` sets up the intended comparison. It
-dissolves calcite at a *constant* rate so the kinetic half is analytic —
+**Validated against Reaktoro.** Calcite dissolves at a *constant* rate, so the
+kinetic half of Leal's system is analytic —
 
 ```math
 n_{\text{Cal}}(t) = n_{\text{Cal}}(0) - k t,
@@ -207,9 +164,27 @@ b_e(t) = b_e(0) + k t \, (\text{one CaCO}_3)
 
 — which removes every difference of rate-law convention between the codes and
 leaves only the question that matters: does the equilibrium partition follow
-``n_e(t) = \varphi(b_e(t))``? Since the oracle then needs no kinetics integrator
-at all, just one equilibrium solve per sample time, it is not blocked on
-anything except being run.
+``n_e(t) = \varphi(b_e(t))``? The oracle then needs no kinetics integrator at
+all, just one equilibrium solve per sample time.
+
+| t (s) | worst relative deviation | on |
+|--:|--:|:--|
+| 0 | 0.32 % | OH⁻ |
+| 600 | 0.44 % | CO₂(aq) |
+| 1800 | 4.3 % | CO₂(aq) |
+| 3600 | 4.3 % | CO₂(aq) |
+
+The species carrying the largest deviation sits at `2.3×10⁻⁸` mol throughout.
+The assertions are in `test/coupling_reference.jl`, the oracle in
+`test/reference/reaktoro_coupling.py`.
+
+This test also earned its keep immediately: it hit a `PosDefException` in the
+nullspace step's Cholesky factorization, on a trajectory where a species sits at
+`10⁻¹⁶`. Fixed in `OptimaSolver` 0.2.6.
+
+Internal consistency is checked separately and independently: over a seven-day
+hydration run the partition constraint holds to `‖Aₑnₑ − bₑ‖∞ = 8.7×10⁻⁸` with
+no failed re-speciation.
 
 ## Reproducing
 

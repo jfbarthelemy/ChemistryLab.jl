@@ -88,16 +88,20 @@ Everything not declared kinetic is equilibrium. Attaching an equilibrium solver
 is what turns a plain kinetics run into the coupled problem:
 
 ```julia
-kp = KineticsProblem(cs, state, (0.0u"s", 7.0u"d"); kinetic_reactions = reactions)
-
-ks = KineticsSolver(
-    QNDF();                                     # stiff: rates span many decades
+kp = KineticsProblem(
+    cs, reactions, state, (0.0u"s", 7.0u"d");
     equilibrium_solver = EquilibriumSolver(cs, DiluteSolutionModel(), OptimaOptimizer()),
-    reltol = 1e-6, abstol = 1e-10,
 )
+
+ks = KineticsSolver(; ode_solver = Rodas5P(),               # stiff: rates span decades
+                    reltol = 1e-6, abstol = 1e-10)
 
 sol = integrate(kp, ks)
 ```
+
+The reaction list is a **positional** argument, and `equilibrium_solver` belongs
+on the problem (a `KineticsSolver` accepts it too, and the problem wins if both
+are given).
 
 Without `equilibrium_solver` the run is a pure kinetics integration and the
 aqueous phase never re-speciates. With it, `respeciate!` solves ``\varphi(b_e)``
@@ -138,14 +142,11 @@ C-S-H and portlandite in comparable amounts, water consumed, an alkaline pore
 solution at millimolar calcium. None of it was imposed: change the water content
 or add a species and the assemblage rearranges itself.
 
-!!! danger "Trace species and pH are not trustworthy yet"
-    The `OH⁻` figure above, and any pH you compute from this run, inherit a known
-    defect: in a system containing a solid, species below about `10⁻⁵` mol
-    disagree with Reaktoro by factors up to 20, and `pKw` comes out at 13.40
-    instead of 14.00. The bulk assemblage and the degrees of hydration are
-    unaffected — those are major species — but do not quote a pore-solution pH
-    from this. Aqueous-only systems are not affected; see
-    [Validation against Reaktoro](@ref).
+!!! note "How far to trust the pore-solution figures"
+    The speciation now agrees with Reaktoro to 5 % or better on every species
+    except `CaOH⁺`, which is 2.5× high at `4×10⁻⁹` mol, and `pKw` comes out at
+    13.979. The `OH⁻` figure above and any pH derived from this run are usable;
+    see [Validation against Reaktoro](@ref) for what was checked and how.
 
 ## 6. Differentiating the whole thing
 
@@ -162,8 +163,8 @@ function portlandite_at_7d(wc)
     n[idx("H2O@")] = (wc / 0.40 * 22.20)u"mol"
     n[idx("C3S")]  = 3.29u"mol"
     n[idx("C2S")]  = 0.87u"mol"
-    sol = integrate(KineticsProblem(cs, ChemicalState(cs, n), (0.0u"s", 7.0u"d");
-                                    kinetic_reactions = reactions), ks)
+    sol = integrate(KineticsProblem(cs, reactions, ChemicalState(cs, n),
+                                    (0.0u"s", 7.0u"d")), ks)
     return amount(sol, "Portlandite", 7.0u"d")
 end
 

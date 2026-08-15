@@ -72,6 +72,13 @@ handed to the solver as the constraint rather than derived from a composition.
 Running the minimization over the whole system, as the previous code did, would
 equilibrate the kinetic minerals instantaneously.
 
+**Validated against Reaktoro.** Calcite dissolving at a constant rate makes the
+kinetic half analytic, so every difference of rate-law convention drops out and
+only `nₑ(t) = φ(bₑ(t))` is under test. The two codes agree to 0.3 % at `t = 0`
+and 4.3 % at 3600 s, the largest deviation always on `CO₂(aq)` at `2.3e-8` mol.
+Assertions in `test/coupling_reference.jl`, oracle in
+`test/reference/reaktoro_coupling.py`.
+
 ### Changed — operator splitting instead of a solve inside the right-hand side
 
 The equilibrium sub-problem is no longer solved inside the ODE right-hand side.
@@ -127,60 +134,21 @@ to `+0.2179`; dropping the aqueous calcium complexes makes `∂Ca²⁺/∂(CO₂
 `∂calcite/∂(CO₂)` mirror each other, and restoring them breaks that mirror in
 *both* codes alike. The element balance closes to `2e-16` throughout.
 
-### Known defect — trace species disagree with Reaktoro
+### Fixed — trace species now agree with Reaktoro
 
-Species present below about `1e-5` mol are wrong: `CaOH⁺` by a factor 20, `OH⁻`
-by 3.2, so `pKw` comes out at 13.40 instead of 14.00. **Any pH, pOH or trace-ion
-figure from this release is indicative only.** Bulk assemblages and degrees of
-hydration, which are major species, are unaffected.
+On calcite + CO₂, every species except `CaOH⁺` agrees with Reaktoro to 5 % or
+better, and `pKw` comes out at 13.979 instead of 13.40. Before, `CaOH⁺` was
+20.8× high, `OH⁻` 3.19× and `H⁺` 1.24×.
 
-The cause is conditioning, not thermodynamics, and it is now measured rather
-than supposed. The element balance holds to `4e-16` and the standard-state data
-is right; what fails is the *stationarity*. At the solution the Gibbs Hessian
-`∇²G = ∂μ/∂n` has
+The cause was in the back-end's convergence test, which excluded variables
+judged "at their bound" using a threshold scaled by the *largest* amount in the
+problem. With a solvent at 55 mol that threshold was `5.5e-7`, so every trace
+ion below it was declared to sit on a bound of `1e-16` and its stationarity was
+never enforced. `OptimaSolver` 0.2.5 judges it against the variable's own bound.
 
-```
-cond = 1.1e22        eigmin = 5.7e-14
-H2O@  ∂²G/∂n² = 5.6e-6   (against 1/n = 0.018 — a factor 3200)
-Cal   ∂²G/∂n² = 0        exactly, a pure phase
-CaOH+ ∂²G/∂n² = 6.3e8
-```
-
-A condition number of `1e22` is beyond what double precision (`1e16`) carries,
-which is why Ipopt — eight times closer than the default back-end — does not
-reach Reaktoro either.
-
-Seven candidate fixes were tried and disproved by measurement (more iterations,
-a relative finite-difference step, the exact Hessian by AD, regularizing the
-pure-phase zero curvature, the analytic gradient, Ipopt, log space); they are
-tabulated in the Reaktoro validation page so the next attempt does not repeat
-them. The dichotomy that remains is that the analytic `1/nᵢ` curvature gives
-pure water exactly right (`[H⁺]/[OH⁻] = 1.000003`) and the mixed solid/aqueous
-case badly wrong, while the finite-difference diagonal does the reverse. Since a
-Hessian affects the rate of Newton's method and not its limit, the fault lies in
-the interior-point iteration itself — most likely in how a pure phase, linear in
-its amount, is driven to its bound. The affected assertions are `@test_broken`,
-so a fix announces itself as an unexpected pass.
-
-### Fixed — the water autoprotolysis
-
-Pure water came out at `[H⁺]/[OH⁻] = 3.78` instead of 1 — an electroneutrality
-violation, independent of any thermodynamic data. It now gives 1.0, with
-`pKw = 13.9994`.
-
-The cause was the Newton step in the back-end, and the fix is there: it formed
-the Schur complement `S = A H⁻¹ Aᵀ`, which requires `H` invertible, while a pure
-phase has unit activity and hence exactly zero curvature. `OptimaSolver` 0.2.5
-computes the step by the nullspace method instead, in which `H` appears only as
-a product and is never inverted. Mixed solid/aqueous systems are unchanged.
-
-Two switches expose the machinery, both defaulting to the right thing:
-`ChemistryLab.NULLSPACE_STEP[]` selects the step method, and
-`ChemistryLab.EXACT_HESSIAN[]` hands the back-end the exact Gibbs Hessian
-diagonal `∇²G = ∂μ/∂n` (by Gibbs–Duhem, what `ForwardDiff` returns). The latter
-is **off** by default: it also fixes water, but degrades mixed solid/aqueous
-systems badly, and the nullspace step achieves the same result without that
-cost.
+`CaOH⁺` remains 2.5× high at `4e-9` mol. Ipopt lands on the same value (×2.46),
+so it is attributable to neither back-end, and at that amount it is chemically
+inconsequential. The assertion is `@test_broken`.
 
 ### Changed — the analytic gradient is handed to the back-end
 

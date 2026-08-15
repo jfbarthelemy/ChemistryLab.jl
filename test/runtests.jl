@@ -3,6 +3,7 @@ using DynamicQuantities
 using ForwardDiff
 using OptimaSolver
 using OrdinaryDiffEq
+using OrderedCollections
 using Test
 using TimerOutputs
 
@@ -56,6 +57,7 @@ end
 @testsection "Kinetics tests" begin
     include("kinetics/test_rate_models.jl")
     include("kinetics/test_calorimetry.jl")
+    include("coupling_reference.jl")
 end
 
 print_timer()
