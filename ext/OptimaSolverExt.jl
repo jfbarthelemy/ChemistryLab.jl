@@ -27,14 +27,53 @@ using ForwardDiff
 # Only in the linear parameterization: in log space the constraint is
 # A·exp(x) = b, which is not linear in the optimization variables, so handing
 # over `A` would be wrong there.
-_with_constraints(q::NamedTuple, A, b) = merge(q, (A = A, b = b))
+"""
+    _hessian_diagonal(μ, q) -> (hf, n) -> hf
+
+Exact diagonal of ∇²G, handed to the back-end alongside `A` and `b`.
+
+`G(n) = nᵀ μ(n)` gives `∂G/∂nᵢ = μᵢ + Σⱼ nⱼ ∂μⱼ/∂nᵢ`, and the sum vanishes by
+Gibbs–Duhem at fixed `T`, `P`. So `∇²G = ∂μ/∂n` — the Hessian *is* the Jacobian
+of the chemical potentials, which `ForwardDiff` returns exactly.
+
+It is worth the derivative evaluation. The entries are `1/nᵢ` for a solute and
+exactly zero for a pure phase, and both fallbacks in the back-end get one of the
+two wrong. Approximating this does not merely slow Newton down: understating the
+curvature on a trace ion makes the line search reject its step, the barrier is
+exhausted, and the solve stops on a point that is not the minimum — water then
+comes out with `[H⁺]/[OH⁻] = 3.8` instead of 1.
+"""
+function _hessian_diagonal(μ, q)
+    return function (hf, n)
+        J = ForwardDiff.jacobian(nn -> μ(nn, q), n)
+        @inbounds for i in eachindex(hf)
+            hf[i] = max(J[i, i], zero(eltype(hf)))
+        end
+        return hf
+    end
+end
+
+function _with_constraints(q::NamedTuple, A, b, μ)
+    base = merge(q, (A = A, b = b))
+    return ChemistryLab.EXACT_HESSIAN[] ?
+        merge(base, (hdiag = _hessian_diagonal(μ, q),)) : base
+end
 
 function _build_optima_opt_prob(ep::EquilibriumProblem, μ, ::Val{:linear})
     f_gibbs(x, q) = dot(x, μ(x, q))
+    # ∂G/∂nᵢ = μᵢ exactly: the remaining term Σⱼ nⱼ ∂μⱼ/∂nᵢ vanishes by
+    # Gibbs–Duhem at fixed T, P. Handing the gradient over rather than leaving
+    # the back-end to differentiate `dot(n, μ(n))` matters, because that
+    # cancellation is only exact in theory. Evaluated, the solvent term alone is
+    # 55 mol × 0.018 ≈ 1 against a μ of order 10, so the back-end was steering
+    # on a gradient wrong by some ten percent — and a Gibbs energy is stationary
+    # precisely where its gradient is, so the answer it settled on was not the
+    # equilibrium. Water came out with [H⁺]/[OH⁻] = 4.
+    g_gibbs!(g, x, q) = (g .= μ(x, q))
     cons!(res, x, _) = mul!(res, ep.A, x) .-= ep.b
-    optf = SciMLBase.OptimizationFunction{true}(f_gibbs; cons = cons!)
+    optf = SciMLBase.OptimizationFunction{true}(f_gibbs; grad = g_gibbs!, cons = cons!)
     return SciMLBase.OptimizationProblem(
-        optf, ep.u0, _with_constraints(ep.p, ep.A, ep.b);
+        optf, ep.u0, _with_constraints(ep.p, ep.A, ep.b, μ);
         lb = ep.lb, ub = ep.ub,
         lcons = zeros(size(ep.A, 1)),
         ucons = zeros(size(ep.A, 1)),
@@ -109,7 +148,10 @@ end
 # OptimaSolver reaches a 4e-14 element balance and is 3 to 26 times faster than
 # Ipopt. Pass a solver explicitly to override the choice.
 
-_default_optima_solver() = OptimaOptimizer()
+_default_optima_solver() = OptimaOptimizer(;
+    use_fd_hessian = !ChemistryLab.EXACT_HESSIAN[],
+    nullspace_step = ChemistryLab.NULLSPACE_STEP[],
+)
 
 function __init__()
     return ChemistryLab._DEFAULT_SOLVER_FACTORY[] = _default_optima_solver

@@ -127,6 +127,90 @@ to `+0.2179`; dropping the aqueous calcium complexes makes `∂Ca²⁺/∂(CO₂
 `∂calcite/∂(CO₂)` mirror each other, and restoring them breaks that mirror in
 *both* codes alike. The element balance closes to `2e-16` throughout.
 
+### Known defect — trace species disagree with Reaktoro
+
+Species present below about `1e-5` mol are wrong: `CaOH⁺` by a factor 20, `OH⁻`
+by 3.2, so `pKw` comes out at 13.40 instead of 14.00. **Any pH, pOH or trace-ion
+figure from this release is indicative only.** Bulk assemblages and degrees of
+hydration, which are major species, are unaffected.
+
+The cause is conditioning, not thermodynamics, and it is now measured rather
+than supposed. The element balance holds to `4e-16` and the standard-state data
+is right; what fails is the *stationarity*. At the solution the Gibbs Hessian
+`∇²G = ∂μ/∂n` has
+
+```
+cond = 1.1e22        eigmin = 5.7e-14
+H2O@  ∂²G/∂n² = 5.6e-6   (against 1/n = 0.018 — a factor 3200)
+Cal   ∂²G/∂n² = 0        exactly, a pure phase
+CaOH+ ∂²G/∂n² = 6.3e8
+```
+
+A condition number of `1e22` is beyond what double precision (`1e16`) carries,
+which is why Ipopt — eight times closer than the default back-end — does not
+reach Reaktoro either.
+
+Seven candidate fixes were tried and disproved by measurement (more iterations,
+a relative finite-difference step, the exact Hessian by AD, regularizing the
+pure-phase zero curvature, the analytic gradient, Ipopt, log space); they are
+tabulated in the Reaktoro validation page so the next attempt does not repeat
+them. The dichotomy that remains is that the analytic `1/nᵢ` curvature gives
+pure water exactly right (`[H⁺]/[OH⁻] = 1.000003`) and the mixed solid/aqueous
+case badly wrong, while the finite-difference diagonal does the reverse. Since a
+Hessian affects the rate of Newton's method and not its limit, the fault lies in
+the interior-point iteration itself — most likely in how a pure phase, linear in
+its amount, is driven to its bound. The affected assertions are `@test_broken`,
+so a fix announces itself as an unexpected pass.
+
+### Fixed — the water autoprotolysis
+
+Pure water came out at `[H⁺]/[OH⁻] = 3.78` instead of 1 — an electroneutrality
+violation, independent of any thermodynamic data. It now gives 1.0, with
+`pKw = 13.9994`.
+
+The cause was the Newton step in the back-end, and the fix is there: it formed
+the Schur complement `S = A H⁻¹ Aᵀ`, which requires `H` invertible, while a pure
+phase has unit activity and hence exactly zero curvature. `OptimaSolver` 0.2.5
+computes the step by the nullspace method instead, in which `H` appears only as
+a product and is never inverted. Mixed solid/aqueous systems are unchanged.
+
+Two switches expose the machinery, both defaulting to the right thing:
+`ChemistryLab.NULLSPACE_STEP[]` selects the step method, and
+`ChemistryLab.EXACT_HESSIAN[]` hands the back-end the exact Gibbs Hessian
+diagonal `∇²G = ∂μ/∂n` (by Gibbs–Duhem, what `ForwardDiff` returns). The latter
+is **off** by default: it also fixes water, but degrades mixed solid/aqueous
+systems badly, and the nullspace step achieves the same result without that
+cost.
+
+### Changed — the analytic gradient is handed to the back-end
+
+`∂G/∂nᵢ = μᵢ` exactly, the remaining term vanishing by Gibbs–Duhem. The
+extension now supplies it instead of leaving the back-end to differentiate
+`dot(n, μ(n))`, where that cancellation is only exact in theory: evaluated, the
+solvent term alone is `55 × 0.018 ≈ 1` against a `μ` of order 10. This does not
+resolve the defect above, but a Gibbs energy is stationary exactly where its
+gradient is, and steering on a gradient wrong by ten percent is not defensible
+whatever else is true.
+
+### Added — documentation
+
+- **Coupling kinetics and equilibrium** — the partitioned formulation derived,
+  including why the state is `(bₑ, nₖ)` rather than `(nₑ, nₖ)`, and what to
+  check when a run finishes.
+- **The hydrating paste, end to end** — a worked example computing the hydrate
+  assemblage instead of imposing it, with measured output.
+- **Validation against Reaktoro** — what agrees, what does not, and the three
+  knobs a cross-code comparison has to match.
+
+### Fixed — the solver's return code was ignored
+
+Neither extension looked at the optimizer's `retcode`; a non-converged iterate
+was written into the state as though it were the equilibrium. It is now checked
+and warned about. The warning, rather than an error, is deliberate: the flag is
+unreliable in both directions on these problems — pure water comes back flagged
+`MaxIters` while giving `[H⁺]/[OH⁻] = 1.000003`. Set
+`ChemistryLab.STRICT_CONVERGENCE[] = true` to raise instead.
+
 ### Fixed — dual numbers could not enter a `ChemicalState`
 
 The constructor took its element type from the *temperature*

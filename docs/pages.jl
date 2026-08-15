@@ -12,6 +12,8 @@ pages = [
         "man/chemical_system_state.md",
         "man/equilibrium.md",
         "man/kinetics.md",
+        "man/coupling.md",
+        "man/reaktoro_comparison.md",
         "man/advanced.md",
     ],
     "Examples" => [
@@ -25,6 +27,7 @@ pages = [
         # "examples/cement_wc_ratio.md",
         "examples/cement_carbonation.md",
         "examples/cement_clinker_kinetics.md",
+        "examples/coupled_hydration.md",
     ],
     "API" => Any[
         "Thermodynamical functions" => "api/thermo_functions.md",

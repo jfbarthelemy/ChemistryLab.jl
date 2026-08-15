@@ -217,32 +217,95 @@ function _equilibrium_sensitivity(A, H, gθ, bdot, nstar; maxpin::Int = 8)
 end
 
 """
+    STRICT_CONVERGENCE
+
+Whether a non-converged equilibrium solve raises (`true`) or warns (`false`,
+the default).
+
+The default is *not* strict, and deliberately so: the back-end's convergence
+flag is unreliable in both directions on these problems. It reports `MaxIters`
+on points that are numerically excellent — pure water comes back flagged while
+giving `[H⁺]/[OH⁻] = 1.000003` — and reports success on points that are not the
+minimum. Raising on the flag alone would reject good answers and would still
+miss the bad ones, so it is offered as an opt-in for callers who want the
+strictest possible reading.
+"""
+const STRICT_CONVERGENCE = Ref(false)
+
+"""
+    EXACT_HESSIAN
+
+Whether to hand the back-end the exact Gibbs Hessian diagonal `∂μ/∂n` computed
+by `ForwardDiff`, instead of letting it approximate one. Default `false`.
+
+It is off by default only because it currently trades one defect for another,
+and both are measured:
+
+| | pure water | calcite + CO₂ |
+|:--|--:|--:|
+| `false` (back-end approximation) | `[H⁺]/[OH⁻] = 3.78` ✗ | worst ×19.8 |
+| `true` (exact `∂μ/∂n`) | `[H⁺]/[OH⁻] = 1.000003` ✓ | worst ×3751 ✗ |
+
+Turn it on for an **aqueous-only** system, where it makes the water
+autoprotolysis come out right. Leave it off when a pure phase is present: the
+exact curvature of such a phase is zero, the interior-point iteration then
+stalls essentially at its starting point, and the whole speciation is wrong.
+
+That stall is the open problem. It is not a matter of iterating longer (the
+answer is identical at 300 and at 200 000 iterations) nor of the near-singular
+Hessian entry (capping the inverse curvature over five orders of magnitude
+changes nothing, because the solve stops before the barrier has decayed). The
+C++ Optima this back-end is ported from offers a `Nullspace` linear solver in
+addition to the `Rangespace` one implemented here — the latter carries the
+warning that it suits diagonal Hessians only, and it is the one that inverts
+`H`. Porting the nullspace path, which never inverts `H`, is the identified
+next step.
+"""
+const EXACT_HESSIAN = Ref(false)
+
+"""
+    NULLSPACE_STEP
+
+Whether the back-end computes its Newton step by the nullspace method rather
+than the Schur complement. Default `true`.
+
+The Schur complement forms `S = A H⁻¹ Aᵀ`, so it needs `H` invertible — and a
+pure phase has unit activity, hence exactly zero curvature. The nullspace method
+writes `dn = dnₚ + Z dz` with `Z` a basis of `null(A)` and solves
+`(Zᵀ H Z) dz = −Zᵀ(ex + H dnₚ)`, in which `H` appears only as a product. This is
+the route the C++ Optima takes by default, and its `Rangespace` counterpart —
+the Schur complement — is documented there as suitable for invertible diagonal
+Hessians only.
+
+It is what makes the water autoprotolysis come out right: pure water gives
+`[H⁺]/[OH⁻] = 1.0` and `pKw = 13.9994`, against 3.78 and 13.9897 through the
+Schur complement, with no change to mixed solid/aqueous systems.
+"""
+const NULLSPACE_STEP = Ref(true)
+
+"""
     _check_converged(sol, what) -> sol
 
-Return `sol` if the optimizer converged, and throw otherwise.
-
-A non-converged iterate is *not* an approximate equilibrium — it is an
-arbitrary point on the way to one, and it satisfies neither the element balance
-nor the mass-action conditions. Returning it silently is worse than failing:
-the major species look plausible while the trace species, which is where the
-pH lives, can be off by an order of magnitude.
-
-The interior-point back-end reports this faithfully (`ReturnCode.MaxIters`);
-the extensions merely have to look.
+Return `sol`, raising or warning according to [`STRICT_CONVERGENCE`](@ref) when
+the optimizer did not converge. Before this existed, neither extension looked at
+the return code and a non-converged iterate was written into the state as though
+it were the equilibrium.
 """
-const STRICT_CONVERGENCE = Ref(true)
-
 function _check_converged(sol, what::AbstractString)
     SciMLBase.successful_retcode(sol) && return sol
-    STRICT_CONVERGENCE[] || (@warn "$what returned `$(sol.retcode)`"; return sol)
+    if !STRICT_CONVERGENCE[]
+        @warn "$what returned `$(sol.retcode)`; the composition may not be an \
+               equilibrium. Set `ChemistryLab.STRICT_CONVERGENCE[] = true` to \
+               raise instead." maxlog = 1
+        return sol
+    end
     throw(
         ErrorException(
             """
             $what did not converge: the optimizer returned `$(sol.retcode)`.
 
-            The result would satisfy neither the element balance nor the
-            mass-action conditions, so it is not returned. Raise `max_iter`, \
-            loosen `tol`, or start from a better-conditioned composition.
+            Raise `max_iter`, loosen `tol`, or start from a better-conditioned \
+            composition.
             """
         ),
     )
