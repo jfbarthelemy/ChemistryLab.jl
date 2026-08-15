@@ -115,19 +115,40 @@ ForwardDiff.derivative(f, 0.01)     # → 0.15193
 !!! note "Verified against Reaktoro"
     On calcite + CO₂ + water, `∂n/∂(CO₂)` from this route agrees with the
     package's own finite differences to `9×10⁻⁵` — the finite-difference
-    truncation error — and with [Reaktoro](https://reaktoro.org) to about 6 %,
-    the two using different thermodynamic databases (Cemdata18 here,
-    `phreeqc.dat` there):
+    truncation error — and with [Reaktoro](https://reaktoro.org) 2.13 reading
+    **the same Cemdata18 file**, over the same eleven species, under the same
+    (ideal) activity model:
 
-    | species | ChemistryLab (AD) | Reaktoro (FD) |
-    |:--|--:|--:|
-    | Ca²⁺ | +0.1519 | +0.1622 |
-    | calcite | −0.1813 | −0.1622 |
-    | HCO₃⁻ | +0.3333 | +0.3245 |
-    | CO₂(aq) | +0.8187 | +0.8377 |
+    | species | ChemistryLab (AD) | Reaktoro (FD) | rel. diff |
+    |:--|--:|--:|--:|
+    | H₂O | −0.181336 | −0.181397 | 3.4×10⁻⁴ |
+    | Ca²⁺ | +0.151920 | +0.151987 | 4.4×10⁻⁴ |
+    | HCO₃⁻ | +0.333308 | +0.333427 | 3.6×10⁻⁴ |
+    | CO₂(aq) | +0.818655 | +0.818600 | 6.7×10⁻⁵ |
+    | Ca(HCO₃)⁺ | +0.029333 | +0.029338 | 1.6×10⁻⁴ |
+    | calcite | −0.181251 | −0.181324 | 4.0×10⁻⁴ |
+
+    The equilibrium amounts agree to the same order (`Ca²⁺` 3.5281×10⁻³ against
+    3.52902×10⁻³). Reaktoro's own spread across `h ∈ {10⁻³, 10⁻⁴, 10⁻⁵}` is
+    `7.2×10⁻⁴`, so the residual difference sits below the oracle's truncation
+    error on every species.
 
     The absent gas species gets exactly zero from the active-set treatment,
     against `2×10⁻⁹` by finite differences.
+
+!!! warning "A cross-code comparison has three knobs, not one"
+    Database, species list and activity model all have to match, and each is
+    worth tens of percent here. Reading Cemdata18 in both codes but leaving
+    Reaktoro on its HKF activity model against this package's default
+    `DiluteSolutionModel()` moves `∂Ca²⁺/∂(CO₂)` from `+0.1520` to `+0.2179` —
+    a 35 % gap that says nothing about either code.
+
+    The species list matters just as much. Dropping the aqueous calcium
+    complexes leaves free `Ca²⁺` as the only aqueous home for calcium, so
+    `∂Ca²⁺/∂(CO₂)` and `∂calcite/∂(CO₂)` mirror each other exactly. Restoring
+    `CaOH⁺`, `Ca(CO₃)@` and `Ca(HCO₃)⁺` breaks that mirror — the difference is
+    what `Ca(HCO₃)⁺` takes up — and **both codes break it the same way**. The
+    element balance closes to `2×10⁻¹⁶` either way.
 
 ### Explicit solver (always works)
 

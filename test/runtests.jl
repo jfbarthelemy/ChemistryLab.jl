@@ -1,5 +1,8 @@
 using ChemistryLab
 using DynamicQuantities
+using ForwardDiff
+using OptimaSolver
+using OrdinaryDiffEq
 using Test
 using TimerOutputs
 
@@ -43,6 +46,7 @@ end
 @testsection "Equilibrium tests" begin
     include("activities.jl")
     include("solid_solutions.jl")
+    include("equilibrium_reference.jl")
 end
 
 @testsection "Utils tests" begin

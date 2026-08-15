@@ -113,9 +113,19 @@ system that nonetheless takes a leading share of the response is pinned and the
 system re-solved.
 
 Verified against the package's own finite differences (`9e-5`, the truncation
-error) and against **Reaktoro 2.13** (~6 %, the two using different
-thermodynamic databases). The absent gas species gets exactly zero from the
-active-set treatment, against `2e-9` by finite differences.
+error) and against **Reaktoro 2.13 reading the same Cemdata18 file**, over the
+same eleven species and under the same activity model: the two agree to
+`4.4e-4` relative or better on every species, below Reaktoro's own `7.2e-4`
+spread across finite-difference step sizes. The equilibrium amounts agree to
+the same order. The absent gas species gets exactly zero from the active-set
+treatment, against `2e-9` by finite differences.
+
+A cross-code comparison has three knobs — database, species list, activity
+model — and each is worth tens of percent. Leaving Reaktoro on HKF against this
+package's default `DiluteSolutionModel()` moves `∂Ca²⁺/∂(CO₂)` from `+0.1520`
+to `+0.2179`; dropping the aqueous calcium complexes makes `∂Ca²⁺/∂(CO₂)` and
+`∂calcite/∂(CO₂)` mirror each other, and restoring them breaks that mirror in
+*both* codes alike. The element balance closes to `2e-16` throughout.
 
 ### Fixed — dual numbers could not enter a `ChemicalState`
 
