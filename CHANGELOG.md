@@ -1,5 +1,102 @@
 # Changelog
 
+## v0.5.0 — the bridge from a kinetics run to a microstructure
+
+Everything here is additive except the Rosenbrock fix below; no existing API changes.
+
+### From moles to volume fractions
+
+The pieces to turn a hydration run into the input of a mean-field homogenization
+scheme were all present — `V⁰` from CEMDATA18, `volume(state, species)`,
+`porosity` — but nothing joined them, and the sealed-volume balance was missing
+entirely.
+
+- **`volume_fractions(state)`** and **`volume_fractions(state, groups)`**, the
+  latter aggregating species into the phase families a homogenization scheme
+  consumes (`"C-S-H"`, `"AFt"`, `"anhydrous"`, …). A species listed in two groups
+  is an error; species in no group are collected rather than dropped.
+- **`chemical_shrinkage(state, state₀)`** and the `"void"` phase. Passing
+  `reference` to `volume_fractions` selects the sealed-curing convention: the
+  fractions are referred to the initial volume, held fixed, and the deficit left
+  by the reactions becomes an explicit gas-filled phase. Without it the fractions
+  sum to less than one and the microstructure is wrong.
+- **`missing_molar_volumes(state)`** — a species with no `V⁰` is silently absent
+  from every volume computation in the package; this makes that visible.
+
+Aqueous solutes have negative standard partial molar volumes, so an individual
+fraction can be negative. Those contributions are kept, which is what makes
+`volume_fractions` and `volume` agree exactly.
+
+### Post-processing a kinetics solution
+
+The ODE state carries only the kinetic species, and `n_full` is a buffer mutated
+in place — after a run it holds the last accepted step and nothing else. There
+was no way to recover the composition at an arbitrary time.
+
+- **`reaction_extents(sol, kp)`** — the extent of each reaction, by quadrature on
+  the dense output. It integrates on the union of the requested grid and the
+  solver's own accepted steps, so a coarse output grid cannot step over the early
+  transient.
+- **`extent_residual`** — the mass-balance residual of that quadrature, so its
+  accuracy is measurable rather than assumed.
+- **`state_at(sol, kp, t)`** — the full `ChemicalState` at any instant, every
+  species rebuilt from `n = n₀ + νᵀξ` so the result conserves exactly what the
+  reactions conserve.
+- **`degrees_of_hydration`** and **`mean_degree_of_hydration`**, replacing the
+  `phase_alpha` closure copy-pasted into three shipped scripts.
+
+### Parrot & Killoh, canonical formulation
+
+The shipped `parrot_killoh` implements a smoothed variant whose parameters are
+not those of the 1984 paper — its diffusion branch uses the same `K₃` and `N₃`
+for all four clinker phases. It is unchanged, and now documented as one of two
+variants.
+
+- **`parrot_killoh_avrami`** with **`PK84_PARAMS_C3S/C2S/C3A/C4AF`** — the
+  canonical Avrami / Jander / power-law form, `α̇ = min(α̇₁, α̇₂, α̇₃)`. With these
+  parameters C₂S has no nucleation–growth stage and C₃S no diffusion-controlled
+  stage, which is a sharp check on a transcription.
+- **`waller`** with **`WALLER_PARAMS_FLY_ASH/SILICA_FUME/SLAG`** — supplementary
+  cementitious materials do not follow Parrot & Killoh; `blended_cement_kinetics.jl`
+  had to invent PK parameters for slag and metakaolin for want of this.
+- **`blaine_factor`**, **`humidity_factor`**, **`powers_alpha_max`** — the three
+  rate corrections, previously either absent or retyped inline in every script.
+
+The Avrami branch vanishes at `α = 0`, so `α ≡ 0` solves the ODE and hydration
+never starts. Parrot & Killoh's own discrete scheme escapes this by integrating
+over the first time step; a continuous solver cannot, so the argument is floored
+at `PK_AVRAMI_SEED`.
+
+### Fixed
+
+- **A time-dependent rate law broke every Rosenbrock solver.** The ODE right-hand
+  side typed its rate vector from `eltype(u)` alone, but Rosenbrock methods
+  (`Rodas5P`, `Rodas4`, `Rosenbrock23`, …) need a *time* gradient, which they take
+  by calling the residual with a dual `t` and a plain `u`. Any rate depending on
+  `t` then failed with "First call to automatic differentiation for time gradient
+  failed". `parrot_killoh` ignores `t`, so nothing exposed it until `waller`. The
+  type is now promoted with `typeof(t)`.
+- **`reaction_extents` integrated from `times[1]`, not from the start of the run.**
+  Asking for a single late instant silently returned a zero extent. The quadrature
+  now always starts at `kp.tspan[1]`.
+
+### Bibliography
+
+Every entry of `docs/src/refs.bib` was checked against Crossref (six DOIs) or,
+for the four entries that have no DOI, against the publisher or an authoritative
+catalog record. Three defects were corrected:
+
+- The DOI of `Lavergne2018` pointed at `10.1016/j.cemconres.2017.11.007`, which
+  Crossref resolves to a **different** paper (Machner et al., *CCR* **105**, 1–17).
+  Corrected to `10.1016/j.cemconres.2017.10.018`.
+- `Lothenbach2015` held the Cemdata18 paper, published in **2019**, while
+  `data/solid_solutions.toml` uses the tag `Lothenbach2015` for the genuinely
+  different Lothenbach & Nonat (2015) paper and `Lothenbach2019` for Cemdata18.
+  The entry is now keyed `Lothenbach2019`, and the real
+  Lothenbach & Nonat (2015), *CCR* **78**, 57–70, is added.
+- The author of `ParrotKilloh1984` is **Parrott**, with two t's. The citation key
+  is unchanged, being referenced throughout the sources and documentation.
+
 ## v0.4.0 — Equilibrium actually coupled to kinetics, and dual numbers everywhere
 
 ### Breaking

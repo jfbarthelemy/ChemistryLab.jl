@@ -37,6 +37,7 @@ end
 @testsection "System and State tests" begin
     include("chemical_systems.jl")
     include("chemical_states.jl")
+    include("test_volume_fractions.jl")
 end
 
 @testsection "Thermodynamics tests" begin
@@ -57,6 +58,7 @@ end
 @testsection "Kinetics tests" begin
     include("kinetics/test_rate_models.jl")
     include("kinetics/test_calorimetry.jl")
+    include("kinetics/test_postprocessing.jl")
     include("coupling_reference.jl")
 end
 

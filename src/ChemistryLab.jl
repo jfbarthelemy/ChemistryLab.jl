@@ -116,6 +116,7 @@ module ChemistryLab
     include("chemical_structs/stoich_matrices.jl")
     include("chemical_structs/chemical_systems.jl")
     include("chemical_structs/chemical_states.jl")
+    include("chemical_structs/volume_fractions.jl")
 
     include("databases/phreeqc_dat.jl")
     include("databases/thermofun_json.jl")
@@ -130,6 +131,7 @@ module ChemistryLab
     include("kinetics/kinetics_problems.jl")
     include("kinetics/kinetics_solver.jl")
     include("kinetics/calorimetry.jl")
+    include("kinetics/kinetics_postprocessing.jl")
 
     export SymbolicFunc,
         ThermoFactory,
@@ -267,7 +269,10 @@ module ChemistryLab
         pH,
         pOH,
         porosity,
-        saturation
+        saturation,
+        volume_fractions,
+        chemical_shrinkage,
+        missing_molar_volumes
 
     export extract_primary_species
 
@@ -309,7 +314,19 @@ module ChemistryLab
         PK_PARAMS_C3S,
         PK_PARAMS_C2S,
         PK_PARAMS_C3A,
-        PK_PARAMS_C4AF
+        PK_PARAMS_C4AF,
+        parrot_killoh_avrami,
+        PK84_PARAMS_C3S,
+        PK84_PARAMS_C2S,
+        PK84_PARAMS_C3A,
+        PK84_PARAMS_C4AF,
+        waller,
+        WALLER_PARAMS_FLY_ASH,
+        WALLER_PARAMS_SILICA_FUME,
+        WALLER_PARAMS_SLAG,
+        blaine_factor,
+        humidity_factor,
+        powers_alpha_max
 
     export AbstractSurfaceModel,
         FixedSurfaceArea,
@@ -328,6 +345,12 @@ module ChemistryLab
     export KineticsSolver,
         integrate,
         _DEFAULT_KINETICS_SOLVER_FACTORY
+
+    export reaction_extents,
+        extent_residual,
+        state_at,
+        degrees_of_hydration,
+        mean_degree_of_hydration
 
     export AbstractCalorimeter,
         IsothermalCalorimeter,

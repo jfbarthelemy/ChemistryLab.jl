@@ -525,3 +525,116 @@ end
 
 dn_dK₁ = ForwardDiff.derivative(n_C3S_final, safe_ustrip(us"1/s", PK_PARAMS_C3S.K₁))
 ```
+
+## [Two Parrot–Killoh variants](@id pk-variants)
+
+ChemistryLab ships **two** implementations of the Parrot & Killoh clinker
+hydration model. They are not interchangeable, and their parameter sets are not
+transferable between them.
+
+| | [`parrot_killoh`](@ref) | [`parrot_killoh_avrami`](@ref) |
+|---|---|---|
+| Nucleation–growth | `(K₁/N₁)(1-ξ)^N₁ / (1 + B·ξ^N₃)` | `(k₁/n₁)(1-ξ)(-ln(1-ξ))^(1-n₁)` (Avrami) |
+| Second mechanism | `K₂(1-ξ)^N₂` | `k₂(1-ξ)^(2/3) / (1-(1-ξ)^(1/3))` (Jander) |
+| Third mechanism | `3K₃(1-ξ)^(2/3) / (N₃(1-(1-ξ)^(1/3)))` | `k₃(1-ξ)^n₃` (power law) |
+| Combination | `min(max(r_NG, r_I), r_D)` | `min` of all three |
+| Parameters | [`PK_PARAMS_C3S`](@ref) … | [`PK84_PARAMS_C3S`](@ref) … |
+
+`parrot_killoh_avrami` is the **canonical 1984 formulation**, with the parameters
+of [ParrotKilloh1984](@cite) as reported by [LothenbachWinnefeld2006](@cite) and
+used by [Lavergne2018](@cite). Use it when you want the α(t) curves of the cement
+literature. A useful signature of a correct transcription: with those parameters
+C₂S has no nucleation–growth stage and C₃S no diffusion-controlled stage.
+
+```julia
+pk = parrot_killoh_avrami(
+    PK84_PARAMS_C3S, "C3S";
+    α_max    = powers_alpha_max(0.5),      # Powers water availability limit
+    blaine   = 380u"m^2/kg",               # rate ∝ B/385 m²/kg
+    humidity = 0.95,                       # β_h reduction, 0 below 80 % RH
+)
+```
+
+The three corrections are exported separately — [`powers_alpha_max`](@ref),
+[`blaine_factor`](@ref) and [`humidity_factor`](@ref) — and multiply the rate.
+`humidity` also accepts a callable `t -> h(t)` for a drying history.
+
+Supplementary cementitious materials do not follow Parrot & Killoh at all. Their
+pozzolanic or latent-hydraulic reaction follows [`waller`](@ref), a sigmoid in
+log-time, with [`WALLER_PARAMS_FLY_ASH`](@ref), [`WALLER_PARAMS_SILICA_FUME`](@ref)
+or [`WALLER_PARAMS_SLAG`](@ref).
+
+## [Post-processing a kinetics run](@id kinetics-postprocessing)
+
+The ODE state vector carries only the **kinetic** species. Every other amount is
+held in a single buffer that the integrator mutates in place, so after a run it
+reflects the last accepted step and nothing else. Recovering the composition at an
+arbitrary time therefore means replaying the stoichiometry, which is what
+[`reaction_extents`](@ref) and [`state_at`](@ref) do.
+
+```julia
+sol = integrate(kp, ks)
+
+α  = degrees_of_hydration(sol, kp)          # Dict(symbol => α(t))
+ᾱ  = mean_degree_of_hydration(sol, kp)      # mass-weighted binder average
+
+ξ  = reaction_extents(sol, kp)              # extent of each reaction, mol
+st = state_at(sol, kp, 28 * 86400.0)        # full ChemicalState at 28 days
+```
+
+[`state_at`](@ref) rebuilds **every** species from `n = n₀ + νᵀξ`, so the result
+satisfies `A(n - n₀) = (Aνᵀ)ξ` to machine precision — whatever the quadrature
+error. How well the elements themselves balance is a property of the reactions
+you wrote, not of the reconstruction; check it with `maximum(abs, A * ν')`.
+
+!!! warning "Re-speciation is not replayed"
+    When the run used an equilibrium solver, the aqueous partition was
+    re-speciated at every accepted step, and that redistribution cannot be
+    recovered from the stoichiometry. `state_at` then returns the purely kinetic
+    reconstruction; call [`equilibrate`](@ref) on it to speciate.
+
+### From moles to volume fractions
+
+[`volume_fractions`](@ref) turns a state into the input a mean-field
+homogenization scheme consumes, using the standard molar volumes `V⁰` that
+CEMDATA18 supplies for every cement phase.
+
+```julia
+groups = [
+    "anhydrous" => ["C3S", "C2S", "C3A", "C4AF"],
+    "C-S-H"     => "Jennite",
+    "CH"        => "Portlandite",
+    "AFt"       => "ettringite",
+    "water"     => "H2O@",
+]
+f = volume_fractions(st, groups; reference = state0)
+```
+
+Passing `reference` selects the **sealed-curing** convention of
+[Lavergne2018](@cite): fractions are referred to the initial volume, held fixed,
+and the deficit left by the reactions appears as a `"void"` phase. That void is
+the chemical shrinkage — hydration products occupy less space than the reactants
+they consume — and it is a genuine phase of the microstructure, not a rounding
+error. Without `reference`, fractions are referred to the current volume and the
+void does not exist.
+
+```julia
+sum(values(f))                              # 1.0, void included
+f["void"]                                   # Le Chatelier contraction
+chemical_shrinkage(st, state0)              # the same thing, as a volume
+```
+
+!!! note "Species without a molar volume are invisible"
+    A species carrying no `V⁰` contributes nothing to [`volume`](@ref),
+    [`porosity`](@ref) or [`volume_fractions`](@ref) — a custom species added by
+    hand, for instance. Call [`missing_molar_volumes`](@ref) before trusting a
+    volume balance:
+
+    ```julia
+    isempty(missing_molar_volumes(st)) || @warn "incomplete volume balance"
+    ```
+
+Individual fractions may be slightly **negative** for aqueous solutes, whose
+standard partial molar volumes are negative (electrostriction contracts the
+solvent around an ion). They are kept so that `volume_fractions` and
+[`volume`](@ref) always agree; grouping folds them back into the liquid.

@@ -490,7 +490,15 @@ where `nₑ = φ(bₑ)` is the equilibrium re-speciation constraint.
 """
 function build_kinetics_ode(kp::KineticsProblem)
     function f!(du, u, p, t)
-        T_elt = eltype(u)
+        # Promote with `typeof(t)`, not `eltype(u)` alone. Rosenbrock methods
+        # (`Rodas5P`, `Rodas4`, …) need a TIME gradient, which they obtain by
+        # calling `f!` with a dual `t` and a plain `u`. A rate law that actually
+        # depends on `t` — `waller`, and any user law with an explicit time
+        # dependence — then returns a `Dual` that cannot be stored in a
+        # `Vector{Float64}`, and the solve fails with "First call to automatic
+        # differentiation for time gradient failed". Rate laws that ignore `t`,
+        # like `parrot_killoh`, never exposed this.
+        T_elt = promote_type(eltype(u), typeof(t))
 
         # ── 1. Extract state components ──────────────────────────────────
         nk = @view u[(p.n_be + 1):(p.n_be + p.n_nk)]
