@@ -80,6 +80,16 @@ at `PK_AVRAMI_SEED`.
   Asking for a single late instant silently returned a zero extent. The quadrature
   now always starts at `kp.tspan[1]`.
 
+### Documented, not fixed
+
+Without an equilibrium solver, only the kinetic species evolve inside the ODE
+residual; every other amount stays frozen at its initial value for the whole run.
+A rate closure that gates on a non-kinetic amount therefore never sees it change,
+and fails silently — the run looks healthy and the kinetic mass balance is exact,
+while the species gated on goes negative. The manual now carries a `!!! danger`
+admonition with the two correct patterns. Lifting the limitation would mean
+carrying the reaction extents in the ODE state, which is a larger change.
+
 ### Bibliography
 
 Every entry of `docs/src/refs.bib` was checked against Crossref (six DOIs) or,
