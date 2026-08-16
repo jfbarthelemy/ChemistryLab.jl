@@ -4,110 +4,54 @@
 # Post-processing of a kinetics ODESolution: reaction extents, reconstructed
 # chemical states, degrees of hydration.
 #
-# The ODE state vector `u` carries only the KINETIC species moles (plus element
-# amounts and temperature when applicable). The moles of every other species are
-# never stored: the integrator's parameter tuple keeps a single `n_full` buffer
-# that is mutated in place, so after a run it holds the LAST composition only.
-# Recovering the composition at an arbitrary time therefore requires replaying
-# the stoichiometry, which is what this file does.
+# The ODE state carries the kinetic species moles and the EXTENTS OF REACTION ξ
+# (`dξ/dt = r`), plus element amounts and temperature where applicable. The moles
+# of every other species are not stored — the parameter tuple keeps a single
+# `n_full` buffer, mutated in place, which after a run holds the last composition
+# only — but they are recovered exactly from `n = n(0) + νᵀ ξ`, which is what
+# this file does.
 
 using OrderedCollections
 
 # ── reaction_extents ─────────────────────────────────────────────────────────
 
 """
-    reaction_extents(sol, kp::KineticsProblem; times = sol.t, nsub = 4) -> Matrix{Float64}
+    reaction_extents(sol, kp::KineticsProblem; times = sol.t) -> Matrix{Float64}
 
 Extent of reaction ``ξ_j(t) = ∫_0^t r_j\\,dt`` for every kinetic reaction of
-`kp`, evaluated along the solution `sol`.
+`kp`, along the solution `sol`.
 
 Returns a `length(times) × M` matrix, `M` being the number of kinetic reactions,
 in mol.
 
-The rates are not stored by the integrator, so the extents are recovered by
-quadrature on the solver's dense output. The integration always runs on the
-**union of `times` and the accepted steps** `sol.t`, each resulting interval
-being split into `nsub` sub-intervals and integrated by composite Simpson's
-rule; the requested rows are then extracted. Asking for a coarse output grid
-therefore costs accuracy nothing — the early transient of a hydration run is
-resolved by the solver's own steps, and a uniform user grid would step straight
-over it.
-
-The accuracy floor is set by the dense output, not by `nsub`: beyond a handful
-of sub-intervals the residual reported by [`extent_residual`](@ref) stops
-falling and tracks the integrator's `reltol` instead. Tighten the solve, not
-`nsub`, if it is too large.
+The extents are **carried by the ODE state** — the integrator advances
+`dξ/dt = r` alongside the kinetic moles — so this is a read of the solution, not
+a quadrature. It is exact to the solver's own tolerance at any instant, and
+costs nothing.
 
 # Arguments
 
   - `sol`: the `ODESolution` returned by [`integrate`](@ref).
   - `kp`: the [`KineticsProblem`](@ref) that produced it.
-  - `times`: instants at which the extents are wanted, ascending. Defaults to the
-    accepted steps. They need **not** start at `kp.tspan[1]`: the quadrature
-    always runs from the beginning of the problem, so `times = [t]` returns the
-    extent accumulated over the whole run up to `t`.
-  - `nsub`: sub-intervals per output interval for the quadrature.
+  - `times`: instants at which the extents are wanted. Any instants within
+    `tspan`, in any order; the dense output is interpolated.
 
 See also: [`state_at`](@ref), [`degrees_of_hydration`](@ref),
 [`extent_residual`](@ref).
 """
-function reaction_extents(sol, kp::KineticsProblem; times = sol.t, nsub::Int = 4)
-    nsub >= 1 || throw(ArgumentError("nsub must be ≥ 1, got $nsub"))
-    isodd(nsub) && (nsub += 1)   # Simpson needs an even number of sub-intervals
+function reaction_extents(sol, kp::KineticsProblem; times = sol.t)
     p = sol.prob.p
-    M = length(kp.kinetic_reactions)
+    M = p.n_rxn_state
+    off = p.n_be + p.n_nk
     ts = collect(float.(times))
-    issorted(ts) || throw(ArgumentError("`times` must be ascending"))
-
-    # Integrate on the union of the requested grid and the solver's accepted
-    # steps: a coarse user grid would otherwise step over the early transient,
-    # where nearly all of the extent accumulates.
-    #
-    # The quadrature ALWAYS starts at `kp.tspan[1]`, never at `times[1]`. An
-    # extent is measured from the start of the run, so asking for a single late
-    # instant must integrate everything before it — returning zero there would be
-    # silently wrong rather than an error.
-    t_start = float(kp.tspan[1])
-    grid = sort!(unique!(vcat(t_start, ts, [t for t in sol.t if t_start <= t <= ts[end]])))
-
-    ξ_grid = zeros(Float64, length(grid), M)
-    rates = zeros(Float64, M)
-    acc = zeros(Float64, M)
-
-    for i in 2:lastindex(grid)
-        t0, t1 = grid[i - 1], grid[i]
-        h = (t1 - t0) / nsub
-        fill!(acc, 0.0)
-        for k in 0:nsub
-            # Simpson weights 1, 4, 2, 4, …, 4, 1
-            w = (k == 0 || k == nsub) ? 1.0 : (isodd(k) ? 4.0 : 2.0)
-            _rates_at!(rates, sol, p, kp, t0 + k * h)
-            @. acc += w * rates
+    ξ = zeros(Float64, length(ts), M)
+    for (i, t) in enumerate(ts)
+        u = sol(t)
+        for j in 1:M
+            ξ[i, j] = u[off + j]
         end
-        @. ξ_grid[i, :] = ξ_grid[i - 1, :] + acc * h / 3
     end
-
-    # Extract the requested rows (`grid` is sorted and contains every `ts`).
-    rows = [searchsortedfirst(grid, t) for t in ts]
-    return ξ_grid[rows, :]
-end
-
-# Evaluate every kinetic reaction rate at time `t` along the solution.
-function _rates_at!(rates::Vector{Float64}, sol, p, kp::KineticsProblem, t::Real)
-    u = sol(t)
-    n_full = copy(p.n_initial_full)
-    nk = @view u[(p.n_be + 1):(p.n_be + p.n_nk)]
-    for (j, idx) in enumerate(p.idx_kinetic)
-        n_full[idx] = max(nk[j], p.ϵ)
-    end
-    T_curr = kp.calorimeter isa SemiAdiabaticCalorimeter ? u[end] : p.T
-    n_sv = StateView(n_full, p.species_index)
-    lna_sv = StateView(p.lna_fn(n_full, p), p.species_index)
-    n0_sv = StateView(p.n_initial_full, p.species_index)
-    for (j, kr) in enumerate(p.kin_rxns)
-        rates[j] = kr.rate_fn(T_curr, p.P, t, n_sv, lna_sv, n0_sv)
-    end
-    return rates
+    return ξ
 end
 
 """
@@ -117,10 +61,10 @@ Largest absolute discrepancy, in mol, between the kinetic-species moles carried
 by the integrator and those implied by the extents `ξ`, that is
 ``\\max_{i,t} |n_k(t) - n_k(0) - (ν_k^{\\mathsf T} ξ(t))_i|``.
 
-This is the quadrature error of [`reaction_extents`](@ref), and it is the
-quantity to watch when deciding whether `nsub` is large enough: the
-reconstruction of [`state_at`](@ref) is mass-balanced by construction, so this
-residual is the only place the quadrature can show up.
+The two are redundant by construction — `nₖ` integrates `νₖᵀ r` while `ξ`
+integrates `r` — so this measures how far the integrator has let them drift, and
+should sit at the solver's tolerance. A large value means the solve is too loose,
+not that the post-processing is inaccurate.
 """
 function extent_residual(sol, kp::KineticsProblem, ξ::AbstractMatrix; times = sol.t)
     p = sol.prob.p
@@ -138,7 +82,7 @@ end
 # ── state_at ─────────────────────────────────────────────────────────────────
 
 """
-    state_at(sol, kp::KineticsProblem, t; ξ = nothing, nsub = 4) -> ChemicalState
+    state_at(sol, kp::KineticsProblem, t; ξ = nothing) -> ChemicalState
 
 Reconstruct the full [`ChemicalState`](@ref) of the system at time `t` from a
 kinetics solution.
@@ -149,10 +93,10 @@ satisfies element conservation exactly. Temperature is taken from the solution
 when a [`SemiAdiabaticCalorimeter`](@ref) is in use, and from the problem
 otherwise.
 
-Pass a precomputed extent matrix as `ξ` (from [`reaction_extents`](@ref) with
-`times = [kp.tspan[1], t]`, or any matrix whose **last row** holds ξ(t)) to
-avoid re-integrating the rates when sweeping many instants; see the example
-below.
+The extents are read from the ODE state, so this is exact to the solver's
+tolerance. Pass a precomputed extent matrix as `ξ` — any matrix whose **last
+row** holds ξ(t) — to avoid re-interpolating the solution when sweeping many
+instants.
 
 !!! note "Re-speciation is not replayed"
     When the run used an equilibrium solver, the aqueous partition was
@@ -165,15 +109,15 @@ below.
 
 ```julia
 ξ = reaction_extents(sol, kp)                      # once
-states = [state_at(sol, kp, t; ξ = ξ[1:i, :]) for (i, t) in enumerate(sol.t)]
+states = [state_at(sol, kp, t; ξ = ξ[i:i, :]) for (i, t) in enumerate(sol.t)]
 ```
 
 See also: [`reaction_extents`](@ref), [`degrees_of_hydration`](@ref),
 [`volume_fractions`](@ref).
 """
-function state_at(sol, kp::KineticsProblem, t::Real; ξ = nothing, nsub::Int = 4)
+function state_at(sol, kp::KineticsProblem, t::Real; ξ = nothing)
     ξ_t = if ξ === nothing
-        reaction_extents(sol, kp; times = [kp.tspan[1], float(t)], nsub = nsub)[end, :]
+        vec(reaction_extents(sol, kp; times = [float(t)]))
     else
         vec(ξ[end, :])
     end

@@ -15,3 +15,11 @@ PeriodicTable = "7b2266bf-644c-5ea3-82d8-af4bbd25a884"
 Plots = "91a5bcdd-55d7-5caf-9e0b-520d859cae80"
 PrettyTables = "08abe8d2-0d0c-5749-adfa-8a2ac140af0d"
 SymbolicNumericIntegration = "78aadeae-fbc0-11eb-17b6-c7ec0477ba9e"
+
+[compat]
+# The docs environment declares OptimaSolver directly, and without a bound here
+# it resolved to 0.2.1 — whose `OptimaOptimizer` has neither `use_fd_hessian`
+# nor `nullspace_step`, so every equilibrium `@example` block failed with a
+# MethodError while the package's own tests passed. Keep this in step with the
+# bound in the root `Project.toml`.
+OptimaSolver = "0.2.6"

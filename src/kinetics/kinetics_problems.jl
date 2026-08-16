@@ -232,9 +232,20 @@ end
 Build the initial ODE state vector.
 
 Structure of `u`:
-  - Without re-speciation: `u = [nₖ₁, …, nₖ_K]`
-  - With re-speciation:    `u = [bₑ₁, …, bₑ_C, nₖ₁, …, nₖ_K]`
+  - Without re-speciation: `u = [nₖ₁, …, nₖ_K, ξ₁, …, ξ_M]`
+  - With re-speciation:    `u = [bₑ₁, …, bₑ_C, nₖ₁, …, nₖ_K, ξ₁, …, ξ_M]`
   - Semi-adiabatic adds `T` at the end: `u = [..., T₀]`
+
+The extents of reaction `ξ` are carried alongside the kinetic moles, integrating
+`dξ/dt = r`. They are redundant with `nₖ` — the two satisfy
+`nₖ = nₖ(0) + νₖᵀ ξ` — but they are what makes the **non-kinetic** amounts
+available inside the residual, through `n = n(0) + νᵀ ξ`. Without them, a rate
+law gating on a species that is not itself kinetic would read a value frozen at
+`t = 0`. They also make [`reaction_extents`](@ref) and [`state_at`](@ref) exact
+rather than quadrature-limited.
+
+The calorimeter's slot stays last and is addressed from the end of the vector,
+so it is unaffected by the presence of `ξ`.
 """
 function build_u0(kp::KineticsProblem)
     n_mol = Float64[
@@ -243,14 +254,16 @@ function build_u0(kp::KineticsProblem)
     ]
     # Kinetic species moles
     nk0 = n_mol[kp.idx_kinetic]
+    # Extents of reaction, zero by definition at t = tspan[1]
+    ξ0 = zeros(Float64, length(kp.kinetic_reactions))
 
     u0 = if isnothing(kp.equilibrium_solver)
-        copy(nk0)
+        vcat(nk0, ξ0)
     else
         # Element amounts in equilibrium partition: bₑ = Aₑ nₑ
         ne0 = n_mol[kp.idx_equilibrium]
         be0 = kp.Ae * ne0
-        vcat(be0, nk0)
+        vcat(be0, nk0, ξ0)
     end
 
     # Append temperature for semi-adiabatic calorimeter
@@ -314,6 +327,7 @@ function build_kinetics_params(kp::KineticsProblem; ϵ::Float64 = 1.0e-30)
     # State layout sizes
     n_be = isnothing(kp.equilibrium_solver) ? 0 : size(kp.Ae, 1)
     n_nk = length(kp.idx_kinetic)
+    n_rxn_state = length(kp.kinetic_reactions)
     has_T = kp.calorimeter isa SemiAdiabaticCalorimeter
 
     # Calorimeter parameters (semi-adiabatic)
@@ -336,6 +350,7 @@ function build_kinetics_params(kp::KineticsProblem; ϵ::Float64 = 1.0e-30)
         # Index layout
         n_be = n_be,
         n_nk = n_nk,
+        n_rxn_state = n_rxn_state,
         has_T = has_T,
         idx_kinetic = kp.idx_kinetic,
         idx_equilibrium = kp.idx_equilibrium,
@@ -516,6 +531,30 @@ function build_kinetics_ode(kp::KineticsProblem)
             n_full[idx] = max(nk[j], p.ϵ)
         end
 
+        # 2a'. NON-kinetic species from the extents: n = n(0) + νᵀ ξ.
+        #
+        # Without this the non-kinetic amounts stay pinned to their initial
+        # values for the whole run, because the buffer holding them is refreshed
+        # only by `respeciate!`. A rate law gating on such a species — sulfate
+        # available for ettringite, portlandite available for a pozzolanic
+        # reaction — would then never see it move, and would run past depletion
+        # while the kinetic mass balance stayed exact and the solver reported
+        # success. Skipped when an equilibrium solver is present: there the
+        # equilibrium partition is owned by `respeciate!`, which redistributes it
+        # in a way the stoichiometry alone cannot reproduce.
+        if p.n_be == 0
+            ξ = @view u[(p.n_be + p.n_nk + 1):(p.n_be + p.n_nk + p.n_rxn_state)]
+            # `νe` holds exactly the equilibrium-partition columns of ν, in the
+            # order of `idx_equilibrium`.
+            for (k, idx) in enumerate(p.idx_equilibrium)
+                acc = zero(T_elt)
+                for j in eachindex(ξ)
+                    acc += p.νe[j, k] * ξ[j]
+                end
+                n_full[idx] = max(p.n_initial_full[idx] + acc, p.ϵ)
+            end
+        end
+
         # 2b. Equilibrium species: read the *frozen* speciation.
         #
         # The equilibrium sub-problem is NOT solved here. It is solved once per
@@ -557,6 +596,11 @@ function build_kinetics_ode(kp::KineticsProblem)
         du_nk = p.νk' * rates
         for j in 1:(p.n_nk)
             du[p.n_be + j] = du_nk[j]
+        end
+
+        # ── 6b. ODE: dξ/dt = r, the extents of reaction ────────────────
+        for j in 1:(p.n_rxn_state)
+            du[p.n_be + p.n_nk + j] = rates[j]
         end
 
         # ── 7. ODE: dbₑ/dt = Aₑ νₑᵀ r (Leal Eq. 65) ────────────────────

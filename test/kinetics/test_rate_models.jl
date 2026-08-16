@@ -305,8 +305,12 @@ end
     kp = KineticsProblem(cs_kin, ChemicalState(cs_kin), (0.0, 1.0))
     @test kp isa KineticsProblem
     @test length(kp.idx_kinetic) == 1
+    # `u = [nₖ, ξ]`: one kinetic species and one reaction, with no equilibrium
+    # solver and no calorimeter. The extents are carried alongside the moles.
     u0 = build_u0(kp)
-    @test length(u0) == 1
+    @test length(u0) == 1 + length(kp.kinetic_reactions)
+    @test u0[1] == 0.0                       # no calcite in the empty state
+    @test u0[end] == 0.0                     # ξ(t₀) = 0 by definition
 
 end
 

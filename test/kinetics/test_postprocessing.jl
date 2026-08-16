@@ -65,45 +65,25 @@ end
     @test ξ[end, 1] <= n0[kp.idx_kinetic[1]] + 1.0e-12
     @test ξ[end, 2] <= n0[kp.idx_kinetic[2]] + 1.0e-12
 
-    # ── Mass balance: nₖ(t) - nₖ(0) = νₖᵀ ξ(t) ────────────────────────────────
-    # This is the quadrature error of `reaction_extents`, and the only place it
-    # can show up: `state_at` is mass-balanced by construction.
-    res = extent_residual(sol, kp, ξ)
-    @test res < 1.0e-6                              # mol, on ~0.65 mol of C3S
+    # ── nₖ and ξ are redundant, and must not drift ───────────────────────────
+    # `nₖ` integrates `νₖᵀ r` while `ξ` integrates `r`, so the residual measures
+    # the integrator's own consistency, not the accuracy of the post-processing.
+    @test extent_residual(sol, kp, ξ) < 1.0e-8      # mol, on ~0.65 mol of C3S
 
-    # Refining `nsub` does NOT keep reducing it: past a handful of sub-intervals
-    # the error is set by the dense output, not by the quadrature. Both stay at
-    # the solver's own accuracy, which is the claim worth testing.
-    ξ_fine = reaction_extents(sol, kp; nsub = 16)
-    @test extent_residual(sol, kp, ξ_fine) < 1.0e-6
-    @test isapprox(ξ_fine[end, 1], ξ[end, 1]; rtol = 1.0e-8)
-
-    # ── A coarse output grid loses no accuracy ────────────────────────────────
-    # The quadrature runs on the union of `times` and `sol.t`, so a uniform user
-    # grid cannot step over the early transient where the extent accumulates.
-    times = collect(range(0.0, kp.tspan[2]; length = 200))
-    ξ_grid = reaction_extents(sol, kp; times = times, nsub = 4)
-    @test all(ξ_grid[1, :] .== 0.0)
-    @test isapprox(ξ_grid[end, 1], ξ[end, 1]; rtol = 1.0e-8)
-
-    # Even an output grid of two points recovers the same final extent
-    ξ_2 = reaction_extents(sol, kp; times = [0.0, kp.tspan[2]], nsub = 4)
-    @test isapprox(ξ_2[end, 1], ξ[end, 1]; rtol = 1.0e-8)
-
-    # ── A single late instant integrates the WHOLE run up to it ───────────────
-    # The extent is measured from the start of the problem, not from `times[1]`.
-    # Returning zero here would be silently wrong rather than an error.
-    ξ_one = reaction_extents(sol, kp; times = [kp.tspan[2]], nsub = 4)
+    # ── The extents come from the state, so any output grid is exact ─────────
+    ξ_one = reaction_extents(sol, kp; times = [kp.tspan[2]])
     @test size(ξ_one) == (1, 2)
-    @test isapprox(ξ_one[1, 1], ξ[end, 1]; rtol = 1.0e-8)
+    @test isapprox(ξ_one[1, 1], ξ[end, 1]; rtol = 1.0e-12)
 
     i_mid = length(sol.t) ÷ 2
-    ξ_mid = reaction_extents(sol, kp; times = [sol.t[i_mid]], nsub = 4)
-    @test isapprox(ξ_mid[1, 1], ξ[i_mid, 1]; rtol = 1.0e-8)
+    ξ_mid = reaction_extents(sol, kp; times = [sol.t[i_mid]])
+    @test isapprox(ξ_mid[1, 1], ξ[i_mid, 1]; rtol = 1.0e-12)
 
-    # ── Guard rails ───────────────────────────────────────────────────────────
-    @test_throws ArgumentError reaction_extents(sol, kp; nsub = 0)
-    @test_throws ArgumentError reaction_extents(sol, kp; times = [10.0, 0.0])
+    # A coarse grid needs no special handling any more
+    times = collect(range(0.0, kp.tspan[2]; length = 7))
+    ξ_grid = reaction_extents(sol, kp; times = times)
+    @test all(ξ_grid[1, :] .== 0.0)
+    @test isapprox(ξ_grid[end, 1], ξ[end, 1]; rtol = 1.0e-12)
 
 end
 
@@ -124,7 +104,7 @@ end
     # machine precision — whatever the quadrature error and whatever the quality
     # of the stoichiometry. This is the property of `state_at` itself, isolated
     # from the database.
-    ξ = reaction_extents(sol, kp; nsub = 16)
+    ξ = reaction_extents(sol, kp)
     st = state_at(sol, kp, kp.tspan[2]; ξ = ξ)
     A = Float64.(cs.SM.A)
     ν = Float64.(kp.ν)
@@ -265,5 +245,75 @@ end
     sol_r = integrate(kp, KineticsSolver(; ode_solver = Rodas5P(), reltol = 1.0e-8, abstol = 1.0e-12))
     sol_t = integrate(kp, KineticsSolver(; ode_solver = FBDF(), reltol = 1.0e-8, abstol = 1.0e-12))
     @test isapprox(sol_r(kp.tspan[2])[1], sol_t(kp.tspan[2])[1]; rtol = 1.0e-4)
+
+end
+
+@testset "a rate law may gate on a non-kinetic species" begin
+
+    # The whole point of carrying ξ in the ODE state. Before it, non-kinetic
+    # amounts were pinned to their initial values inside the residual: a gate on
+    # a consumed reactant never closed, and the reaction ran past depletion while
+    # the kinetic mass balance stayed exact and the solver reported success.
+    #
+    # Here portlandite is consumed by a pozzolanic reaction but is NOT a kinetic
+    # species. Gating the rate on it must stop the reaction when it runs out.
+
+    substances = build_species(joinpath(pkgdir(ChemistryLab), "data", "cemdata18-thermofun.json"))
+    sp = speciation(
+        substances, split("Amor-Sl Portlandite Jennite H2O@");
+        aggregate_state = [AS_AQUEOUS]
+    )
+    cs = ChemicalSystem(sp, CEMDATA_PRIMARIES)
+
+    # Deliberately starved of portlandite: 0.5 mol of silica needs ~0.83 mol of
+    # CH, and only 0.30 mol is provided.
+    state0 = ChemicalState(cs)
+    set_quantity!(state0, "Amor-Sl", 0.5u"mol")
+    set_quantity!(state0, "Portlandite", 0.3u"mol")
+    set_quantity!(state0, "H2O@", 10.0u"mol")
+
+    rxn = Reaction(
+        [cs["Amor-Sl"], cs["Portlandite"], cs["H2O@"]], [cs["Jennite"]];
+        symbol = "pozzolanic"
+    )
+    base = waller(WALLER_PARAMS_SILICA_FUME, "Amor-Sl"; α_max = 0.95)
+    gated = KineticFunc(
+        (T, P, t, n, lna, n0) -> begin
+            ch = max(n["Portlandite"], zero(eltype(n.data)))
+            base(T, P, t, n, lna, n0) * ch / (ch + 1.0e-4)
+        end,
+        (T = 293.15u"K", P = 1.0e5u"Pa"), u"mol/s",
+    )
+    rxn[:rate] = gated
+
+    kp = KineticsProblem(cs, [rxn], state0, (0.0, 3650 * 86400.0); equilibrium_solver = nothing)
+    sol = integrate(kp, KineticsSolver(; ode_solver = Rodas5P(), reltol = 1.0e-8, abstol = 1.0e-12))
+    st = state_at(sol, kp, kp.tspan[2])
+
+    n_ch = ustrip(us"mol", moles(st, "Portlandite"))
+    n_sl = ustrip(us"mol", moles(st, "Amor-Sl"))
+
+    # Portlandite is exhausted but never driven appreciably negative …
+    @test n_ch < 0.02
+    @test n_ch > -1.0e-3
+    # … and the silica is left over, precisely because the gate closed.
+    @test n_sl > 0.1
+
+    # The gate really is what stopped it: ungated, the same run consumes far more
+    # silica and drives portlandite hard negative.
+    rxn_free = Reaction(
+        [cs["Amor-Sl"], cs["Portlandite"], cs["H2O@"]], [cs["Jennite"]];
+        symbol = "pozzolanic, ungated"
+    )
+    rxn_free[:rate] = base
+    kp_free = KineticsProblem(
+        cs, [rxn_free], state0, (0.0, 3650 * 86400.0); equilibrium_solver = nothing
+    )
+    sol_free = integrate(
+        kp_free, KineticsSolver(; ode_solver = Rodas5P(), reltol = 1.0e-8, abstol = 1.0e-12)
+    )
+    ξ_free = reaction_extents(sol_free, kp_free; times = [kp_free.tspan[2]])[1, 1]
+    ξ_gated = reaction_extents(sol, kp; times = [kp.tspan[2]])[1, 1]
+    @test ξ_free > 2 * ξ_gated
 
 end

@@ -2,7 +2,39 @@
 
 ## v0.5.0 — the bridge from a kinetics run to a microstructure
 
-Everything here is additive except the Rosenbrock fix below; no existing API changes.
+### Breaking
+
+- **The ODE state vector gained the extents of reaction.** Its layout is now
+  `[bₑ, nₖ, ξ, (calorimeter)]`, where `ξ` integrates `dξ/dt = r`, one entry per
+  kinetic reaction. Code indexing `sol.u` positionally for anything other than
+  `bₑ` or `nₖ` must be updated; the calorimeter's slot is addressed from the end
+  of the vector and is unaffected, as are `temperature_profile`,
+  `cumulative_heat` and `heat_flow`.
+- Being a minor bump below 1.0, a downstream `[compat] ChemistryLab = "0.4"`
+  will not accept 0.5 and must be widened regardless.
+
+### A rate law may now depend on any species
+
+This is what the state change buys, and it is the point of the release.
+
+Previously only the kinetic species evolved inside the ODE residual: every other
+amount was pinned to its initial value for the whole run, because the buffer
+holding them was refreshed only by `respeciate!`, which runs only when an
+equilibrium solver is present. A rate closure gating on a consumed reactant
+therefore never saw it move, and the failure was silent — the kinetic mass
+balance stayed exact and the solver reported success while the gated species went
+negative. In the cement model that motivated this release, 0.44 mol of ettringite
+formed out of 0.27 mol of gypsum.
+
+The residual now reconstructs every species from `n = n(0) + νᵀ ξ` before
+evaluating the rates, so reaction sequencing — sulfate available for ettringite,
+portlandite available for a pozzolanic reaction, product inhibition — is written
+directly. With an equilibrium solver the equilibrium partition is still owned by
+the equilibrium solve and refreshed once per accepted step.
+
+As a side effect, [`reaction_extents`](@ref) and [`state_at`](@ref) read the
+extents from the solution instead of re-integrating the rates by quadrature: both
+are now exact to the solver's tolerance, and the `nsub` keyword is gone.
 
 ### From moles to volume fractions
 
@@ -29,16 +61,14 @@ fraction can be negative. Those contributions are kept, which is what makes
 
 ### Post-processing a kinetics solution
 
-The ODE state carries only the kinetic species, and `n_full` is a buffer mutated
-in place — after a run it holds the last accepted step and nothing else. There
-was no way to recover the composition at an arbitrary time.
+`n_full` is a buffer mutated in place — after a run it holds the last accepted
+step and nothing else — so there was no way to recover the composition at an
+arbitrary time.
 
-- **`reaction_extents(sol, kp)`** — the extent of each reaction, by quadrature on
-  the dense output. It integrates on the union of the requested grid and the
-  solver's own accepted steps, so a coarse output grid cannot step over the early
-  transient.
-- **`extent_residual`** — the mass-balance residual of that quadrature, so its
-  accuracy is measurable rather than assumed.
+- **`reaction_extents(sol, kp)`** — the extent of each reaction, read from the
+  ODE state and therefore exact at any instant.
+- **`extent_residual`** — the drift between `nₖ` and `νₖᵀ ξ`, which are redundant
+  by construction, so the integrator's own consistency is measurable.
 - **`state_at(sol, kp, t)`** — the full `ChemicalState` at any instant, every
   species rebuilt from `n = n₀ + νᵀξ` so the result conserves exactly what the
   reactions conserve.
@@ -76,19 +106,8 @@ at `PK_AVRAMI_SEED`.
   `t` then failed with "First call to automatic differentiation for time gradient
   failed". `parrot_killoh` ignores `t`, so nothing exposed it until `waller`. The
   type is now promoted with `typeof(t)`.
-- **`reaction_extents` integrated from `times[1]`, not from the start of the run.**
-  Asking for a single late instant silently returned a zero extent. The quadrature
-  now always starts at `kp.tspan[1]`.
-
-### Documented, not fixed
-
-Without an equilibrium solver, only the kinetic species evolve inside the ODE
-residual; every other amount stays frozen at its initial value for the whole run.
-A rate closure that gates on a non-kinetic amount therefore never sees it change,
-and fails silently — the run looks healthy and the kinetic mass balance is exact,
-while the species gated on goes negative. The manual now carries a `!!! danger`
-admonition with the two correct patterns. Lifting the limitation would mean
-carrying the reaction extents in the ODE state, which is a larger change.
+- **Non-kinetic amounts were frozen inside the residual** — see the section above,
+  which is the substance of this release.
 
 ### Bibliography
 

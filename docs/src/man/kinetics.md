@@ -564,37 +564,35 @@ pozzolanic or latent-hydraulic reaction follows [`waller`](@ref), a sigmoid in
 log-time, with [`WALLER_PARAMS_FLY_ASH`](@ref), [`WALLER_PARAMS_SILICA_FUME`](@ref)
 or [`WALLER_PARAMS_SLAG`](@ref).
 
-## [Only the kinetic species are live inside the right-hand side](@id kinetics-frozen-species)
+## [Rate laws that depend on a consumed reactant](@id kinetics-frozen-species)
 
-!!! danger "A rate law must not read a non-kinetic amount"
-    Without an equilibrium solver, **only the kinetic species evolve inside the
-    ODE residual**. Every other amount stays frozen at its initial value for the
-    whole run: the residual reads them from a persistent buffer that only
-    `respeciate!` ever updates, and `respeciate!` runs only when an equilibrium
-    solver is present.
+The ODE state carries the **extents of reaction** `ξ` alongside the kinetic
+moles, integrating `dξ/dt = r`. The residual therefore reconstructs *every*
+species from `n = n(0) + νᵀ ξ` before evaluating the rates, so a rate closure may
+read any amount — including species that are not themselves kinetic.
 
-    A rate closure that gates on a non-kinetic amount therefore never sees it
-    change. This is silent — the run looks healthy and the mass balance of the
-    *kinetic* species is exact; only the species you gated on goes negative.
+That is what makes reaction sequencing expressible. Sulfate available for
+ettringite, portlandite available for a pozzolanic reaction, a product inhibiting
+its own formation: all are written directly.
 
-    ```julia
-    # WRONG when "Gp" is not a kinetic species: `n["Gp"]` never decreases,
-    # so the gate never closes and the reaction runs past sulfate exhaustion.
-    rate_aft = (T, P, t, n, lna, n0) -> pk(T, P, t, n, lna, n0) * n["Gp"] / (n["Gp"] + ε)
+```julia
+# C3A reacts with gypsum while sulfate lasts, then by the sulfate-free route.
+# "Gp" is consumed but is not a kinetic species — reading it here is correct.
+ε = 1.0e-3
+sulfated  = (T, P, t, n, lna, n0) -> pk(T, P, t, n, lna, n0) * n["Gp"] / (n["Gp"] + ε)
+unsulfated = (T, P, t, n, lna, n0) -> pk(T, P, t, n, lna, n0) * ε / (n["Gp"] + ε)
+```
 
-    # RIGHT: express the budget through the kinetic species. Each mole of
-    # aluminate reacting by this route consumes three moles of gypsum.
-    budget(n, n0) = n0["Gp"] / 3 - ((n0["C3A"] - n["C3A"]) + (n0["C4AF"] - n["C4AF"]))
-    rate_aft = (T, P, t, n, lna, n0) -> begin
-        s = max(budget(n, n0), zero(eltype(n.data)))
-        pk(T, P, t, n, lna, n0) * s / (s + ε)
-    end
-    ```
+Keep such a gate **smooth**. A hard `n["Gp"] > 0 ? r : 0` is a discontinuity in
+the residual, which a stiff solver will either step over or grind against; the
+`x/(x+ε)` form above costs nothing and stays differentiable.
 
-    Either express the gate through the kinetic species and the initial amounts,
-    as above, or declare the species kinetic so that the integrator carries it.
-    [`state_at`](@ref) reconstructs the non-kinetic amounts correctly *after* the
-    run, from the stoichiometry — the limitation is confined to the residual.
+!!! note "With an equilibrium solver, the non-kinetic partition is piecewise constant"
+    When re-speciation is active the equilibrium partition is owned by the
+    equilibrium solve, which runs once per accepted step by operator splitting.
+    Those amounts are therefore refreshed between steps but held constant *within*
+    a step, and are not reconstructed from `ξ`. A gate on such a species still
+    works; it simply lags by at most one step.
 
 ## [Post-processing a kinetics run](@id kinetics-postprocessing)
 
