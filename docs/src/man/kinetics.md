@@ -36,7 +36,7 @@ where
 | `t` | s | Current integration time |
 | `n` | mol | Moles of all species — named access via [`StateView`](@ref) |
 | `lna` | — | Log-activities — named access via `StateView` |
-| `n_initial` | mol | Initial moles — named access via `StateView` (always `Float64`) |
+| `n_initial` | mol | Initial moles — named access via `StateView` |
 
 [`StateView`](@ref) provides O(1) named access to a species vector via a pre-built
 dictionary (`sv["C3S"]` — no per-step dict allocation):
@@ -391,10 +391,85 @@ end
 ```
 
 !!! tip "Choosing `equilibrium_solver`"
-    Setting `equilibrium_solver = nothing` skips the Gibbs minimization at each ODE
-    step, which is appropriate for the [ParrotKilloh1984](@cite) model (it does not use
-    solution chemistry).  For `transition_state` models, pass an `EquilibriumSolver`
-    to re-speciate the aqueous phase at every ODE evaluation.
+    Setting `equilibrium_solver = nothing` skips the Gibbs minimization, which is
+    appropriate for the [ParrotKilloh1984](@cite) model: its rate closure ignores
+    the `lna` argument, so re-speciation cannot change `α(t)` or the calorimetry.
+    It does change what the *products* are — with `nothing`, the hydrate
+    assemblage is whatever the hand-written reaction stoichiometry says, not what
+    thermodynamics gives. For `transition_state` models, whose rate depends on the
+    saturation ratio `Ω = IAP/K`, an `EquilibriumSolver` is required for the rates
+    themselves to mean anything.
+
+    The solver may be passed on the [`KineticsProblem`](@ref) or on the
+    [`KineticsSolver`](@ref); both work. If it is set on both, the one on the
+    problem is used and the conflict is reported.
+
+## The equilibrium–kinetics coupling
+
+The coupling is the partitioned formulation of [Leal2017](@cite), the one
+Reaktoro implements. Species are split into a **kinetic partition** — the
+minerals carrying a rate law — and an **equilibrium partition**, everything
+else: the aqueous phase and any mineral free to precipitate or dissolve
+instantaneously.
+
+The ODE state is `(bₑ, nₖ)`: the element amounts held by the equilibrium
+partition, and the moles of the kinetic minerals. It advances as
+
+```math
+\frac{\mathrm{d} n_k}{\mathrm{d} t} = \nu_k^{\mathsf T} r,
+\qquad
+\frac{\mathrm{d} b_e}{\mathrm{d} t} = A_e \, \nu_e^{\mathsf T} r ,
+```
+
+and the composition of the equilibrium partition is recovered at each step by
+
+```math
+n_e = \varphi(b_e) \;=\; \arg\min_{n} \; G(n)
+\quad \text{s.t.} \quad A_e\, n = b_e , \; n \ge 0 .
+```
+
+Three points are worth stating, because each is a way the coupling can be got
+wrong and look plausible:
+
+**The minimization runs over the equilibrium partition only.** Posing it on the
+whole system would equilibrate the kinetic minerals instantaneously, which is
+what a kinetic description exists to prevent. `KineticsProblem` therefore builds
+a sub-system restricted to the partition, sharing the parent's primary species
+so that `bₑ`, `dbₑ/dt` and the solve all live in one conservation basis.
+
+**`bₑ` is integrated, not `nₑ`.** Along the way an individual species may want
+to go negative — the generated dissolution reactions are written in `H⁺`, and a
+cement paste contains no acid — and it is the minimizer, not the caller, that
+redistributes the elements over a feasible set. Element amounts are what is
+conserved; species amounts are what is solved for.
+
+**The rate sign is fixed by the stoichiometry.** Each kinetic reaction is
+normalized so its controlling mineral carries `ν = −1`: a positive rate is a
+dissolution. A reaction generated from the nullspace comes out with an arbitrary
+orientation, and taken as-is the ODE grows the clinker instead of consuming it.
+
+!!! note "How the two are coupled in time — operator splitting"
+    The equilibrium is **not** solved inside the ODE right-hand side. The ODE
+    advances the kinetic minerals with the speciation held frozen, and
+    `respeciate!` re-equilibrates the equilibrium partition once per accepted
+    step, wired as a `DiscreteCallback`.
+
+    This is deliberate. A stiff solver evaluates the right-hand side many times
+    per step and differentiates it to build its Jacobian; a Gibbs minimization in
+    there makes the cost per step unpredictable and leaves the Jacobian
+    describing a different model from the one being integrated. Splitting the two
+    is first-order accurate in the step size — the standard arrangement in
+    reactive transport — and keeps residual and Jacobian consistent.
+
+    The element amounts `bₑ` carried by the ODE state are handed to the solver
+    as the constraint of the sub-problem, not derived from a starting
+    composition. The composition passed alongside is a starting guess only.
+
+!!! warning "A failed re-speciation is reported, not hidden"
+    If the equilibrium solve fails, that step keeps its frozen composition, the
+    first failure is reported with its exception, and `integrate` states how many
+    steps were affected. A run in which re-speciation never succeeded must not
+    look like a healthy one.
 
 !!! tip "Calorimetry and ΔᵣH⁰"
     The calorimeter computes the heat generation rate as `q̇ = Σ rᵢ × (−ΔᵣH⁰ᵢ)`,
@@ -450,3 +525,146 @@ end
 
 dn_dK₁ = ForwardDiff.derivative(n_C3S_final, safe_ustrip(us"1/s", PK_PARAMS_C3S.K₁))
 ```
+
+## [Two Parrot–Killoh variants](@id pk-variants)
+
+ChemistryLab ships **two** implementations of the Parrot & Killoh clinker
+hydration model. They are not interchangeable, and their parameter sets are not
+transferable between them.
+
+| | [`parrot_killoh`](@ref) | [`parrot_killoh_avrami`](@ref) |
+|---|---|---|
+| Nucleation–growth | `(K₁/N₁)(1-ξ)^N₁ / (1 + B·ξ^N₃)` | `(k₁/n₁)(1-ξ)(-ln(1-ξ))^(1-n₁)` (Avrami) |
+| Second mechanism | `K₂(1-ξ)^N₂` | `k₂(1-ξ)^(2/3) / (1-(1-ξ)^(1/3))` (Jander) |
+| Third mechanism | `3K₃(1-ξ)^(2/3) / (N₃(1-(1-ξ)^(1/3)))` | `k₃(1-ξ)^n₃` (power law) |
+| Combination | `min(max(r_NG, r_I), r_D)` | `min` of all three |
+| Parameters | [`PK_PARAMS_C3S`](@ref) … | [`PK84_PARAMS_C3S`](@ref) … |
+
+`parrot_killoh_avrami` is the **canonical 1984 formulation**, with the parameters
+of [ParrotKilloh1984](@cite) as reported by [LothenbachWinnefeld2006](@cite) and
+used by [Lavergne2018](@cite). Use it when you want the α(t) curves of the cement
+literature. A useful signature of a correct transcription: with those parameters
+C₂S has no nucleation–growth stage and C₃S no diffusion-controlled stage.
+
+```julia
+pk = parrot_killoh_avrami(
+    PK84_PARAMS_C3S, "C3S";
+    α_max    = powers_alpha_max(0.5),      # Powers water availability limit
+    blaine   = 380u"m^2/kg",               # rate ∝ B/385 m²/kg
+    humidity = 0.95,                       # β_h reduction, 0 below 80 % RH
+)
+```
+
+The three corrections are exported separately — [`powers_alpha_max`](@ref),
+[`blaine_factor`](@ref) and [`humidity_factor`](@ref) — and multiply the rate.
+`humidity` also accepts a callable `t -> h(t)` for a drying history.
+
+Supplementary cementitious materials do not follow Parrot & Killoh at all. Their
+pozzolanic or latent-hydraulic reaction follows [`waller`](@ref), a sigmoid in
+log-time, with [`WALLER_PARAMS_FLY_ASH`](@ref), [`WALLER_PARAMS_SILICA_FUME`](@ref)
+or [`WALLER_PARAMS_SLAG`](@ref).
+
+## [Rate laws that depend on a consumed reactant](@id kinetics-frozen-species)
+
+The ODE state carries the **extents of reaction** `ξ` alongside the kinetic
+moles, integrating `dξ/dt = r`. The residual therefore reconstructs *every*
+species from `n = n(0) + νᵀ ξ` before evaluating the rates, so a rate closure may
+read any amount — including species that are not themselves kinetic.
+
+That is what makes reaction sequencing expressible. Sulfate available for
+ettringite, portlandite available for a pozzolanic reaction, a product inhibiting
+its own formation: all are written directly.
+
+```julia
+# C3A reacts with gypsum while sulfate lasts, then by the sulfate-free route.
+# "Gp" is consumed but is not a kinetic species — reading it here is correct.
+ε = 1.0e-3
+sulfated  = (T, P, t, n, lna, n0) -> pk(T, P, t, n, lna, n0) * n["Gp"] / (n["Gp"] + ε)
+unsulfated = (T, P, t, n, lna, n0) -> pk(T, P, t, n, lna, n0) * ε / (n["Gp"] + ε)
+```
+
+Keep such a gate **smooth**. A hard `n["Gp"] > 0 ? r : 0` is a discontinuity in
+the residual, which a stiff solver will either step over or grind against; the
+`x/(x+ε)` form above costs nothing and stays differentiable.
+
+!!! note "With an equilibrium solver, the non-kinetic partition is piecewise constant"
+    When re-speciation is active the equilibrium partition is owned by the
+    equilibrium solve, which runs once per accepted step by operator splitting.
+    Those amounts are therefore refreshed between steps but held constant *within*
+    a step, and are not reconstructed from `ξ`. A gate on such a species still
+    works; it simply lags by at most one step.
+
+## [Post-processing a kinetics run](@id kinetics-postprocessing)
+
+The ODE state vector carries only the **kinetic** species. Every other amount is
+held in a single buffer that the integrator mutates in place, so after a run it
+reflects the last accepted step and nothing else. Recovering the composition at an
+arbitrary time therefore means replaying the stoichiometry, which is what
+[`reaction_extents`](@ref) and [`state_at`](@ref) do.
+
+```julia
+sol = integrate(kp, ks)
+
+α  = degrees_of_hydration(sol, kp)          # Dict(symbol => α(t))
+ᾱ  = mean_degree_of_hydration(sol, kp)      # mass-weighted binder average
+
+ξ  = reaction_extents(sol, kp)              # extent of each reaction, mol
+st = state_at(sol, kp, 28 * 86400.0)        # full ChemicalState at 28 days
+```
+
+[`state_at`](@ref) rebuilds **every** species from `n = n₀ + νᵀξ`, so the result
+satisfies `A(n - n₀) = (Aνᵀ)ξ` to machine precision — whatever the quadrature
+error. How well the elements themselves balance is a property of the reactions
+you wrote, not of the reconstruction; check it with `maximum(abs, A * ν')`.
+
+!!! warning "Re-speciation is not replayed"
+    When the run used an equilibrium solver, the aqueous partition was
+    re-speciated at every accepted step, and that redistribution cannot be
+    recovered from the stoichiometry. `state_at` then returns the purely kinetic
+    reconstruction; call [`equilibrate`](@ref) on it to speciate.
+
+### From moles to volume fractions
+
+[`volume_fractions`](@ref) turns a state into the input a mean-field
+homogenization scheme consumes, using the standard molar volumes `V⁰` that
+CEMDATA18 supplies for every cement phase.
+
+```julia
+groups = [
+    "anhydrous" => ["C3S", "C2S", "C3A", "C4AF"],
+    "C-S-H"     => "Jennite",
+    "CH"        => "Portlandite",
+    "AFt"       => "ettringite",
+    "water"     => "H2O@",
+]
+f = volume_fractions(st, groups; reference = state0)
+```
+
+Passing `reference` selects the **sealed-curing** convention of
+[Lavergne2018](@cite): fractions are referred to the initial volume, held fixed,
+and the deficit left by the reactions appears as a `"void"` phase. That void is
+the chemical shrinkage — hydration products occupy less space than the reactants
+they consume — and it is a genuine phase of the microstructure, not a rounding
+error. Without `reference`, fractions are referred to the current volume and the
+void does not exist.
+
+```julia
+sum(values(f))                              # 1.0, void included
+f["void"]                                   # Le Chatelier contraction
+chemical_shrinkage(st, state0)              # the same thing, as a volume
+```
+
+!!! note "Species without a molar volume are invisible"
+    A species carrying no `V⁰` contributes nothing to [`volume`](@ref),
+    [`porosity`](@ref) or [`volume_fractions`](@ref) — a custom species added by
+    hand, for instance. Call [`missing_molar_volumes`](@ref) before trusting a
+    volume balance:
+
+    ```julia
+    isempty(missing_molar_volumes(st)) || @warn "incomplete volume balance"
+    ```
+
+Individual fractions may be slightly **negative** for aqueous solutes, whose
+standard partial molar volumes are negative (electrostriction contracts the
+solvent around an ion). They are kept so that `volume_fractions` and
+[`volume`](@ref) always agree; grouping folds them back into the liquid.

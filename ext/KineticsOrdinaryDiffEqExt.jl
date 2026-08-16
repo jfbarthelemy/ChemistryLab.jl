@@ -23,6 +23,8 @@ sol = integrate(kp)
 module KineticsOrdinaryDiffEqExt
 
 using OrdinaryDiffEq
+using SciMLBase
+import ChemistryLab
 import ChemistryLab:
     integrate,
     KineticsProblem,
@@ -32,6 +34,8 @@ import ChemistryLab:
     build_kinetics_params,
     _DEFAULT_KINETICS_SOLVER_FACTORY,
     SemiAdiabaticCalorimeter,
+    respeciate!,
+    _with_equilibrium_solver,
     symbol
 
 # ── Concrete integrate implementation ────────────────────────────────────────
@@ -57,6 +61,11 @@ sol = integrate(kp, ks)
 ```
 """
 function integrate(kp::KineticsProblem, ks::KineticsSolver)
+    # `KineticsSolver` also carries an equilibrium solver, and its docstring
+    # advertises passing one there. Honor it: without this the field is dead
+    # and re-speciation silently never happens.
+    kp = _with_equilibrium_solver(kp, ks.equilibrium_solver)
+
     f! = build_kinetics_ode(kp)
     u0 = build_u0(kp)
     p = build_kinetics_params(kp)
@@ -81,7 +90,26 @@ function integrate(kp::KineticsProblem, ks::KineticsSolver)
     solver = isnothing(ks.ode_solver) ? Rodas5P() : ks.ode_solver
 
     prob = ODEProblem(f!, u0, kp.tspan, p)
-    return solve(prob, solver; merged...)
+
+    # Operator splitting: the ODE advances the kinetic minerals with the
+    # speciation frozen, and this callback re-equilibrates once per accepted
+    # step. Nothing in `u` is touched, so `save_positions = (false, false)`.
+    if p.n_be > 0
+        respeciate!(p, u0)          # start from an equilibrated state
+        cb = DiscreteCallback(
+            (u, t, integrator) -> true,
+            integrator -> (respeciate!(integrator.p, integrator.u); SciMLBase.u_modified!(integrator, false));
+            save_positions = (false, false),
+        )
+        sol = solve(prob, solver; callback = cb, merged...)
+    else
+        sol = solve(prob, solver; merged...)
+    end
+
+    if p.n_be > 0 && p.eq_failures[] > 0
+        @warn "re-speciation failed on $(p.eq_failures[]) step(s); those steps kept a frozen composition."
+    end
+    return sol
 end
 
 # ── __init__: register default solver ────────────────────────────────────────

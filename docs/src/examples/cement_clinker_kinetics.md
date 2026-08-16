@@ -133,6 +133,134 @@ kp = KineticsProblem(
 nothing # hide
 ```
 
+## 5 bis. The hydrating paste, with the assemblage computed instead of imposed
+
+Everything above imposes the hydrate assemblage: four reactions, written by
+hand, each with fixed coefficients. The alternative is the partitioned coupling
+of [Leal2017](@cite) — the one Reaktoro implements — in which thermodynamics
+decides the products. It needs *less* input, not more: the `kinetic_species` API
+derives the dissolution reactions itself, so the four `Reaction` blocks
+disappear.
+
+### How the two halves are joined
+
+Species split into a **kinetic partition** — the clinker phases, carrying
+Parrot–Killoh rates — and an **equilibrium partition**: the pore solution and
+every hydrate free to precipitate. The ODE advances
+
+```math
+\frac{\mathrm{d} n_k}{\mathrm{d} t} = \nu_k^{\mathsf T} r ,
+\qquad
+\frac{\mathrm{d} b_e}{\mathrm{d} t} = A_e\,\nu_e^{\mathsf T} r ,
+```
+
+carrying the **element amounts** of the equilibrium partition, and the pore
+solution and hydrates are recovered at each accepted step by
+
+```math
+n_e = \varphi(b_e) = \arg\min_n G(n)
+\quad\text{s.t.}\quad A_e n = b_e,\; n \ge 0 .
+```
+
+Integrating `bₑ` rather than `nₑ` is what makes this robust: during hydration an
+individual species may want to go negative — the generated dissolution reactions
+are written in H⁺, and a cement paste contains no acid — and it is the minimizer,
+not the caller, that redistributes the elements over a feasible set.
+
+### Running it
+
+Everything above imposes the hydrate assemblage: four reactions, written by
+hand, each with fixed coefficients. The alternative is to let thermodynamics
+decide, and it needs *less* input, not more — the `kinetic_species` API derives
+the dissolution reactions itself, so the four `Reaction` blocks disappear.
+
+```julia
+using Optimization, OptimizationIpopt   # or: using OptimaSolver
+
+cs_eq = ChemicalSystem(
+    species, CEMDATA_PRIMARIES;
+    kinetic_species = Dict(
+        "C3S" => pk_C3S, "C2S" => pk_C2S, "C3A" => pk_C3A, "C4AF" => pk_C4AF,
+    ),
+)
+
+state_eq = ChemicalState(cs_eq)
+for (name, frac) in pairs(COMPOSITION)
+    set_quantity!(state_eq, string(name), frac * u"kg")
+end
+set_quantity!(state_eq, "H2O@", WC * u"kg")
+
+es = EquilibriumSolver(cs_eq, DiluteSolutionModel(), IpoptOptimizer())
+
+kp_eq = KineticsProblem(cs_eq, state_eq, (0.0, 7.0 * 86400.0);
+                        calorimeter = cal, equilibrium_solver = es)
+sol_eq = integrate(kp_eq, KineticsSolver(; ode_solver = Rodas5P(),
+                                         reltol = 1e-6, abstol = 1e-9))
+```
+
+Two things are worth watching in that run.
+
+**The clinker curves do not move.** `parrot_killoh` ignores its `lna` argument
+and `heat_rate` uses only the reaction enthalpies, so `α(t)`, the temperature
+and the cumulative heat are the same to solver tolerance. Re-speciation cannot
+change them, and a comparison that reported otherwise would be reporting a bug.
+
+**The products do move, and that is the point.** With the reactions written by
+hand, the ratio of portlandite to C-S-H is whatever the coefficients say. With
+the solver, the dissolved calcium, silicon, aluminum and sulfur are distributed
+by Gibbs minimization over every phase declared in the system, so the assemblage
+— and the pore-solution pH that comes with it — is an output. That is what makes
+the model usable outside the composition its stoichiometry was fitted for: a
+supplementary cementitious material, a carbonating cover, a leached surface.
+
+!!! note "Cost"
+    One equilibrium solve per accepted ODE step, not per right-hand-side
+    evaluation — see [the coupling note](@ref) in the kinetics manual. On this
+    system that is a few hundred solves over seven days of hydration.
+
+!!! warning "What `equilibrium_solver = nothing` costs here, and what it does not"
+    It costs nothing on `α(t)` or on the calorimetry: the
+    [ParrotKilloh1984](@cite) rate closure ignores its `lna` argument and
+    `heat_rate` uses only the reaction enthalpies, so re-speciation cannot move
+    either curve.
+
+    What it does cost is the **product assemblage**. With the solver off, the
+    hydrates are whatever the four reactions written above say they are —
+    Jennite, portlandite, C₃AH₆ and C₃FH₆ in fixed proportions, chosen by hand.
+    With a solver, the same dissolved elements are distributed by Gibbs
+    minimization over every phase in the system, so which hydrates appear, and
+    in what amounts, becomes a *result* instead of an input. That is the whole
+    difference between a stoichiometric model and a thermodynamic one, and it is
+    what matters as soon as the composition leaves the range the stoichiometry
+    was fitted for — a supplementary cementitious material, carbonation,
+    leaching.
+
+    To switch it on, build a solver over the same system and hand it over:
+
+    ```julia
+    using Optimization, OptimizationIpopt   # or: using OptimaSolver
+    es = EquilibriumSolver(cs, DiluteSolutionModel(), IpoptOptimizer())
+    kp = KineticsProblem(cs, kinetic_reactions, state0, tspan;
+                         calorimeter = cal, equilibrium_solver = es)
+    ```
+
+    The hydrates then no longer need to appear as reaction products at all: the
+    `kinetic_species` API generates the dissolution reactions on its own, and
+    equilibrium decides the rest.
+
+    On the C₃S/C₂S sub-system, seven days at `w/c = 0.4`, that run gives
+
+    ```
+    α(C₃S) = 0.277   α(C₂S) = 0.279          (unchanged, as expected)
+    Jennite     1.02 mol      Portlandite  1.09 mol
+    H₂O        18.97 mol      (from 22.20 — consumed by hydration)
+    Ca²⁺        3.5 mmol      OH⁻           8.5 mmol
+    ‖Aₑnₑ − bₑ‖∞ = 8.7e-8     89 steps, no failed equilibrium
+    ```
+
+    Portlandite and C-S-H in comparable amounts, water consumed, an alkaline
+    pore solution at millimolar calcium — none of which was put in by hand.
+
 ## 6. Integration
 
 ```@example clinker

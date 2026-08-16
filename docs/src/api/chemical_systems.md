@@ -17,3 +17,10 @@ Pages = ["chemical_structs/chemical_systems.jl"]
 Modules = [ChemistryLab]
 Pages = ["chemical_structs/chemical_states.jl"]
 ```
+
+## Volume fractions
+
+```@autodocs
+Modules = [ChemistryLab]
+Pages = ["chemical_structs/volume_fractions.jl"]
+```

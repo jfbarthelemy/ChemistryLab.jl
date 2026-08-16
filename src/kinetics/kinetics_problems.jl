@@ -127,7 +127,14 @@ function _build_kinetics_problem(
     νk = ν[:, idx_kin]
 
     # Formula matrix for equilibrium partition: Aₑ = CSM.A[:, idx_eq]
-    Ae = Float64.(system.CSM.A[:, idx_eq])
+    # Conservation matrix of the equilibrium partition, taken from the partition
+    # SUB-SYSTEM and in the basis the equilibrium solve uses (`SM.A`, with
+    # respect to the primaries — not the canonical element matrix `CSM.A`).
+    # Conserving the primaries is equivalent to conserving the elements, but the
+    # row counts differ, and so do the parent's and the sub-system's: `bₑ` must
+    # be built on exactly the matrix the solve is posed on, or every step fails
+    # on a dimension mismatch.
+    Ae = Float64.(_equilibrium_subsystem(system, idx_eq).SM.A)
 
     return KineticsProblem{
         typeof(system), typeof(kin_rxns), typeof(calorimeter),
@@ -190,6 +197,33 @@ function KineticsProblem(
     )
 end
 
+"""
+    _with_equilibrium_solver(kp::KineticsProblem, es) -> KineticsProblem
+
+Return `kp` with its equilibrium solver replaced by `es`, or `kp` itself when
+`es` is `nothing`. Used by `integrate` so that a solver passed on the
+[`KineticsSolver`](@ref) reaches the ODE; a solver already set on the problem
+wins when both are given, and the mismatch is reported.
+"""
+function _with_equilibrium_solver(kp::KineticsProblem, es)
+    isnothing(es) && return kp
+    if !isnothing(kp.equilibrium_solver)
+        kp.equilibrium_solver === es || @warn(
+            "an equilibrium solver is set on both the KineticsProblem and the " *
+                "KineticsSolver; the one on the problem is used."
+        )
+        return kp
+    end
+    return KineticsProblem{
+        typeof(kp.system), typeof(kp.kinetic_reactions), typeof(kp.calorimeter),
+        typeof(es), typeof(kp.activity_model),
+    }(
+        kp.system, kp.kinetic_reactions, kp.initial_state, kp.tspan,
+        kp.calorimeter, kp.activity_model, es,
+        kp.idx_kinetic, kp.idx_equilibrium, kp.ν, kp.νe, kp.νk, kp.Ae,
+    )
+end
+
 # ── build_u0 ─────────────────────────────────────────────────────────────────
 
 """
@@ -198,9 +232,20 @@ end
 Build the initial ODE state vector.
 
 Structure of `u`:
-  - Without re-speciation: `u = [nₖ₁, …, nₖ_K]`
-  - With re-speciation:    `u = [bₑ₁, …, bₑ_C, nₖ₁, …, nₖ_K]`
+  - Without re-speciation: `u = [nₖ₁, …, nₖ_K, ξ₁, …, ξ_M]`
+  - With re-speciation:    `u = [bₑ₁, …, bₑ_C, nₖ₁, …, nₖ_K, ξ₁, …, ξ_M]`
   - Semi-adiabatic adds `T` at the end: `u = [..., T₀]`
+
+The extents of reaction `ξ` are carried alongside the kinetic moles, integrating
+`dξ/dt = r`. They are redundant with `nₖ` — the two satisfy
+`nₖ = nₖ(0) + νₖᵀ ξ` — but they are what makes the **non-kinetic** amounts
+available inside the residual, through `n = n(0) + νᵀ ξ`. Without them, a rate
+law gating on a species that is not itself kinetic would read a value frozen at
+`t = 0`. They also make [`reaction_extents`](@ref) and [`state_at`](@ref) exact
+rather than quadrature-limited.
+
+The calorimeter's slot stays last and is addressed from the end of the vector,
+so it is unaffected by the presence of `ξ`.
 """
 function build_u0(kp::KineticsProblem)
     n_mol = Float64[
@@ -209,14 +254,16 @@ function build_u0(kp::KineticsProblem)
     ]
     # Kinetic species moles
     nk0 = n_mol[kp.idx_kinetic]
+    # Extents of reaction, zero by definition at t = tspan[1]
+    ξ0 = zeros(Float64, length(kp.kinetic_reactions))
 
     u0 = if isnothing(kp.equilibrium_solver)
-        copy(nk0)
+        vcat(nk0, ξ0)
     else
         # Element amounts in equilibrium partition: bₑ = Aₑ nₑ
         ne0 = n_mol[kp.idx_equilibrium]
         be0 = kp.Ae * ne0
-        vcat(be0, nk0)
+        vcat(be0, nk0, ξ0)
     end
 
     # Append temperature for semi-adiabatic calorimeter
@@ -262,9 +309,25 @@ function build_kinetics_params(kp::KineticsProblem; ϵ::Float64 = 1.0e-30)
     kin_rxns = kp.kinetic_reactions
     rates_buf = zeros(Float64, length(kin_rxns))
 
+    eq_sys, eq_sub, n_eq_init = if isnothing(kp.equilibrium_solver)
+        nothing, nothing, Float64[]
+    else
+        sys_e = _equilibrium_subsystem(kp.system, kp.idx_equilibrium)
+        es = kp.equilibrium_solver
+        (
+            sys_e,
+            EquilibriumSolver(
+                sys_e, kp.activity_model, es.solver;
+                variable_space = es.variable_space, es.kwargs...
+            ),
+            Float64[n_initial_full[i] for i in kp.idx_equilibrium],
+        )
+    end
+
     # State layout sizes
     n_be = isnothing(kp.equilibrium_solver) ? 0 : size(kp.Ae, 1)
     n_nk = length(kp.idx_kinetic)
+    n_rxn_state = length(kp.kinetic_reactions)
     has_T = kp.calorimeter isa SemiAdiabaticCalorimeter
 
     # Calorimeter parameters (semi-adiabatic)
@@ -287,6 +350,7 @@ function build_kinetics_params(kp::KineticsProblem; ϵ::Float64 = 1.0e-30)
         # Index layout
         n_be = n_be,
         n_nk = n_nk,
+        n_rxn_state = n_rxn_state,
         has_T = has_T,
         idx_kinetic = kp.idx_kinetic,
         idx_equilibrium = kp.idx_equilibrium,
@@ -298,10 +362,126 @@ function build_kinetics_params(kp::KineticsProblem; ϵ::Float64 = 1.0e-30)
         Cp_calo = Cp_calo,
         T_env = T_env,
         heat_loss_fn = heat_loss_fn,
-        # Equilibrium
-        eq_solver = kp.equilibrium_solver,
+        # Equilibrium — Leal et al. (2017) §5. The re-speciation φ(bₑ) is a
+        # minimization over the EQUILIBRIUM PARTITION ONLY, at frozen kinetic
+        # amounts. Running it over the whole system would let the kinetic
+        # minerals equilibrate instantaneously, which is exactly what a kinetic
+        # description exists to prevent.
+        eq_system = eq_sys,
+        eq_solver = eq_sub,
+        n_eq_init = n_eq_init,
+        n_eq_buf = similar(n_eq_init),
+        xi_buf = zeros(Float64, length(kp.idx_kinetic)),
+        T_q = Ref(temperature(state)),
+        P_q = Ref(pressure(state)),
+        # Pseudo-inverse of Aₑ, to project the previous speciation back onto the
+        # element amounts the ODE carries. Built once — it is a fixed matrix.
+        Ae_pinv = isnothing(kp.equilibrium_solver) ?
+            zeros(Float64, 0, 0) : pinv(Float64.(kp.Ae)),
         state_ref = Ref{ChemicalState}(state),
+        eq_failures = Ref(0),
     )
+end
+
+# ── Equilibrium partition sub-system ─────────────────────────────────────────
+
+"""
+    _equilibrium_subsystem(system, idx_equilibrium) -> ChemicalSystem
+
+The chemical system restricted to the equilibrium partition, as the partitioned
+formulation of [Leal2017](@cite) requires.
+
+Its formula matrix is exactly `system.CSM.A[:, idx_equilibrium]`, in the same
+species order, so the element amounts `bₑ` carried by the ODE state are handed
+to it unchanged. The primaries are those of the parent system that survive the
+restriction — the kinetic minerals never do, not being in the partition.
+"""
+function _equilibrium_subsystem(system::ChemicalSystem, idx_equilibrium)
+    sub_species = system.species[idx_equilibrium]
+    # The parent's primaries are the row labels of its stoichiometric matrix,
+    # `system.SM.primaries` — not `idx_components`, which is a class-based index
+    # and returns a different, much smaller set. Getting this wrong leaves the
+    # sub-system with only a couple of conservation constraints for a dozen
+    # species: the minimization is then wildly under-determined and returns an
+    # assemblage with essentially no water left.
+    comp_names = Set(symbol(sp) for sp in system.SM.primaries)
+    prim = [sp for sp in sub_species if symbol(sp) in comp_names]
+    return ChemicalSystem(sub_species, isempty(prim) ? sub_species : prim)
+end
+
+# ── respeciate! ──────────────────────────────────────────────────────────────
+
+"""
+    respeciate!(p, u) -> Bool
+
+Solve the equilibrium sub-problem once, and write the result into the running
+composition `p.n_full`. Returns `true` when a solve actually happened.
+
+This is the second half of the operator-splitting step: the ODE advances the
+kinetic minerals with the speciation held frozen, then this function
+re-equilibrates the equilibrium partition under the element amounts the ODE has
+just produced.
+
+The element amounts `bₑ` carried by the state vector are the constraint of that
+sub-problem (Leal et al. 2017, Eq. 54). `solve` conserves `A·n`, so what has to
+be handed to it is a composition whose element totals are exactly `bₑ` — here
+the previous speciation, projected onto `bₑ` through the pseudo-inverse of
+`Aₑ`. Handing over `p.n_full` unchanged, as an earlier version did, discards
+`bₑ` entirely and leaves the element balance to drift.
+"""
+function respeciate!(p, u)
+    p.n_be > 0 || return false
+
+    # φ(bₑ), Leal et al. (2017) Eq. 54: the element amounts carried by the ODE
+    # state ARE the constraint of the minimization, and they are handed to the
+    # solver as `b`.
+    #
+    # That is the whole reason the state integrates `bₑ` rather than `nₑ`. Along
+    # the way an individual species may want to go negative — the generated
+    # dissolution reactions are written in H⁺, and a cement paste contains no
+    # acid — and it is the minimizer, not the caller, that redistributes the
+    # elements over a feasible set. An earlier version reconstructed `nₑ` from
+    # `bₑ` through `pinv(Aₑ)` and clamped the result at `ϵ`; the clamp destroyed
+    # the balance the projection had just established, and the solve went on to
+    # return amounts of 1e65.
+    #
+    # The composition below is a starting guess only, and does not have to carry
+    # `bₑ`. It is built from the reaction extents, which come free from the
+    # kinetic amounts: each reaction carries ν = −1 on its controlling mineral
+    # (`_normalise_to_mineral!`), so ξⱼ = nₖⱼ(0) − nₖⱼ.
+    be = collect(@view u[1:(p.n_be)])
+
+    nk = @view u[(p.n_be + 1):(p.n_be + p.n_nk)]
+    ξ = p.xi_buf
+    for (j, idx) in enumerate(p.idx_kinetic)
+        ξ[j] = p.n_initial_full[idx] - nk[j]
+    end
+    n_eq = p.n_eq_buf
+    mul!(n_eq, p.νe', ξ)
+    for j in eachindex(n_eq)
+        n_eq[j] = max(n_eq[j] + p.n_eq_init[j], p.ϵ)
+    end
+
+    state_eq = ChemicalState(p.eq_system, n_eq .* u"mol"; T = p.T_q[], P = p.P_q[])
+
+    # `p.eq_solver` is a prebuilt `EquilibriumSolver` over the partition — a
+    # solver *object*, not a SciML algorithm — so `solve`, not `equilibrate`.
+    local eq_result
+    try
+        eq_result = SciMLBase.solve(p.eq_solver, state_eq; ϵ = p.ϵ, b = be)
+    catch err
+        p.eq_failures[] += 1
+        if p.eq_failures[] == 1
+            @warn """re-speciation failed; the composition is left frozen for \
+            this step. Later failures are counted, not reported.""" exception = err
+        end
+        return false
+    end
+
+    for (j, idx) in enumerate(p.idx_equilibrium)
+        p.n_full[idx] = ustrip(us"mol", eq_result.n[j])
+    end
+    return true
 end
 
 # ── build_kinetics_ode ───────────────────────────────────────────────────────
@@ -325,7 +505,15 @@ where `nₑ = φ(bₑ)` is the equilibrium re-speciation constraint.
 """
 function build_kinetics_ode(kp::KineticsProblem)
     function f!(du, u, p, t)
-        T_elt = eltype(u)
+        # Promote with `typeof(t)`, not `eltype(u)` alone. Rosenbrock methods
+        # (`Rodas5P`, `Rodas4`, …) need a TIME gradient, which they obtain by
+        # calling `f!` with a dual `t` and a plain `u`. A rate law that actually
+        # depends on `t` — `waller`, and any user law with an explicit time
+        # dependence — then returns a `Dual` that cannot be stored in a
+        # `Vector{Float64}`, and the solve fails with "First call to automatic
+        # differentiation for time gradient failed". Rate laws that ignore `t`,
+        # like `parrot_killoh`, never exposed this.
+        T_elt = promote_type(eltype(u), typeof(t))
 
         # ── 1. Extract state components ──────────────────────────────────
         nk = @view u[(p.n_be + 1):(p.n_be + p.n_nk)]
@@ -343,27 +531,47 @@ function build_kinetics_ode(kp::KineticsProblem)
             n_full[idx] = max(nk[j], p.ϵ)
         end
 
-        # 2b. Equilibrium species from re-speciation φ(bₑ) (Leal Eq. 54)
-        if p.n_be > 0 && T_elt === Float64
-            be = @view u[1:(p.n_be)]
-            curr_state = p.state_ref[]
-            # Build a ChemicalState with updated element amounts
-            new_n = copy(p.n_full) .* u"mol"
-            new_state = ChemicalState(
-                curr_state.system, new_n,
-                temperature(curr_state), pressure(curr_state)
-            )
-            try
-                eq_result = equilibrate(new_state, p.eq_solver)
-                n_eq = ustrip.(us"mol", eq_result.n)
-                for (j, idx) in enumerate(p.idx_equilibrium)
-                    n_full[idx] = n_eq[idx]
+        # 2a'. NON-kinetic species from the extents: n = n(0) + νᵀ ξ.
+        #
+        # Without this the non-kinetic amounts stay pinned to their initial
+        # values for the whole run, because the buffer holding them is refreshed
+        # only by `respeciate!`. A rate law gating on such a species — sulfate
+        # available for ettringite, portlandite available for a pozzolanic
+        # reaction — would then never see it move, and would run past depletion
+        # while the kinetic mass balance stayed exact and the solver reported
+        # success. Skipped when an equilibrium solver is present: there the
+        # equilibrium partition is owned by `respeciate!`, which redistributes it
+        # in a way the stoichiometry alone cannot reproduce.
+        if p.n_be == 0
+            ξ = @view u[(p.n_be + p.n_nk + 1):(p.n_be + p.n_nk + p.n_rxn_state)]
+            # `νe` holds exactly the equilibrium-partition columns of ν, in the
+            # order of `idx_equilibrium`.
+            for (k, idx) in enumerate(p.idx_equilibrium)
+                acc = zero(T_elt)
+                for j in eachindex(ξ)
+                    acc += p.νe[j, k] * ξ[j]
                 end
-                p.state_ref[] = eq_result
-            catch
-                # If re-speciation fails, keep current n_full for equilibrium species
+                n_full[idx] = max(p.n_initial_full[idx] + acc, p.ϵ)
             end
         end
+
+        # 2b. Equilibrium species: read the *frozen* speciation.
+        #
+        # The equilibrium sub-problem is NOT solved here. It is solved once per
+        # accepted step, by `respeciate!` below, in an operator-splitting step.
+        # Two reasons, and both matter:
+        #
+        #  * the right-hand side of a stiff solver is evaluated many times per
+        #    step and differentiated for the Jacobian; solving an optimization
+        #    problem inside it makes the cost unpredictable, and — as long as
+        #    `ChemicalState` stores `Float64` moles — a `Dual` cannot even be
+        #    written into the state, so the solve would be skipped exactly on
+        #    the evaluations that build the Jacobian;
+        #  * with the solve outside, the same speciation is seen by the residual
+        #    and by its Jacobian, whatever the number type of `u`.
+        #
+        # `p.n_full` already carries the equilibrium partition as left by the
+        # last `respeciate!`, so nothing has to be copied here.
 
         # ── 3. Compute log-activities ────────────────────────────────────
         lna = p.lna_fn(n_full, p)
@@ -388,6 +596,11 @@ function build_kinetics_ode(kp::KineticsProblem)
         du_nk = p.νk' * rates
         for j in 1:(p.n_nk)
             du[p.n_be + j] = du_nk[j]
+        end
+
+        # ── 6b. ODE: dξ/dt = r, the extents of reaction ────────────────
+        for j in 1:(p.n_rxn_state)
+            du[p.n_be + p.n_nk + j] = rates[j]
         end
 
         # ── 7. ODE: dbₑ/dt = Aₑ νₑᵀ r (Leal Eq. 65) ────────────────────

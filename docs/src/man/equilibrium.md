@@ -58,6 +58,98 @@ ChemistryLab provides two solver extensions. Load whichever fits your workflow:
 
 When both are loaded, `OptimaSolver` always takes priority for `equilibrate(state)`.
 
+That default is measured, not assumed. On the cement equilibria this package
+targets, scored on two quantities neither solver defines — the element balance
+`‖A·n − A·n₀‖∞`, a hard physical constraint, and the Gibbs objective itself —
+both back-ends reach a balance of the order of `1e-14`, and OptimaSolver is 3 to
+26 times faster. Pass a solver explicitly to override the choice.
+
+## Differentiating an equilibrium
+
+A `ChemicalState` carries whatever number type its amounts have, so a
+composition built from `ForwardDiff.Dual` values propagates through the
+speciation, and `pH`, `pOH`, `porosity` and `saturation` come back as duals too.
+
+Crossing the **solve** works as well, and without asking any solver to iterate on
+dual numbers — Ipopt is a C library and never could. The equilibrium is solved
+once at the primal values, and the sensitivities come from the optimality
+conditions, the implicit-function-theorem route:
+
+```math
+\begin{bmatrix} H & A^{\mathsf T} \\ A & 0 \end{bmatrix}
+\begin{bmatrix} \dot n \\ \dot y \end{bmatrix}
+=
+\begin{bmatrix} -\partial_\theta \nabla G \\ \dot b \end{bmatrix},
+\qquad H = \nabla^2 G(n^\star),
+```
+
+restricted to the species actually present. One factorization serves every
+partial derivative, and the result is exact — no step size to choose.
+
+```julia
+using ChemistryLab, DynamicQuantities, ForwardDiff, OptimaSolver
+
+f(x) = begin
+    n = Any[fill(0.0u"mol", length(cs.species))...]
+    n[i_h2o] = 55.5u"mol";  n[i_cal] = 0.05u"mol";  n[i_co2] = x * u"mol"
+    eq = equilibrate(ChemicalState(cs, n), OptimaOptimizer())
+    ustrip(us"mol", eq.n[i_ca])
+end
+
+ForwardDiff.derivative(f, 0.01)     # → 0.15193
+```
+
+!!! note "Why the complementarity conditions cannot be skipped"
+    The stationarity conditions are `∇G − Aᵀy − z = 0`, `A n = b`, `nᵢzᵢ = 0`,
+    with `z ≥ 0` the stability multipliers. The last block partitions the
+    species, and dropping it does not degrade the answer gently — it destroys
+    it. On calcite + CO₂ in water with a gas phase declared, the unreduced
+    system puts the whole response into the **absent** gas species
+    (`n = 5×10⁻¹¹` mol), returning a sensitivity that satisfies the element
+    balance to `4×10⁻¹⁶` and means nothing.
+
+    No back-end returns `z`, so the active set is recovered internally: a
+    species negligible on the scale of the system that nonetheless takes a
+    leading share of the response is pinned, and the system re-solved.
+
+!!! note "Verified against Reaktoro"
+    On calcite + CO₂ + water, `∂n/∂(CO₂)` from this route agrees with the
+    package's own finite differences to `9×10⁻⁵` — the finite-difference
+    truncation error — and with [Reaktoro](https://reaktoro.org) 2.13 reading
+    **the same Cemdata18 file**, over the same eleven species, under the same
+    (ideal) activity model:
+
+    | species | ChemistryLab (AD) | Reaktoro (FD) | rel. diff |
+    |:--|--:|--:|--:|
+    | H₂O | −0.181336 | −0.181397 | 3.4×10⁻⁴ |
+    | Ca²⁺ | +0.151920 | +0.151987 | 4.4×10⁻⁴ |
+    | HCO₃⁻ | +0.333308 | +0.333427 | 3.6×10⁻⁴ |
+    | CO₂(aq) | +0.818655 | +0.818600 | 6.7×10⁻⁵ |
+    | Ca(HCO₃)⁺ | +0.029333 | +0.029338 | 1.6×10⁻⁴ |
+    | calcite | −0.181251 | −0.181324 | 4.0×10⁻⁴ |
+
+    The equilibrium amounts agree to the same order (`Ca²⁺` 3.5281×10⁻³ against
+    3.52902×10⁻³). Reaktoro's own spread across `h ∈ {10⁻³, 10⁻⁴, 10⁻⁵}` is
+    `7.2×10⁻⁴`, so the residual difference sits below the oracle's truncation
+    error on every species.
+
+    The absent gas species gets exactly zero from the active-set treatment,
+    against `2×10⁻⁹` by finite differences.
+
+!!! warning "A cross-code comparison has three knobs, not one"
+    Database, species list and activity model all have to match, and each is
+    worth tens of percent here. Reading Cemdata18 in both codes but leaving
+    Reaktoro on its HKF activity model against this package's default
+    `DiluteSolutionModel()` moves `∂Ca²⁺/∂(CO₂)` from `+0.1520` to `+0.2179` —
+    a 35 % gap that says nothing about either code.
+
+    The species list matters just as much. Dropping the aqueous calcium
+    complexes leaves free `Ca²⁺` as the only aqueous home for calcium, so
+    `∂Ca²⁺/∂(CO₂)` and `∂calcite/∂(CO₂)` mirror each other exactly. Restoring
+    `CaOH⁺`, `Ca(CO₃)@` and `Ca(HCO₃)⁺` breaks that mirror — the difference is
+    what `Ca(HCO₃)⁺` takes up — and **both codes break it the same way**. The
+    element balance closes to `2×10⁻¹⁶` either way.
+
 ### Explicit solver (always works)
 
 Pass the solver as the **second positional argument**:

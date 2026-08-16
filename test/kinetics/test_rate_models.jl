@@ -305,8 +305,12 @@ end
     kp = KineticsProblem(cs_kin, ChemicalState(cs_kin), (0.0, 1.0))
     @test kp isa KineticsProblem
     @test length(kp.idx_kinetic) == 1
+    # `u = [nₖ, ξ]`: one kinetic species and one reaction, with no equilibrium
+    # solver and no calorimeter. The extents are carried alongside the moles.
     u0 = build_u0(kp)
-    @test length(u0) == 1
+    @test length(u0) == 1 + length(kp.kinetic_reactions)
+    @test u0[1] == 0.0                       # no calcite in the empty state
+    @test u0[end] == 0.0                     # ξ(t₀) = 0 by definition
 
 end
 
@@ -366,5 +370,203 @@ end
     kp = KineticsProblem(cs_kin, state0, (0.0, 1.0))
     @test kp isa KineticsProblem
     @test length(kp.idx_kinetic) == 1
+
+end
+
+# ── Correction factors ────────────────────────────────────────────────────────
+
+@testset "blaine_factor / humidity_factor / powers_alpha_max" begin
+
+    # ── Blaine ────────────────────────────────────────────────────────────────
+    @test blaine_factor(385u"m^2/kg") == 1.0
+    @test blaine_factor(385.0) == 1.0                    # plain Real = SI
+    @test blaine_factor(770u"m^2/kg") ≈ 2.0
+    @test blaine_factor(400u"m^2/kg"; blaine_ref = 400u"m^2/kg") == 1.0
+    # Waller additions are referred to 400, not 385
+    @test blaine_factor(2000u"m^2/kg"; blaine_ref = 400u"m^2/kg") ≈ 5.0
+
+    # ── Relative humidity ─────────────────────────────────────────────────────
+    # Hydration stops at and below 80 % RH; the limit from above is ≈ 0.0951.
+    @test humidity_factor(0.5) == 0.0
+    @test humidity_factor(0.8) == 0.0
+    @test humidity_factor(0.8 + 1.0e-9) ≈ ((0.8 - 0.55) / 0.45)^4 rtol = 1.0e-6
+    # Lavergne et al. (2018) quote "0.095" for this limit
+    @test isapprox(((0.8 - 0.55) / 0.45)^4, 0.095; atol = 5.0e-4)
+    @test humidity_factor(1.0) ≈ 1.0
+    # Strictly increasing above the cut
+    hs = 0.81:0.01:1.0
+    @test issorted(humidity_factor.(hs))
+
+    # ── Powers water-availability cap ─────────────────────────────────────────
+    @test powers_alpha_max(0.5) == 1.0
+    @test powers_alpha_max(0.42) ≈ 1.0
+    @test powers_alpha_max(0.32) ≈ 0.32 / 0.42
+    @test powers_alpha_max(0.21) ≈ 0.5
+
+    # AD through the cap (calibration on w/c must not need finite differences)
+    @test ForwardDiff.derivative(powers_alpha_max, 0.3) ≈ 1 / 0.42
+
+end
+
+# ── parrot_killoh_avrami ──────────────────────────────────────────────────────
+
+@testset "parrot_killoh_avrami" begin
+
+    index = Dict("C3S" => 1)
+    lna_sv = StateView([0.0], index)
+    n0_sv = StateView([1.0], index)
+    T_ref = 293.15
+    at(pk, α; T = T_ref, t = 3600.0) =
+        pk(T, 1.0e5, t, StateView([1.0 - α], index), lna_sv, n0_sv)
+
+    pk = parrot_killoh_avrami(PK84_PARAMS_C3S, "C3S")
+    @test pk isa KineticFunc
+
+    # ── The rate is strictly positive at α = 0 ────────────────────────────────
+    # Without the PK_AVRAMI_SEED floor the Avrami branch vanishes there, α ≡ 0
+    # solves the ODE and hydration never starts.
+    @test at(pk, 0.0) > 0
+    @test all(isfinite(at(pk, α)) && at(pk, α) > 0 for α in (0.0, 1.0e-8, 0.01, 0.5, 0.99))
+
+    # ── Decreasing once past the nucleation peak, and vanishing at α → 1 ──────
+    @test at(pk, 0.9) < at(pk, 0.5) < at(pk, 0.2)
+    @test at(pk, 0.999) < 1.0e-6
+
+    # ── Arrhenius ─────────────────────────────────────────────────────────────
+    @test at(pk, 0.3; T = 313.15) > at(pk, 0.3) > at(pk, 0.3; T = 278.15)
+
+    # ── Which branch limits which phase ───────────────────────────────────────
+    # Lavergne et al. (2018), §1.1.1: with the 1984 parameters "there is no
+    # nucleation-growth step for C2S, and no diffusion-controlled step for C3S".
+    # Re-derive the three branches independently of the implementation.
+    function branches(p, ξ)
+        # `ustrip` on a DynamicQuantities quantity already returns SI (s⁻¹ here)
+        k₁ = ustrip(p.k₁); n₁ = p.n₁
+        k₂ = ustrip(p.k₂)
+        k₃ = ustrip(p.k₃); n₃ = p.n₃
+        om = max(1 - ξ, 1.0e-12)
+        ξa = max(ξ, ChemistryLab.PK_AVRAMI_SEED)
+        return (
+            (k₁ / n₁) * om * (-log(1 - ξa))^(1 - n₁),          # Avrami
+            k₂ * om^(2 / 3) / max(1 - om^(1 / 3), 1.0e-12),    # Jander
+            k₃ * om^n₃,                                        # power law
+        )
+    end
+    active(p) = unique(argmin(collect(branches(p, ξ))) for ξ in 0.0:0.01:0.99)
+
+    @test active(PK84_PARAMS_C2S) == [3]           # power law only
+    @test sort(active(PK84_PARAMS_C3S)) == [1, 3]  # Avrami then power law, no Jander
+    @test 2 in active(PK84_PARAMS_C3A)             # aluminates do see diffusion
+    @test 2 in active(PK84_PARAMS_C4AF)
+
+    # ── The implementation agrees with that independent derivation ────────────
+    for α in (0.05, 0.2, 0.5, 0.8)
+        @test at(pk, α) ≈ minimum(branches(PK84_PARAMS_C3S, α)) rtol = 1.0e-10
+    end
+
+    # ── Blaine and humidity corrections compose multiplicatively ──────────────
+    pk_fine = parrot_killoh_avrami(PK84_PARAMS_C3S, "C3S"; blaine = 770u"m^2/kg")
+    @test at(pk_fine, 0.3) ≈ 2 * at(pk, 0.3) rtol = 1.0e-10
+
+    pk_dry = parrot_killoh_avrami(PK84_PARAMS_C3S, "C3S"; humidity = 0.7)
+    @test at(pk_dry, 0.3) == 0.0                                  # hydration stopped
+    pk_h = parrot_killoh_avrami(PK84_PARAMS_C3S, "C3S"; humidity = 0.9)
+    @test at(pk_h, 0.3) ≈ humidity_factor(0.9) * at(pk, 0.3) rtol = 1.0e-10
+
+    # A time-dependent humidity is accepted as a callable
+    pk_ht = parrot_killoh_avrami(PK84_PARAMS_C3S, "C3S"; humidity = t -> t < 100 ? 0.99 : 0.7)
+    @test at(pk_ht, 0.3; t = 10.0) > 0
+    @test at(pk_ht, 0.3; t = 1000.0) == 0.0
+
+    # ── α_max cap ─────────────────────────────────────────────────────────────
+    pk_cap = parrot_killoh_avrami(PK84_PARAMS_C3S, "C3S"; α_max = powers_alpha_max(0.32))
+    @test at(pk_cap, 0.76) < at(pk_cap, 0.3)      # already near the cap
+    @test at(pk_cap, 0.8) >= 0
+
+    # ── AD through the rate ───────────────────────────────────────────────────
+    d = ForwardDiff.derivative(
+        α -> pk(T_ref, 1.0e5, 3600.0, StateView([1.0 - α], index), lna_sv, n0_sv), 0.4
+    )
+    @test isfinite(d)
+    dT = ForwardDiff.derivative(
+        T -> pk(T, 1.0e5, 3600.0, StateView([0.6], index), lna_sv, n0_sv), T_ref
+    )
+    @test isfinite(dT) && dT > 0
+
+    # ── The two variants are distinct objects with non-transferable parameters ─
+    @test parrot_killoh(PK_PARAMS_C3S, "C3S")(T_ref, 1.0e5, 3600.0, StateView([0.6], index), lna_sv, n0_sv) !=
+        at(pk, 0.4)
+
+end
+
+# ── waller ────────────────────────────────────────────────────────────────────
+
+@testset "waller" begin
+
+    index = Dict("FA" => 1)
+    lna_sv = StateView([0.0], index)
+    n0_sv = StateView([1.0], index)
+    T_ref = 293.15
+    day = 86400.0
+    at(w, α, t; T = T_ref) = w(T, 1.0e5, t, StateView([1.0 - α], index), lna_sv, n0_sv)
+
+    w = waller(WALLER_PARAMS_FLY_ASH, "FA")
+    @test w isa KineticFunc
+
+    # ── Positive and finite everywhere, including the singular α = 0 point ────
+    @test all(
+        isfinite(at(w, α, t)) && at(w, α, t) > 0
+            for (α, t) in ((0.0, 1.0), (0.0, day), (0.01, day), (0.5, 80day), (0.95, 500day))
+    )
+
+    # ── The closed form integrates back to the sigmoid it came from ───────────
+    # α(t) = 1/(1+(τ/t)^n); integrate α̇(α) by RK4 from t = 1 h and compare.
+    τ, n_w = 80 * day, 0.7
+    sigmoid(t) = 1 / (1 + (τ / t)^n_w)
+    t0 = 3600.0
+    α = sigmoid(t0)
+    t = t0
+    nsteps = 40_000
+    h = (200day - t0) / nsteps
+    f(a, tt) = at(w, a, tt)
+    for _ in 1:nsteps
+        k1 = f(α, t); k2 = f(α + h / 2 * k1, t + h / 2)
+        k3 = f(α + h / 2 * k2, t + h / 2); k4 = f(α + h * k3, t + h)
+        α += h / 6 * (k1 + 2k2 + 2k3 + k4)
+        t += h
+    end
+    @test isapprox(α, sigmoid(200day); rtol = 1.0e-3)
+
+    # ── α(τ) = 1/2 for the shipped fly-ash parameters ─────────────────────────
+    @test isapprox(sigmoid(τ), 0.5; atol = 1.0e-12)
+
+    # ── Monotone decay of the rate with the degree of reaction ────────────────
+    @test at(w, 0.9, 100day) < at(w, 0.5, 100day) < at(w, 0.1, 100day)
+
+    # ── Pozzolanic reactions are more thermo-activated than the clinker ───────
+    ratio_fa = at(w, 0.3, 30day; T = 313.15) / at(w, 0.3, 30day)
+    pk = parrot_killoh_avrami(PK84_PARAMS_C3S, "C3S")
+    idx3 = Dict("C3S" => 1)
+    r(T) = pk(T, 1.0e5, 30day, StateView([0.7], idx3), StateView([0.0], idx3), StateView([1.0], idx3))
+    @test ratio_fa > r(313.15) / r(293.15)
+
+    # ── Blaine is referred to the addition's own reference (400, not 385) ─────
+    w_fine = waller(WALLER_PARAMS_FLY_ASH, "FA"; blaine = 800u"m^2/kg")
+    @test at(w_fine, 0.3, 30day) ≈ 2 * at(w, 0.3, 30day) rtol = 1.0e-10
+
+    # Silica fume shares the kinetics; its reactivity is carried by the fineness
+    w_sf = waller(WALLER_PARAMS_SILICA_FUME, "FA"; blaine = 2000u"m^2/kg")
+    @test at(w_sf, 0.3, 30day) ≈ 5 * at(w, 0.3, 30day) rtol = 1.0e-10
+
+    # ── Slag reacts more slowly and incompletely ──────────────────────────────
+    w_slag = waller(WALLER_PARAMS_SLAG, "FA"; α_max = 0.9)
+    @test at(w_slag, 0.3, 30day) < at(w, 0.3, 30day)
+
+    # ── AD ────────────────────────────────────────────────────────────────────
+    @test isfinite(
+        ForwardDiff.derivative(
+            a -> w(T_ref, 1.0e5, 30day, StateView([1.0 - a], index), lna_sv, n0_sv), 0.3
+        )
+    )
 
 end

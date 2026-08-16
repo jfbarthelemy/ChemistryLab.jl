@@ -2,7 +2,20 @@
 # Copyright © 2025-2026 Jean-François Barthélémy and Anthony Soive (Cerema, UMR MCD)
 
 using DynamicQuantities
+using ForwardDiff
 using OrderedCollections
+
+# `_plain` peels however many AD tags deep. It is used for *display* only:
+# the stored diagnostics keep their dual part so that pH, pOH, porosity and
+# saturation stay differentiable like every other output.
+_plain(x) = x
+_plain(::Nothing) = nothing
+_plain(x::Real) = Float64(x)
+_plain(x::ForwardDiff.Dual) = _plain(ForwardDiff.value(x))
+
+# Bare element type behind a quantity — the `R` parameter of `ChemicalState`.
+_realtype(::Type{<:AbstractQuantity{T}}) where {T} = T
+_realtype(q) = typeof(_plain(q))
 
 const PhaseQuantities{Q} = @NamedTuple{liquid::Q, solid::Q, gas::Q, total::Q}
 
@@ -17,7 +30,7 @@ Each field holds the total of the corresponding thermodynamic phase.
 """ PhaseQuantities
 
 """
-    struct ChemicalState{C, S, Q<:AbstractQuantity}
+    struct ChemicalState{C, S, Q<:AbstractQuantity, R<:Real}
 
 Immutable container holding the thermodynamic state of a `ChemicalSystem`.
 
@@ -42,10 +55,10 @@ the underlying `ChemicalSystem`.
   - `n_phases`: moles per phase `(liquid, solid, gas, total)` — `PhaseQuantities{Q}`.
   - `m_phases`: mass per phase `(liquid, solid, gas, total)` — `PhaseQuantities{Q}`.
   - `V_phases`: volume per phase `(liquid, solid, gas, total)` — `PhaseQuantities{Q}`.
-  - `pH`: pH of the liquid phase, or `nothing` if H⁺ is absent — `Float64 | Nothing`.
-  - `pOH`: pOH of the liquid phase, or `nothing` if OH⁻ is absent — `Float64 | Nothing`.
-  - `porosity`: `(V_liquid + V_gas) / V_total`, or `NaN` if volumes unavailable — `Float64`.
-  - `saturation`: `V_liquid / (V_liquid + V_gas)`, or `NaN` if pore volume is zero — `Float64`.
+  - `pH`: pH of the liquid phase, or `nothing` if H⁺ is absent — `R | Nothing`.
+  - `pOH`: pOH of the liquid phase, or `nothing` if OH⁻ is absent — `R | Nothing`.
+  - `porosity`: `(V_liquid + V_gas) / V_total`, or `NaN` if volumes unavailable — `R`.
+  - `saturation`: `V_liquid / (V_liquid + V_gas)`, or `NaN` if pore volume is zero — `R`.
 
 # Examples
 ```jldoctest
@@ -63,7 +76,7 @@ julia> ustrip(state.T[])
 298.15
 ```
 """
-struct ChemicalState{C, S, Q <: AbstractQuantity}
+struct ChemicalState{C, S, Q <: AbstractQuantity, R <: Real}
     system::ChemicalSystem{C, S}             # shared reference — not duplicated on copy
     n::Vector{Q}                             # molar amounts [mol] — always stored in mol
     T::Vector{Q}                             # temperature [K]     — 1-element Vector for mutability
@@ -71,10 +84,14 @@ struct ChemicalState{C, S, Q <: AbstractQuantity}
     n_phases::Vector{PhaseQuantities{Q}}     # moles per phase — 1-element Vector for mutability
     m_phases::Vector{PhaseQuantities{Q}}     # mass per phase  — 1-element Vector for mutability
     V_phases::Vector{PhaseQuantities{Q}}     # volume per phase — 1-element Vector for mutability
-    pH::Vector{Union{Float64, Nothing}}      # dimensionless — Float64 or nothing
-    pOH::Vector{Union{Float64, Nothing}}     # dimensionless — Float64 or nothing
-    porosity::Vector{Float64}    # dimensionless ratio — V_pore / V_total (NaN if unavailable)
-    saturation::Vector{Float64}  # dimensionless ratio — V_liq / V_pore (NaN if pore volume zero)
+    # The dimensionless diagnostics carry the same number type as the amounts —
+    # `R` is the bare element type behind `Q`. They are outputs a caller may
+    # legitimately want to differentiate (∂pH/∂composition, ∂porosity/∂w-c), so
+    # they must not be pinned to `Float64`.
+    pH::Vector{Union{R, Nothing}}            # dimensionless, or nothing when H⁺ is absent
+    pOH::Vector{Union{R, Nothing}}           # dimensionless, or nothing when OH⁻ is absent
+    porosity::Vector{R}          # dimensionless ratio — V_pore / V_total (NaN if unavailable)
+    saturation::Vector{R}        # dimensionless ratio — V_liq / V_pore (NaN if pore volume zero)
 end
 
 # ── Internal helpers ──────────────────────────────────────────────────────────
@@ -179,7 +196,7 @@ function _compute_V_phases(system::ChemicalSystem, n::AbstractVector, T, P)
 end
 
 """
-    _compute_porosity(V_phases) -> Float64
+    _compute_porosity(V_phases) -> Real
 
 Compute porosity = (V_liquid + V_gas) / V_total.
 Returns `NaN` if total volume is zero.
@@ -191,7 +208,7 @@ function _compute_porosity(V_phases)
 end
 
 """
-    _compute_saturation(V_phases) -> Float64
+    _compute_saturation(V_phases) -> Real
 
 Compute saturation = V_liquid / (V_liquid + V_gas).
 Returns `NaN` if pore volume is zero.
@@ -245,14 +262,26 @@ function ChemicalState(
     # Accept plain Real (assumed SI: K, Pa) or Quantity
     T_q = _ensure_unit(us"K", T)
     P_q = _ensure_unit(us"Pa", P)
-    Q = typeof(T_q)
     @assert length(n) == length(system) "n must have one entry per species (got $(length(n)), expected $(length(system)))"
 
     # Convert each entry individually — species i may be in mol while species j is in g
-    n_mol = Q[
+    n_conv = [
         uconvert(us"mol", _entry_to_moles(nᵢ, s))
             for (nᵢ, s) in zip(n, system.species)
     ]
+
+    # The element type is the promotion of T, P **and the amounts**. Taking it
+    # from T alone, as an earlier version did, silently forced `Float64` on the
+    # composition: a dual number could not be stored, so nothing downstream of a
+    # `ChemicalState` was differentiable.
+    Q = mapreduce(
+        typeof, promote_type, n_conv;
+        init = promote_type(typeof(T_q), typeof(P_q))
+    )
+    R = _realtype(Q)
+    T_q = convert(Q, T_q)
+    P_q = convert(Q, P_q)
+    n_mol = Q[nᵢ for nᵢ in n_conv]
 
     # Auto-seed H⁺/OH⁻ at neutral pH if water is present and they are zero
     _auto_seed_neutral_pH_vec!(system, n_mol, T_q, P_q)
@@ -274,10 +303,10 @@ function ChemicalState(
         PhaseQuantities{Q}[n_ph],       # 1-element Vector for in-place update
         PhaseQuantities{Q}[m_ph],
         PhaseQuantities{Q}[V_ph],
-        Union{Float64, Nothing}[_pH],
-        Union{Float64, Nothing}[_pOH],
-        Float64[_porosity],
-        Float64[_saturation],
+        Union{R, Nothing}[_pH],
+        Union{R, Nothing}[_pOH],
+        R[_porosity],
+        R[_saturation],
     )
 end
 
@@ -604,7 +633,7 @@ volume(state::ChemicalState, sym::AbstractString) = volume(state, state.system[s
 # ── pH, pOH, porosity, saturation accessors ───────────────────────────────────
 
 """
-    pH(state::ChemicalState) -> Union{Float64, Nothing}
+    pH(state::ChemicalState) -> Union{Real, Nothing}
 
 Return the pH of the liquid phase, or `nothing` if H⁺ is absent.
 
@@ -617,14 +646,14 @@ julia> cs = ChemicalSystem([
 
 julia> state = ChemicalState(cs, [55.5u"mol", 1e-7u"mol"]);
 
-julia> pH(state) isa Union{Float64, Nothing}
+julia> pH(state) isa Union{Real, Nothing}
 true
 ```
 """
 pH(state::ChemicalState) = state.pH[]
 
 """
-    pOH(state::ChemicalState) -> Union{Float64, Nothing}
+    pOH(state::ChemicalState) -> Union{Real, Nothing}
 
 Return the pOH of the liquid phase, or `nothing` if OH⁻ is absent.
 
@@ -637,14 +666,14 @@ julia> cs = ChemicalSystem([
 
 julia> state = ChemicalState(cs, [55.5u"mol", 1e-7u"mol"]);
 
-julia> pOH(state) isa Union{Float64, Nothing}
+julia> pOH(state) isa Union{Real, Nothing}
 true
 ```
 """
 pOH(state::ChemicalState) = state.pOH[]
 
 """
-    porosity(state::ChemicalState) -> Float64
+    porosity(state::ChemicalState) -> Real
 
 Return the porosity `(V_liquid + V_gas) / V_total`,
 or `NaN` if total volume is zero (no molar volumes available).
@@ -658,14 +687,14 @@ julia> cs = ChemicalSystem([
 
 julia> state = ChemicalState(cs, [55.5u"mol", 0.05u"mol"]);
 
-julia> porosity(state) isa Float64
+julia> porosity(state) isa Real
 true
 ```
 """
 porosity(state::ChemicalState) = state.porosity[]
 
 """
-    saturation(state::ChemicalState) -> Float64
+    saturation(state::ChemicalState) -> Real
 
 Return the saturation `V_liquid / (V_liquid + V_gas)`,
 or `NaN` if pore volume is zero.
@@ -679,14 +708,14 @@ julia> cs = ChemicalSystem([
 
 julia> state = ChemicalState(cs, [55.5u"mol", 0.05u"mol"]);
 
-julia> saturation(state) isa Float64
+julia> saturation(state) isa Real
 true
 ```
 """
 saturation(state::ChemicalState) = state.saturation[]
 
 """
-    _compute_pH(system, n, V_liquid) -> Union{Float64, Nothing}
+    _compute_pH(system, n, V_liquid) -> Union{Real, Nothing}
 
 Compute pH using the most reliable species between H⁺ and OH⁻.
 
@@ -724,7 +753,7 @@ function _compute_pH(system::ChemicalSystem, n::AbstractVector, T, P, V_liquid)
 end
 
 """
-    _compute_pOH(system, n, T, P, V_liquid) -> Union{Float64, Nothing}
+    _compute_pOH(system, n, T, P, V_liquid) -> Union{Real, Nothing}
 
 Compute pOH symmetrically to `_compute_pH`:
 
@@ -757,7 +786,7 @@ function _compute_pOH(system::ChemicalSystem, n::AbstractVector, T, P, V_liquid)
 end
 
 """
-    _compute_pKw(system::ChemicalSystem, T, P) -> Union{Float64, Nothing}
+    _compute_pKw(system::ChemicalSystem, T, P) -> Union{Real, Nothing}
 
 Compute pKw = -logK⁰(T, P) for the water dissociation reaction
 H2O@ = H+ + OH- reconstructed on the fly from the species present in `system`.
@@ -1216,9 +1245,9 @@ function Base.show(io::IO, ::MIME"text/plain", state::ChemicalState)
     _rpad(s, n) = s * repeat(" ", max(0, n - length(s)))
     _lpad(s, n) = repeat(" ", max(0, n - length(s))) * s
 
-    _fmt(x) = string(round(Float64(x); sigdigits = 6))
-    _fmt4(x) = string(round(Float64(x); digits = 4))
-    _fmt6(x) = string(round(Float64(x); digits = 6))
+    _fmt(x) = string(round(_plain(x); sigdigits = 6))
+    _fmt4(x) = string(round(_plain(x); digits = 4))
+    _fmt6(x) = string(round(_plain(x); digits = 6))
 
     function _row(col1, cell_n, cell_m, cell_v, cell_c, cell_p)
         r = vl * _lpad(col1, pad) *

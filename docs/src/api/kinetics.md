@@ -36,3 +36,10 @@ Pages   = ["kinetics/kinetics_solver.jl"]
 Modules = [ChemistryLab]
 Pages   = ["kinetics/calorimetry.jl"]
 ```
+
+## Post-processing a solution
+
+```@autodocs
+Modules = [ChemistryLab]
+Pages   = ["kinetics/kinetics_postprocessing.jl"]
+```
