@@ -1,0 +1,1412 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Chemical Equilibrium · ChemistryLab.jl</title><meta name="title" content="Chemical Equilibrium · ChemistryLab.jl"/><meta property="og:title" content="Chemical Equilibrium · ChemistryLab.jl"/><meta property="twitter:title" content="Chemical Equilibrium · ChemistryLab.jl"/><meta name="description" content="Documentation for ChemistryLab.jl."/><meta property="og:description" content="Documentation for ChemistryLab.jl."/><meta property="twitter:description" content="Documentation for ChemistryLab.jl."/><meta property="og:url" content="https://MicroPoroChemoMechanics.github.io/ChemistryLab.jl/man/equilibrium/"/><meta property="twitter:url" content="https://MicroPoroChemoMechanics.github.io/ChemistryLab.jl/man/equilibrium/"/><link rel="canonical" href="https://MicroPoroChemoMechanics.github.io/ChemistryLab.jl/man/equilibrium/"/><script data-outdated-warner src="../../assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.050/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.8/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="../.."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../../assets/documenter.js"></script><script src="../../search_index.js"></script><script src="../../siteinfo.js"></script><script src="../../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-mocha.css" data-theme-name="catppuccin-mocha"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-macchiato.css" data-theme-name="catppuccin-macchiato"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-frappe.css" data-theme-name="catppuccin-frappe"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-latte.css" data-theme-name="catppuccin-latte"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../../assets/themeswap.js"></script><link href="../../assets/favicon.ico" rel="icon" type="image/x-icon"/><link href="../../assets/custom.css" rel="stylesheet" type="text/css"/></head><body><div id="documenter"><nav class="docs-sidebar"><a class="docs-logo" href="../../"><img src="../../assets/logo.svg" alt="ChemistryLab.jl logo"/></a><div class="docs-package-name"><span class="docs-autofit"><a href="../../">ChemistryLab.jl</a></span></div><button class="docs-search-query input is-rounded is-small is-clickable my-2 mx-auto py-1 px-2" id="documenter-search-query">Search docs (Ctrl + /)</button><ul class="docs-menu"><li><a class="tocitem" href="../../">Home</a></li><li><a class="tocitem" href="../../quickstart/">Getting Started</a></li><li><input class="collapse-toggle" id="menuitem-3" type="checkbox" checked/><label class="tocitem" for="menuitem-3"><span class="docs-label">Tutorial</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../formula_manipulation/">Chemical Formula Manipulation</a></li><li><a class="tocitem" href="../species/">Species</a></li><li><a class="tocitem" href="../cement_species/">Cement Species</a></li><li><a class="tocitem" href="../databases/">Database Interoperability</a></li><li><a class="tocitem" href="../stoich_matrices/">Stoichiometric Matrix</a></li><li><a class="tocitem" href="../reactions/">Chemical Reactions</a></li><li><a class="tocitem" href="../thermodynamics/">Thermodynamic Functions</a></li><li><a class="tocitem" href="../chemical_system_state/">ChemicalSystem and ChemicalState</a></li><li class="is-active"><a class="tocitem" href>Chemical Equilibrium</a><ul class="internal"><li><a class="tocitem" href="#Minimal-workflow"><span>Minimal workflow</span></a></li><li><a class="tocitem" href="#Choosing-a-solver"><span>Choosing a solver</span></a></li><li><a class="tocitem" href="#Differentiating-an-equilibrium"><span>Differentiating an equilibrium</span></a></li><li><a class="tocitem" href="#Inspecting-the-equilibrium-state"><span>Inspecting the equilibrium state</span></a></li><li><a class="tocitem" href="#Scaling-and-normalization"><span>Scaling and normalization</span></a></li><li><a class="tocitem" href="#Controlling-the-solver"><span>Controlling the solver</span></a></li><li><a class="tocitem" href="#Using-EquilibriumSolver-explicitly"><span>Using <code>EquilibriumSolver</code> explicitly</span></a></li><li><a class="tocitem" href="#Temperature-dependence-(10–30-C)"><span>Temperature dependence (10–30 °C)</span></a></li><li><a class="tocitem" href="#Activity-models"><span>Activity models</span></a></li><li><a class="tocitem" href="#Solid-solutions"><span>Solid solutions</span></a></li></ul></li><li><a class="tocitem" href="../kinetics/">Chemical Kinetics</a></li><li><a class="tocitem" href="../coupling/">Coupling kinetics and equilibrium</a></li><li><a class="tocitem" href="../reaktoro_comparison/">Validation against Reaktoro</a></li><li><a class="tocitem" href="../advanced/">Advanced Topics</a></li></ul></li><li><input class="collapse-toggle" id="menuitem-4" type="checkbox"/><label class="tocitem" for="menuitem-4"><span class="docs-label">Examples</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../../examples/bogue_calculation/">Bogue Calculation</a></li><li><a class="tocitem" href="../../examples/example_stoich_matrix/">Stoichiometric Matrix</a></li><li><a class="tocitem" href="../../examples/from_scratch/">Calculation of thermodynamic properties of calcite dissolution</a></li><li><a class="tocitem" href="../../examples/titration_acetic_acid/">Titration of Acetic Acid by NaOH</a></li><li><a class="tocitem" href="../../examples/titration_maleic_acid/">Titration of Maleic Acid by NaOH</a></li><li><a class="tocitem" href="../../examples/co2_carbonate_system/">CO₂ Dissolution and the Carbonate System</a></li><li><a class="tocitem" href="../../examples/simplified_clinker_dissolution/">Simplified Clinker Dissolution</a></li><li><a class="tocitem" href="../../examples/cement_carbonation/">Carbonation of a Cement Paste</a></li><li><a class="tocitem" href="../../examples/cement_clinker_kinetics/">Cement clinker hydration kinetics</a></li><li><a class="tocitem" href="../../examples/coupled_hydration/">The hydrating paste, end to end</a></li></ul></li><li><input class="collapse-toggle" id="menuitem-5" type="checkbox"/><label class="tocitem" for="menuitem-5"><span class="docs-label">API</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../../api/thermo_functions/">Thermodynamical functions</a></li><li><a class="tocitem" href="../../api/thermo_models/">Thermodynamical models</a></li><li><a class="tocitem" href="../../api/water_properties/">Water properties</a></li><li><a class="tocitem" href="../../api/element_order/">Element order</a></li><li><a class="tocitem" href="../../api/parsing_tools/">Parsing tools</a></li><li><a class="tocitem" href="../../api/formulas/">Formulas</a></li><li><a class="tocitem" href="../../api/species/">Species</a></li><li><a class="tocitem" href="../../api/stoich_matrices/">Stoichiometric Matrix</a></li><li><a class="tocitem" href="../../api/reactions/">Reactions</a></li><li><a class="tocitem" href="../../api/databases/">Databases</a></li><li><a class="tocitem" href="../../api/chemical_systems/">Chemical systems and states</a></li><li><a class="tocitem" href="../../api/equilibrium/">Equilibrium</a></li><li><a class="tocitem" href="../../api/kinetics/">Kinetics</a></li><li><a class="tocitem" href="../../api/utils/">Utilities</a></li></ul></li><li><a class="tocitem" href="../../references/">References</a></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><a class="docs-sidebar-button docs-navbar-link fa-solid fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a><nav class="breadcrumb"><ul class="is-hidden-mobile"><li><a class="is-disabled">Tutorial</a></li><li class="is-active"><a href>Chemical Equilibrium</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>Chemical Equilibrium</a></li></ul></nav><div class="docs-right"><a class="docs-navbar-link" href="https://github.com/MicroPoroChemoMechanics/ChemistryLab.jl" title="View the repository on GitHub"><span class="docs-icon fa-brands"></span><span class="docs-label is-hidden-touch">GitHub</span></a><a class="docs-settings-button docs-navbar-link fa-solid fa-gear" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-article-toggle-button fa-solid fa-chevron-up" id="documenter-article-toggle-button" href="javascript:;" title="Collapse all docstrings"></a></div></header><article class="content" id="documenter-page"><h1 id="sec-equilibrium"><a class="docs-heading-anchor" href="#sec-equilibrium">Chemical Equilibrium</a><a id="sec-equilibrium-1"></a><a class="docs-heading-anchor-permalink" href="#sec-equilibrium" title="Permalink"></a></h1><p>ChemistryLab computes thermodynamic equilibrium by minimizing the Gibbs free energy of the system subject to element-conservation constraints. The workflow always follows the same four steps:</p><ol><li>Build a <a href="../../api/chemical_systems/#ChemicalSystem"><code>ChemicalSystem</code></a> (species + stoichiometric matrix).</li><li>Create an initial <a href="../../api/chemical_systems/#ChemicalState"><code>ChemicalState</code></a> (temperature, pressure, initial amounts).</li><li>Call <a href="../../api/equilibrium/#ChemistryLab.equilibrate-Tuple{ChemicalState, Any}"><code>equilibrate</code></a> (or use <a href="../../api/equilibrium/#ChemistryLab.EquilibriumSolver"><code>EquilibriumSolver</code></a> explicitly).</li><li>Inspect the resulting <a href="../../api/chemical_systems/#ChemicalState"><code>ChemicalState</code></a>.</li></ol><hr/><h2 id="Minimal-workflow"><a class="docs-heading-anchor" href="#Minimal-workflow">Minimal workflow</a><a id="Minimal-workflow-1"></a><a class="docs-heading-anchor-permalink" href="#Minimal-workflow" title="Permalink"></a></h2><p>The convenience function <a href="../../api/equilibrium/#ChemistryLab.equilibrate-Tuple{ChemicalState, Any}"><code>equilibrate</code></a> handles everything with sensible defaults. The example below computes the equilibrium state of calcite (CaCO₃) dissolving in mildly acidic water — a standard geochemical benchmark.</p><pre><code class="language-julia hljs">using Optimization, OptimizationIpopt
+using ChemistryLab
+using DynamicQuantities
+
+substances = build_species(&quot;../../../data/slop98-inorganic-thermofun.json&quot;)
+
+# Select the carbonate-system species, calcite and its dissolution product Ca²⁺
+dict = Dict(symbol(s) =&gt; s for s in substances)
+species = [dict[sym] for sym in split(&quot;H2O@ H+ OH- CO2@ HCO3- CO3-2 Ca+2 Cal&quot;)]
+
+cs = ChemicalSystem(species, [&quot;H2O@&quot;, &quot;H+&quot;, &quot;Ca+2&quot;, &quot;CO3-2&quot;, &quot;Zz&quot;])</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">8-element ChemicalSystem{Species{Int64}, AbstractReaction, StoichMatrix{Int64, Symbol, Vector{Symbol}, Matrix{Int64}, Species{Int64}}, StoichMatrix{Int64, Species{Int64}, Vector{Species{Int64}}, Matrix{Int64}, Species{Int64}}, Nothing}:
+ H2O@ {Water HGK} [H2O@ ◆ H₂O@]
+ H+ {H+} [H+ ◆ H⁺]
+ OH- {OH- hydroXyl ion} [OH- ◆ OH⁻]
+ CO2@ {CO2,aq (+ H2O = H2CO3,aq )} [CO2@ ◆ CO₂@]
+ HCO3- {HCO3- bicarbonate ion} [HCO3- ◆ HCO₃⁻]
+ CO3-2 {CO3-2 carbonate ion} [CO3-2 ◆ CO₃²⁻]
+ Ca+2 {Ca+2 ion} [Ca+2 ◆ Ca²⁺]
+ Cal {CALCITE} [CaCO3 ◆ CaCO₃]</code></pre><pre><code class="language-julia hljs">state = ChemicalState(cs)
+
+# 1 mmol calcite dissolved in 1 L of acidic water (initial pH ≈ 4)
+set_quantity!(state, &quot;Cal&quot;,  1e-3u&quot;mol&quot;)
+set_quantity!(state, &quot;H2O@&quot;, 1.0u&quot;kg&quot;)
+
+V = volume(state)
+set_quantity!(state, &quot;H+&quot;,  1e-4u&quot;mol/L&quot; * V.liquid)   # pH = 4
+set_quantity!(state, &quot;OH-&quot;, 1e-10u&quot;mol/L&quot; * V.liquid)  # charge seed
+
+state_eq = equilibrate(state)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">ChemicalState{Species{Int64}, AbstractReaction, DynamicQuantities.Quantity{Float64, DynamicQuantities.SymbolicDimensions{DynamicQuantities.FRInt32}}, Float64}
+┌────────────────────────────────────────────────────────────────────────────────────────────────┐
+│           T : 298.15 K                                                                         │
+│           P : 1.0 bar                                                                          │
+╞════════════════════════════════════════════════════════════════════════════════════════════════╡
+│  # liquid #│             n [mol]│               m [g]│             V [cm³]│           c [mol/L]│
+├┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┤
+│ tot. liquid│             55.5096│             1000.02│             1002.96│                    │
+├┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┤
+│        H2O@│             55.5093│             999.999│             1002.96│             55.3452│
+│        Ca+2│         0.000155634│          0.00623752│          -0.0028697│         0.000155175│
+│       HCO3-│         0.000134264│          0.00819227│          0.00325066│         0.000133868│
+│         OH-│          3.41439e-5│         0.000580685│        -0.000160744│           3.4043e-5│
+│       CO3-2│          2.12773e-5│          0.00127681│        -0.000128892│          2.12144e-5│
+│        CO2@│          9.27758e-8│          4.08297e-6│          3.04366e-6│          9.25017e-8│
+│          H+│           4.8481e-9│          4.88688e-9│                 0.0│          4.83377e-9│
+╞════════════════════════════════════════════════════════════════════════════════════════════════╡
+│   # solid #│             n [mol]│               m [g]│             V [cm³]│                    │
+├┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┤
+│  tot. solid│         0.000844366│           0.0845092│           0.0311858│                    │
+├┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┤
+│         Cal│         0.000844366│           0.0845092│           0.0311858│                    │
+╞════════════════════════════════════════════════════════════════════════════════════════════════╡
+│   # TOTAL #│             n [mol]│               m [g]│             V [cm³]│                    │
+├┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┤
+│            │             55.5105│              1000.1│             1002.99│                    │
+╞════════════════════════════════════════════════════════════════════════════════════════════════╡
+│          pH : 9.5274                                                                           │
+│         pOH : 4.468                                                                            │
+│    porosity : 0.999969                                                                         │
+│  saturation : 1.0                                                                              │
+└────────────────────────────────────────────────────────────────────────────────────────────────┘
+</code></pre><div class="admonition is-success" id="Quick-shortcut-791c19c59b535e2f"><header class="admonition-header">Quick shortcut<a class="admonition-anchor" href="#Quick-shortcut-791c19c59b535e2f" title="Permalink"></a></header><div class="admonition-body"><p>Calling <code>equilibrate(state)</code> with no extra arguments uses sensible defaults and is usually sufficient for aqueous geochemical problems.</p></div></div><hr/><h2 id="Choosing-a-solver"><a class="docs-heading-anchor" href="#Choosing-a-solver">Choosing a solver</a><a id="Choosing-a-solver-1"></a><a class="docs-heading-anchor-permalink" href="#Choosing-a-solver" title="Permalink"></a></h2><p>ChemistryLab provides two solver extensions. Load whichever fits your workflow:</p><table><tr><th style="text-align: right">Extension packages</th><th style="text-align: right">Default solver</th><th style="text-align: right">When to use</th></tr><tr><td style="text-align: right"><code>Optimization</code>, <code>OptimizationIpopt</code></td><td style="text-align: right"><code>IpoptOptimizer</code></td><td style="text-align: right">general-purpose, robust</td></tr><tr><td style="text-align: right"><code>OptimaSolver</code></td><td style="text-align: right"><code>OptimaOptimizer</code></td><td style="text-align: right">preferred when available</td></tr></table><p>When both are loaded, <code>OptimaSolver</code> always takes priority for <code>equilibrate(state)</code>.</p><p>That default is measured, not assumed. On the cement equilibria this package targets, scored on two quantities neither solver defines — the element balance <code>‖A·n − A·n₀‖∞</code>, a hard physical constraint, and the Gibbs objective itself — both back-ends reach a balance of the order of <code>1e-14</code>, and OptimaSolver is 3 to 26 times faster. Pass a solver explicitly to override the choice.</p><h2 id="Differentiating-an-equilibrium"><a class="docs-heading-anchor" href="#Differentiating-an-equilibrium">Differentiating an equilibrium</a><a id="Differentiating-an-equilibrium-1"></a><a class="docs-heading-anchor-permalink" href="#Differentiating-an-equilibrium" title="Permalink"></a></h2><p>A <code>ChemicalState</code> carries whatever number type its amounts have, so a composition built from <code>ForwardDiff.Dual</code> values propagates through the speciation, and <code>pH</code>, <code>pOH</code>, <code>porosity</code> and <code>saturation</code> come back as duals too.</p><p>Crossing the <strong>solve</strong> works as well, and without asking any solver to iterate on dual numbers — Ipopt is a C library and never could. The equilibrium is solved once at the primal values, and the sensitivities come from the optimality conditions, the implicit-function-theorem route:</p><p class="math-container">\[\begin{bmatrix} H &amp; A^{\mathsf T} \\ A &amp; 0 \end{bmatrix}
+\begin{bmatrix} \dot n \\ \dot y \end{bmatrix}
+=
+\begin{bmatrix} -\partial_\theta \nabla G \\ \dot b \end{bmatrix},
+\qquad H = \nabla^2 G(n^\star),\]</p><p>restricted to the species actually present. One factorization serves every partial derivative, and the result is exact — no step size to choose.</p><pre><code class="language-julia hljs">using ChemistryLab, DynamicQuantities, ForwardDiff, OptimaSolver
+
+f(x) = begin
+    n = Any[fill(0.0u&quot;mol&quot;, length(cs.species))...]
+    n[i_h2o] = 55.5u&quot;mol&quot;;  n[i_cal] = 0.05u&quot;mol&quot;;  n[i_co2] = x * u&quot;mol&quot;
+    eq = equilibrate(ChemicalState(cs, n), OptimaOptimizer())
+    ustrip(us&quot;mol&quot;, eq.n[i_ca])
+end
+
+ForwardDiff.derivative(f, 0.01)     # → 0.15193</code></pre><div class="admonition is-info" id="Why-the-complementarity-conditions-cannot-be-skipped-a12cc37e2016fb55"><header class="admonition-header">Why the complementarity conditions cannot be skipped<a class="admonition-anchor" href="#Why-the-complementarity-conditions-cannot-be-skipped-a12cc37e2016fb55" title="Permalink"></a></header><div class="admonition-body"><p>The stationarity conditions are <code>∇G − Aᵀy − z = 0</code>, <code>A n = b</code>, <code>nᵢzᵢ = 0</code>, with <code>z ≥ 0</code> the stability multipliers. The last block partitions the species, and dropping it does not degrade the answer gently — it destroys it. On calcite + CO₂ in water with a gas phase declared, the unreduced system puts the whole response into the <strong>absent</strong> gas species (<code>n = 5×10⁻¹¹</code> mol), returning a sensitivity that satisfies the element balance to <code>4×10⁻¹⁶</code> and means nothing.</p><p>No back-end returns <code>z</code>, so the active set is recovered internally: a species negligible on the scale of the system that nonetheless takes a leading share of the response is pinned, and the system re-solved.</p></div></div><div class="admonition is-info" id="Verified-against-Reaktoro-62dfb1fdf4d25824"><header class="admonition-header">Verified against Reaktoro<a class="admonition-anchor" href="#Verified-against-Reaktoro-62dfb1fdf4d25824" title="Permalink"></a></header><div class="admonition-body"><p>On calcite + CO₂ + water, <code>∂n/∂(CO₂)</code> from this route agrees with the package&#39;s own finite differences to <code>9×10⁻⁵</code> — the finite-difference truncation error — and with <a href="https://reaktoro.org">Reaktoro</a> 2.13 reading <strong>the same Cemdata18 file</strong>, over the same eleven species, under the same (ideal) activity model:</p><table><tr><th style="text-align: left">species</th><th style="text-align: right">ChemistryLab (AD)</th><th style="text-align: right">Reaktoro (FD)</th><th style="text-align: right">rel. diff</th></tr><tr><td style="text-align: left">H₂O</td><td style="text-align: right">−0.181336</td><td style="text-align: right">−0.181397</td><td style="text-align: right">3.4×10⁻⁴</td></tr><tr><td style="text-align: left">Ca²⁺</td><td style="text-align: right">+0.151920</td><td style="text-align: right">+0.151987</td><td style="text-align: right">4.4×10⁻⁴</td></tr><tr><td style="text-align: left">HCO₃⁻</td><td style="text-align: right">+0.333308</td><td style="text-align: right">+0.333427</td><td style="text-align: right">3.6×10⁻⁴</td></tr><tr><td style="text-align: left">CO₂(aq)</td><td style="text-align: right">+0.818655</td><td style="text-align: right">+0.818600</td><td style="text-align: right">6.7×10⁻⁵</td></tr><tr><td style="text-align: left">Ca(HCO₃)⁺</td><td style="text-align: right">+0.029333</td><td style="text-align: right">+0.029338</td><td style="text-align: right">1.6×10⁻⁴</td></tr><tr><td style="text-align: left">calcite</td><td style="text-align: right">−0.181251</td><td style="text-align: right">−0.181324</td><td style="text-align: right">4.0×10⁻⁴</td></tr></table><p>The equilibrium amounts agree to the same order (<code>Ca²⁺</code> 3.5281×10⁻³ against 3.52902×10⁻³). Reaktoro&#39;s own spread across <code>h ∈ {10⁻³, 10⁻⁴, 10⁻⁵}</code> is <code>7.2×10⁻⁴</code>, so the residual difference sits below the oracle&#39;s truncation error on every species.</p><p>The absent gas species gets exactly zero from the active-set treatment, against <code>2×10⁻⁹</code> by finite differences.</p></div></div><div class="admonition is-warning" id="A-cross-code-comparison-has-three-knobs,-not-one-9e82edf124edab46"><header class="admonition-header">A cross-code comparison has three knobs, not one<a class="admonition-anchor" href="#A-cross-code-comparison-has-three-knobs,-not-one-9e82edf124edab46" title="Permalink"></a></header><div class="admonition-body"><p>Database, species list and activity model all have to match, and each is worth tens of percent here. Reading Cemdata18 in both codes but leaving Reaktoro on its HKF activity model against this package&#39;s default <code>DiluteSolutionModel()</code> moves <code>∂Ca²⁺/∂(CO₂)</code> from <code>+0.1520</code> to <code>+0.2179</code> — a 35 % gap that says nothing about either code.</p><p>The species list matters just as much. Dropping the aqueous calcium complexes leaves free <code>Ca²⁺</code> as the only aqueous home for calcium, so <code>∂Ca²⁺/∂(CO₂)</code> and <code>∂calcite/∂(CO₂)</code> mirror each other exactly. Restoring <code>CaOH⁺</code>, <code>Ca(CO₃)@</code> and <code>Ca(HCO₃)⁺</code> breaks that mirror — the difference is what <code>Ca(HCO₃)⁺</code> takes up — and <strong>both codes break it the same way</strong>. The element balance closes to <code>2×10⁻¹⁶</code> either way.</p></div></div><h3 id="Explicit-solver-(always-works)"><a class="docs-heading-anchor" href="#Explicit-solver-(always-works)">Explicit solver (always works)</a><a id="Explicit-solver-(always-works)-1"></a><a class="docs-heading-anchor-permalink" href="#Explicit-solver-(always-works)" title="Permalink"></a></h3><p>Pass the solver as the <strong>second positional argument</strong>:</p><pre><code class="language-julia hljs">using Optimization, OptimizationIpopt
+state_eq = equilibrate(state, IpoptOptimizer())
+
+using OptimaSolver
+state_eq = equilibrate(state, OptimaOptimizer())</code></pre><h3 id="Default-shortcut"><a class="docs-heading-anchor" href="#Default-shortcut">Default shortcut</a><a id="Default-shortcut-1"></a><a class="docs-heading-anchor-permalink" href="#Default-shortcut" title="Permalink"></a></h3><p>When only one extension is loaded:</p><pre><code class="language-julia hljs">using Optimization, OptimizationIpopt
+state_eq = equilibrate(state)   # → IpoptOptimizer
+
+using OptimaSolver
+state_eq = equilibrate(state)   # → OptimaOptimizer</code></pre><p>With both loaded, <code>OptimaSolver</code> always wins:</p><pre><code class="language-julia hljs">using Optimization, OptimizationIpopt
+using OptimaSolver
+state_eq = equilibrate(state)   # → OptimaOptimizer (priority)</code></pre><hr/><h2 id="Inspecting-the-equilibrium-state"><a class="docs-heading-anchor" href="#Inspecting-the-equilibrium-state">Inspecting the equilibrium state</a><a id="Inspecting-the-equilibrium-state-1"></a><a class="docs-heading-anchor-permalink" href="#Inspecting-the-equilibrium-state" title="Permalink"></a></h2><p>The returned <a href="../../api/chemical_systems/#ChemicalState"><code>ChemicalState</code></a> carries all derived thermodynamic quantities:</p><pre><code class="language-julia hljs">println(&quot;pH      = &quot;, pH(state_eq))
+println(&quot;pOH     = &quot;, pOH(state_eq))
+println(&quot;porosity   = &quot;, porosity(state_eq))
+println(&quot;saturation = &quot;, saturation(state_eq))</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">pH      = 9.527423138027677
+pOH     = 4.467971901025299
+porosity   = 0.999968907316144
+saturation = 1.0</code></pre><p>Phase volumes and mole amounts are accessible via named tuples:</p><pre><code class="language-julia hljs">v = volume(state_eq)
+println(&quot;V liquid = &quot;, v.liquid)
+println(&quot;V solid  = &quot;, v.solid)
+println(&quot;V total  = &quot;, v.total)
+
+m = moles(state_eq)
+println(&quot;n liquid = &quot;, m.liquid)
+println(&quot;n solid  = &quot;, m.solid)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">V liquid = 0.0010029635119440487 m³
+V solid  = 3.118579704607483e-8 m³
+V total  = 0.0010029946977410948 m³
+n liquid = 55.5096091931565 mol
+n solid  = 0.000844365566644311 mol</code></pre><p>Individual species amounts (in mol):</p><pre><code class="language-julia hljs">cs_eq = state_eq.system
+for (i, sp) in enumerate(cs_eq.species)
+    n_i = state_eq.n[i]
+    println(rpad(symbol(sp), 20), ustrip(n_i), &quot; mol&quot;)
+end</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">H2O@                55.5092637755333 mol
+H+                  4.848099665259219e-9 mol
+OH-                 3.4143908392682006e-5 mol
+CO2@                9.277583265569969e-8 mol
+HCO3-               0.00013426436066318024 mol
+CO3-2               2.1277296860490488e-5 mol
+Ca+2                0.00015563443335578892 mol
+Cal                 0.000844365566644311 mol</code></pre><hr/><h2 id="Scaling-and-normalization"><a class="docs-heading-anchor" href="#Scaling-and-normalization">Scaling and normalization</a><a id="Scaling-and-normalization-1"></a><a class="docs-heading-anchor-permalink" href="#Scaling-and-normalization" title="Permalink"></a></h2><p>It is often useful to express a composition relative to a reference amount — per mole, per kilogram, or per cubic meter of system. Two mechanisms are provided.</p><h3 id="Scalar-multiplication"><a class="docs-heading-anchor" href="#Scalar-multiplication">Scalar multiplication</a><a id="Scalar-multiplication-1"></a><a class="docs-heading-anchor-permalink" href="#Scalar-multiplication" title="Permalink"></a></h3><p>A <a href="../../api/chemical_systems/#ChemicalState"><code>ChemicalState</code></a> can be multiplied or divided by a real number. All molar amounts are scaled proportionally; temperature, pressure, and the chemical system are unchanged. The operation is <strong>non-mutating</strong> — a new state is returned:</p><pre><code class="language-julia hljs">state2  = state_eq * 2.0    # double all amounts
+state_m = state_eq / 1000   # millimolar scale</code></pre><h3 id="rescale!-—-rescale-to-a-target-total"><a class="docs-heading-anchor" href="#rescale!-—-rescale-to-a-target-total"><code>rescale!</code> — rescale to a target total</a><a id="rescale!-—-rescale-to-a-target-total-1"></a><a class="docs-heading-anchor-permalink" href="#rescale!-—-rescale-to-a-target-total" title="Permalink"></a></h3><p><a href="../../api/chemical_systems/#ChemistryLab.rescale!-Tuple{ChemicalState, DynamicQuantities.AbstractQuantity}"><code>rescale!</code></a> scales all molar amounts <strong>in-place</strong> so that the total of the matching physical quantity equals <code>target</code>:</p><table><tr><th style="text-align: right"><code>target</code> dimension</th><th style="text-align: right">Quantity brought to <code>target</code></th></tr><tr><td style="text-align: right">mol</td><td style="text-align: right"><code>moles(state).total</code></td></tr><tr><td style="text-align: right">kg (mass)</td><td style="text-align: right"><code>mass(state).total</code></td></tr><tr><td style="text-align: right">m³ (volume)</td><td style="text-align: right"><code>volume(state).total</code></td></tr></table><p>All derived quantities (pH, porosity, volume, …) are recomputed automatically after scaling.</p><pre><code class="language-julia hljs"># Express the equilibrium composition per kilogram of total system
+state_pkg = copy(state_eq)
+rescale!(state_pkg, 1.0u&quot;kg&quot;)
+
+println(&quot;Ca²⁺ = &quot;, moles(state_pkg, &quot;Ca+2&quot;), &quot;  mol/kg&quot;)
+println(&quot;pH   = &quot;, pH(state_pkg))   # intensive quantities are invariant</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">Ca²⁺ = 0.00015561884235291664 mol  mol/kg
+pH   = 9.527423138027677</code></pre><div class="admonition is-info" id="Intensive-quantities-c9ab0a39124fd6e0"><header class="admonition-header">Intensive quantities<a class="admonition-anchor" href="#Intensive-quantities-c9ab0a39124fd6e0" title="Permalink"></a></header><div class="admonition-body"><p>pH, porosity, and saturation are <strong>intensive</strong> — they are invariant under homothety and remain unchanged after <code>rescale!</code> or scalar multiplication.</p></div></div><hr/><h2 id="Controlling-the-solver"><a class="docs-heading-anchor" href="#Controlling-the-solver">Controlling the solver</a><a id="Controlling-the-solver-1"></a><a class="docs-heading-anchor-permalink" href="#Controlling-the-solver" title="Permalink"></a></h2><h3 id="Variable-space:-:linear-vs-:log"><a class="docs-heading-anchor" href="#Variable-space:-:linear-vs-:log">Variable space: <code>:linear</code> vs <code>:log</code></a><a id="Variable-space:-:linear-vs-:log-1"></a><a class="docs-heading-anchor-permalink" href="#Variable-space:-:linear-vs-:log" title="Permalink"></a></h3><p><a href="../../api/equilibrium/#ChemistryLab.equilibrate-Tuple{ChemicalState, Any}"><code>equilibrate</code></a> accepts a <code>variable_space</code> keyword that selects the optimization variable space:</p><table><tr><th style="text-align: right"><code>variable_space</code></th><th style="text-align: right">Variables</th><th style="text-align: right">Recommended when</th></tr><tr><td style="text-align: right"><code>Val(:linear)</code></td><td style="text-align: right">mole amounts <code>nᵢ ≥ 0</code></td><td style="text-align: right">most systems, default</td></tr><tr><td style="text-align: right"><code>Val(:log)</code></td><td style="text-align: right"><code>log nᵢ</code></td><td style="text-align: right">systems spanning many orders of magnitude</td></tr></table><pre><code class="language-julia hljs">state_eq_log = equilibrate(state; variable_space=Val(:log))</code></pre><div class="admonition is-warning" id="Convergence-edb7437c694b177a"><header class="admonition-header">Convergence<a class="admonition-anchor" href="#Convergence-edb7437c694b177a" title="Permalink"></a></header><div class="admonition-body"><p>Solving a system of equations in chemistry can be a difficult undertaking. The orders of magnitude can vary greatly, and convergence is not guaranteed.</p></div></div><hr/><h3 id="Tolerances"><a class="docs-heading-anchor" href="#Tolerances">Tolerances</a><a id="Tolerances-1"></a><a class="docs-heading-anchor-permalink" href="#Tolerances" title="Permalink"></a></h3><p>Tighter tolerances are passed directly as keyword arguments and forwarded to the underlying Ipopt solver:</p><pre><code class="language-julia hljs">state_eq_tight = equilibrate(state; abstol=1e-12, reltol=1e-12)</code></pre><hr/><h2 id="Using-EquilibriumSolver-explicitly"><a class="docs-heading-anchor" href="#Using-EquilibriumSolver-explicitly">Using <code>EquilibriumSolver</code> explicitly</a><a id="Using-EquilibriumSolver-explicitly-1"></a><a class="docs-heading-anchor-permalink" href="#Using-EquilibriumSolver-explicitly" title="Permalink"></a></h2><p>For batch calculations where many different initial states share the same system and activity model, construct an <a href="../../api/equilibrium/#ChemistryLab.EquilibriumSolver"><code>EquilibriumSolver</code></a> once and reuse it:</p><pre><code class="language-julia hljs">using Optimization, OptimizationIpopt
+
+opt = IpoptOptimizer(
+    acceptable_tol        = 1e-12,
+    dual_inf_tol          = 1e-12,
+    acceptable_iter       = 1000,
+    constr_viol_tol       = 1e-12,
+    warm_start_init_point = &quot;no&quot;,
+)
+
+solver = EquilibriumSolver(
+    cs,
+    DiluteSolutionModel(),
+    opt;
+    variable_space = Val(:linear),
+    abstol  = 1e-10,
+    reltol  = 1e-10,
+)</code></pre><p>Once built, <code>solver</code> is called with any compatible <code>ChemicalState</code>:</p><pre><code class="language-julia hljs">state_eq2 = solve(solver, state)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">ChemicalState{Species{Int64}, AbstractReaction, DynamicQuantities.Quantity{Float64, DynamicQuantities.SymbolicDimensions{DynamicQuantities.FRInt32}}, Float64}
+┌────────────────────────────────────────────────────────────────────────────────────────────────┐
+│           T : 298.15 K                                                                         │
+│           P : 1.0 bar                                                                          │
+╞════════════════════════════════════════════════════════════════════════════════════════════════╡
+│  # liquid #│             n [mol]│               m [g]│             V [cm³]│           c [mol/L]│
+├┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┤
+│ tot. liquid│             55.5096│             1000.02│             1002.96│                    │
+├┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┤
+│        H2O@│             55.5093│             999.999│             1002.96│             55.3452│
+│        Ca+2│          0.00015562│          0.00623692│         -0.00286943│          0.00015516│
+│       HCO3-│         0.000134259│          0.00819197│          0.00325053│         0.000133863│
+│         OH-│          3.41393e-5│         0.000580607│        -0.000160722│          3.40384e-5│
+│       CO3-2│          2.12722e-5│           0.0012765│        -0.000128861│          2.12094e-5│
+│        CO2@│          8.79874e-8│          3.87224e-6│          2.88657e-6│          8.77274e-8│
+│          H+│         3.34877e-10│         3.37556e-10│                 0.0│         3.33888e-10│
+╞════════════════════════════════════════════════════════════════════════════════════════════════╡
+│   # solid #│             n [mol]│               m [g]│             V [cm³]│                    │
+├┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┤
+│  tot. solid│          0.00084438│           0.0845107│           0.0311863│                    │
+├┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┤
+│         Cal│          0.00084438│           0.0845107│           0.0311863│                    │
+╞════════════════════════════════════════════════════════════════════════════════════════════════╡
+│   # TOTAL #│             n [mol]│               m [g]│             V [cm³]│                    │
+├┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┤
+│            │             55.5105│              1000.1│             1002.99│                    │
+╞════════════════════════════════════════════════════════════════════════════════════════════════╡
+│          pH : 9.5274                                                                           │
+│         pOH : 4.468                                                                            │
+│    porosity : 0.999969                                                                         │
+│  saturation : 1.0                                                                              │
+└────────────────────────────────────────────────────────────────────────────────────────────────┘
+</code></pre><div class="admonition is-info" id="Performance-98d5721e7f8fc23d"><header class="admonition-header">Performance<a class="admonition-anchor" href="#Performance-98d5721e7f8fc23d" title="Permalink"></a></header><div class="admonition-body"><p>The potential function <code>μ(n, p)</code> is compiled once during <code>EquilibriumSolver</code> construction. Repeated calls to <code>solve(solver, ...)</code> with different states reuse it, avoiding redundant compilation overhead.</p></div></div><hr/><h2 id="Temperature-dependence-(10–30-C)"><a class="docs-heading-anchor" href="#Temperature-dependence-(10–30-C)">Temperature dependence (10–30 °C)</a><a id="Temperature-dependence-(10–30-C)-1"></a><a class="docs-heading-anchor-permalink" href="#Temperature-dependence-(10–30-C)" title="Permalink"></a></h2><p>Calcite solubility varies with temperature. Using the <code>solver</code> built above, we sweep from 10 to 30 °C and track pH, dissolved calcium and remaining solid calcite:</p><pre><code class="language-julia hljs">using Plots
+
+
+temperatures = 10:30   # °C
+
+pH_vals   = Float64[]
+nCa_vals  = Float64[]  # mmol
+nCal_vals = Float64[]  # mmol
+
+i_Ca  = findfirst(sp -&gt; symbol(sp) == &quot;Ca+2&quot;, cs.species)
+i_Cal = findfirst(sp -&gt; symbol(sp) == &quot;Cal&quot;,  cs.species)
+
+s = ChemicalState(cs)
+for θ in temperatures
+    set_temperature!(s, (273.15 + θ) * u&quot;K&quot;)
+    s_eq = solve(solver, s)
+    push!(pH_vals,   pH(s_eq))
+    push!(nCa_vals,  ustrip(s_eq.n[i_Ca]) * 1e3)
+    push!(nCal_vals, ustrip(s_eq.n[i_Cal]) * 1e3)
+end</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">┌ Warning: Verbosity toggle: missing_second_order_ad
+│  The selected optimization algorithm requires second order derivatives, but `SecondOrder` ADtype was not provided. So a `SecondOrder` with AutoForwardDiff() for both inner and outer will be created, this can be suboptimal and not work in some cases so an explicit `SecondOrder` ADtype is recommended.
+└ @ OptimizationBase ~/.julia/packages/OptimizationBase/y1GZt/src/cache.jl:84
+┌ Info: Verbosity toggle: unsupported_kwargs
+└  common abstol is currently not used by IpoptOptimizer(1.0e-12, 1000, 1.0e-12, 1.0e-12, 0.0001, &quot;no&quot;, &quot;no&quot;, &quot;mumps&quot;, &quot;none&quot;, &quot;&quot;, &quot;&quot;, &quot;yes&quot;, &quot;gradient-based&quot;, 100.0, &quot;no&quot;, &quot;no&quot;, &quot;monotone&quot;, &quot;quality-function&quot;, 0.1, &quot;obj-constr-filter&quot;, &quot;no&quot;, &quot;exact&quot;, 6, &quot;bfgs&quot;, &quot;no&quot;, &quot;filter&quot;, &quot;no&quot;, Dict{String, Any}())
+This is Ipopt version 3.14.19, running with linear solver MUMPS 5.9.0.
+
+Number of nonzeros in equality constraint Jacobian...:       32
+Number of nonzeros in inequality constraint Jacobian.:        0
+Number of nonzeros in Lagrangian Hessian.............:       36
+
+Total number of variables............................:        8
+                     variables with only lower bounds:        0
+                variables with lower and upper bounds:        8
+                     variables with only upper bounds:        0
+Total number of equality constraints.................:        4
+Total number of inequality constraints...............:        0
+        inequality constraints with only lower bounds:        0
+   inequality constraints with lower and upper bounds:        0
+        inequality constraints with only upper bounds:        0
+
+iter    objective    inf_pr   inf_du lg(mu)  ||d||  lg(rg) alpha_du alpha_pr  ls
+   0 -1.4956935e-13 0.00e+00 3.32e+00  -1.0 0.00e+00    -  0.00e+00 0.00e+00   0
+   1 -1.2025432e-13 1.48e-31 1.50e+08  -1.0 3.54e-08    -  1.00e+00 1.37e-08f 12
+   2 -1.2047221e-13 1.48e-31 1.53e-05  -2.5 6.25e-18    -  1.00e+00 1.00e+00   0
+   3 -1.2047226e-13 9.86e-32 3.85e-07 -11.0 6.87e-22    -  1.00e+00 1.00e+00   0
+   4 -4.9364991e-13 9.37e-31 2.46e+00 -11.0 8.10e-15    -  1.00e+00 1.00e+00f  1
+   5 -1.0668167e-12 1.63e-30 1.95e+00 -11.0 1.67e-14  14.0 1.00e+00 1.00e+00f  1
+   6 -3.2338793e-12 1.10e-29 9.77e-01 -11.0 7.72e-14    -  1.00e+00 1.00e+00f  1
+   7 -3.5455090e-12 8.83e-30 8.84e-02 -11.0 1.40e-14    -  1.00e+00 1.00e+00h  1
+   8 -3.5476952e-12 9.66e-30 6.00e-04 -11.0 1.94e-15    -  1.00e+00 1.00e+00   0
+   9 -3.5477255e-12 4.78e-30 6.40e-08 -11.0 1.49e-17    -  1.00e+00 1.00e+00   0
+iter    objective    inf_pr   inf_du lg(mu)  ||d||  lg(rg) alpha_du alpha_pr  ls
+  10 -3.5477255e-12 1.01e-29 1.78e-15 -11.0 1.57e-21    -  1.00e+00 1.00e+00T  0
+
+Number of Iterations....: 10
+
+                                   (scaled)                 (unscaled)
+Objective...............:  -7.4056197044188541e-13   -3.5477254668958915e-12
+Dual infeasibility......:   1.7763568394002505e-15    8.5097893882865893e-15
+Constraint violation....:   1.0107280348144214e-29    1.0107280348144214e-29
+Variable bound violation:   1.0040723276967796e-13    1.0040723276967796e-13
+Complementarity.........:   9.0909090909090936e-12    4.3550777634191928e-11
+Overall NLP error.......:   9.0909090909090936e-12    4.3550777634191928e-11
+
+
+Number of objective function evaluations             = 23
+Number of objective gradient evaluations             = 11
+Number of equality constraint evaluations            = 23
+Number of inequality constraint evaluations          = 0
+Number of equality constraint Jacobian evaluations   = 11
+Number of inequality constraint Jacobian evaluations = 0
+Number of Lagrangian Hessian evaluations             = 10
+Total seconds in IPOPT                               = 0.004
+
+EXIT: Optimal Solution Found.
+┌ Warning: Verbosity toggle: missing_second_order_ad
+│  The selected optimization algorithm requires second order derivatives, but `SecondOrder` ADtype was not provided. So a `SecondOrder` with AutoForwardDiff() for both inner and outer will be created, this can be suboptimal and not work in some cases so an explicit `SecondOrder` ADtype is recommended.
+└ @ OptimizationBase ~/.julia/packages/OptimizationBase/y1GZt/src/cache.jl:84
+┌ Info: Verbosity toggle: unsupported_kwargs
+└  common abstol is currently not used by IpoptOptimizer(1.0e-12, 1000, 1.0e-12, 1.0e-12, 0.0001, &quot;no&quot;, &quot;no&quot;, &quot;mumps&quot;, &quot;none&quot;, &quot;&quot;, &quot;&quot;, &quot;yes&quot;, &quot;gradient-based&quot;, 100.0, &quot;no&quot;, &quot;no&quot;, &quot;monotone&quot;, &quot;quality-function&quot;, 0.1, &quot;obj-constr-filter&quot;, &quot;no&quot;, &quot;exact&quot;, 6, &quot;bfgs&quot;, &quot;no&quot;, &quot;filter&quot;, &quot;no&quot;, Dict{String, Any}())
+This is Ipopt version 3.14.19, running with linear solver MUMPS 5.9.0.
+
+Number of nonzeros in equality constraint Jacobian...:       32
+Number of nonzeros in inequality constraint Jacobian.:        0
+Number of nonzeros in Lagrangian Hessian.............:       36
+
+Total number of variables............................:        8
+                     variables with only lower bounds:        0
+                variables with lower and upper bounds:        8
+                     variables with only upper bounds:        0
+Total number of equality constraints.................:        4
+Total number of inequality constraints...............:        0
+        inequality constraints with only lower bounds:        0
+   inequality constraints with lower and upper bounds:        0
+        inequality constraints with only upper bounds:        0
+
+iter    objective    inf_pr   inf_du lg(mu)  ||d||  lg(rg) alpha_du alpha_pr  ls
+   0 -1.4904656e-13 0.00e+00 3.33e+00  -1.0 0.00e+00    -  0.00e+00 0.00e+00   0
+   1 -1.1975977e-13 4.93e-32 1.50e+08  -1.0 3.53e-08    -  1.00e+00 1.37e-08f 12
+   2 -1.1997762e-13 4.93e-32 3.29e-05  -2.5 6.25e-18    -  1.00e+00 1.00e+00   0
+   3 -1.1997767e-13 4.93e-32 5.60e-07 -11.0 6.88e-22    -  1.00e+00 1.00e+00   0
+   4 -4.9231687e-13 7.40e-31 2.46e+00 -11.0 8.10e-15    -  1.00e+00 1.00e+00f  1
+   5 -1.0648554e-12 3.20e-30 1.95e+00 -11.0 1.67e-14  14.0 1.00e+00 1.00e+00f  1
+   6 -3.2265479e-12 1.10e-29 9.99e-01 -11.0 7.72e-14    -  1.00e+00 1.00e+00f  1
+   7 -3.5392518e-12 3.99e-30 6.61e-02 -11.0 1.39e-14    -  1.00e+00 1.00e+00h  1
+   8 -3.5412989e-12 9.66e-30 4.19e-04 -11.0 1.51e-15    -  1.00e+00 1.00e+00   0
+   9 -3.5413213e-12 8.83e-30 3.12e-08 -11.0 1.04e-17    -  1.00e+00 1.00e+00   0
+iter    objective    inf_pr   inf_du lg(mu)  ||d||  lg(rg) alpha_du alpha_pr  ls
+  10 -3.5413213e-12 7.84e-30 1.24e-14 -11.0 7.67e-22    -  1.00e+00 1.00e+00T  0
+
+Number of Iterations....: 10
+
+                                   (scaled)                 (unscaled)
+Objective...............:  -7.4177754309316537e-13   -3.5413213022949307e-12
+Dual infeasibility......:   1.2434497875801753e-14    5.9363555315110397e-14
+Constraint violation....:   7.8393052456338048e-30    7.8393052456338048e-30
+Variable bound violation:   1.0049188974296617e-13    1.0049188974296617e-13
+Complementarity.........:   9.0909090909090936e-12    4.3400922986447909e-11
+Overall NLP error.......:   9.0909090909090936e-12    4.3400922986447909e-11
+
+
+Number of objective function evaluations             = 23
+Number of objective gradient evaluations             = 11
+Number of equality constraint evaluations            = 23
+Number of inequality constraint evaluations          = 0
+Number of equality constraint Jacobian evaluations   = 11
+Number of inequality constraint Jacobian evaluations = 0
+Number of Lagrangian Hessian evaluations             = 10
+Total seconds in IPOPT                               = 0.003
+
+EXIT: Optimal Solution Found.
+┌ Warning: Verbosity toggle: missing_second_order_ad
+│  The selected optimization algorithm requires second order derivatives, but `SecondOrder` ADtype was not provided. So a `SecondOrder` with AutoForwardDiff() for both inner and outer will be created, this can be suboptimal and not work in some cases so an explicit `SecondOrder` ADtype is recommended.
+└ @ OptimizationBase ~/.julia/packages/OptimizationBase/y1GZt/src/cache.jl:84
+┌ Info: Verbosity toggle: unsupported_kwargs
+└  common abstol is currently not used by IpoptOptimizer(1.0e-12, 1000, 1.0e-12, 1.0e-12, 0.0001, &quot;no&quot;, &quot;no&quot;, &quot;mumps&quot;, &quot;none&quot;, &quot;&quot;, &quot;&quot;, &quot;yes&quot;, &quot;gradient-based&quot;, 100.0, &quot;no&quot;, &quot;no&quot;, &quot;monotone&quot;, &quot;quality-function&quot;, 0.1, &quot;obj-constr-filter&quot;, &quot;no&quot;, &quot;exact&quot;, 6, &quot;bfgs&quot;, &quot;no&quot;, &quot;filter&quot;, &quot;no&quot;, Dict{String, Any}())
+This is Ipopt version 3.14.19, running with linear solver MUMPS 5.9.0.
+
+Number of nonzeros in equality constraint Jacobian...:       32
+Number of nonzeros in inequality constraint Jacobian.:        0
+Number of nonzeros in Lagrangian Hessian.............:       36
+
+Total number of variables............................:        8
+                     variables with only lower bounds:        0
+                variables with lower and upper bounds:        8
+                     variables with only upper bounds:        0
+Total number of equality constraints.................:        4
+Total number of inequality constraints...............:        0
+        inequality constraints with only lower bounds:        0
+   inequality constraints with lower and upper bounds:        0
+        inequality constraints with only upper bounds:        0
+
+iter    objective    inf_pr   inf_du lg(mu)  ||d||  lg(rg) alpha_du alpha_pr  ls
+   0 -1.4852741e-13 0.00e+00 3.33e+00  -1.0 0.00e+00    -  0.00e+00 0.00e+00   0
+   1 -1.1926831e-13 9.86e-32 1.50e+08  -1.0 3.52e-08    -  1.00e+00 1.38e-08f 12
+   2 -1.1948613e-13 4.93e-32 2.53e-05  -2.5 6.25e-18    -  1.00e+00 1.00e+00   0
+   3 -1.1948617e-13 4.93e-32 2.69e-07 -11.0 6.89e-22    -  1.00e+00 1.00e+00   0
+   4 -4.9100649e-13 8.38e-31 2.46e+00 -11.0 8.11e-15    -  1.00e+00 1.00e+00f  1
+   5 -1.0629479e-12 2.96e-30 1.96e+00 -11.0 1.68e-14  14.0 1.00e+00 1.00e+00f  1
+   6 -3.2194026e-12 1.19e-29 1.02e+00 -11.0 7.73e-14    -  1.00e+00 1.00e+00f  1
+   7 -3.5331753e-12 4.68e-30 4.41e-02 -11.0 1.38e-14    -  1.00e+00 1.00e+00h  1
+   8 -3.5351184e-12 5.57e-30 2.74e-04 -11.0 1.08e-15    -  1.00e+00 1.00e+00   0
+   9 -3.5351341e-12 4.63e-30 1.33e-08 -11.0 6.75e-18    -  1.00e+00 1.00e+00T  0
+
+Number of Iterations....: 9
+
+                                   (scaled)                 (unscaled)
+Objective...............:  -7.4302889907565039e-13   -3.5351340795147369e-12
+Dual infeasibility......:   1.3347269955943375e-08    6.3502764089576249e-08
+Constraint violation....:   4.6345578181734444e-30    4.6345578181734444e-30
+Variable bound violation:   1.0057899537809294e-13    1.0057899537809294e-13
+Complementarity.........:   9.0909090909087608e-12    4.3252130006009164e-11
+Overall NLP error.......:   1.3347269955943375e-08    6.3502764089576249e-08
+
+
+Number of objective function evaluations             = 22
+Number of objective gradient evaluations             = 10
+Number of equality constraint evaluations            = 22
+Number of inequality constraint evaluations          = 0
+Number of equality constraint Jacobian evaluations   = 10
+Number of inequality constraint Jacobian evaluations = 0
+Number of Lagrangian Hessian evaluations             = 10
+Total seconds in IPOPT                               = 0.003
+
+EXIT: Search Direction is becoming Too Small.
+┌ Warning: equilibrium solve returned `Infeasible`; the composition may not be an equilibrium. Set `ChemistryLab.STRICT_CONVERGENCE[] = true` to raise instead.
+└ @ ChemistryLab ~/work/ChemistryLab.jl/ChemistryLab.jl/src/equilibrium/equilibrium_solver.jl:329
+┌ Warning: Verbosity toggle: missing_second_order_ad
+│  The selected optimization algorithm requires second order derivatives, but `SecondOrder` ADtype was not provided. So a `SecondOrder` with AutoForwardDiff() for both inner and outer will be created, this can be suboptimal and not work in some cases so an explicit `SecondOrder` ADtype is recommended.
+└ @ OptimizationBase ~/.julia/packages/OptimizationBase/y1GZt/src/cache.jl:84
+┌ Info: Verbosity toggle: unsupported_kwargs
+└  common abstol is currently not used by IpoptOptimizer(1.0e-12, 1000, 1.0e-12, 1.0e-12, 0.0001, &quot;no&quot;, &quot;no&quot;, &quot;mumps&quot;, &quot;none&quot;, &quot;&quot;, &quot;&quot;, &quot;yes&quot;, &quot;gradient-based&quot;, 100.0, &quot;no&quot;, &quot;no&quot;, &quot;monotone&quot;, &quot;quality-function&quot;, 0.1, &quot;obj-constr-filter&quot;, &quot;no&quot;, &quot;exact&quot;, 6, &quot;bfgs&quot;, &quot;no&quot;, &quot;filter&quot;, &quot;no&quot;, Dict{String, Any}())
+This is Ipopt version 3.14.19, running with linear solver MUMPS 5.9.0.
+
+Number of nonzeros in equality constraint Jacobian...:       32
+Number of nonzeros in inequality constraint Jacobian.:        0
+Number of nonzeros in Lagrangian Hessian.............:       36
+
+Total number of variables............................:        8
+                     variables with only lower bounds:        0
+                variables with lower and upper bounds:        8
+                     variables with only upper bounds:        0
+Total number of equality constraints.................:        4
+Total number of inequality constraints...............:        0
+        inequality constraints with only lower bounds:        0
+   inequality constraints with lower and upper bounds:        0
+        inequality constraints with only upper bounds:        0
+
+iter    objective    inf_pr   inf_du lg(mu)  ||d||  lg(rg) alpha_du alpha_pr  ls
+   0 -1.4801185e-13 0.00e+00 3.33e+00  -1.0 0.00e+00    -  0.00e+00 0.00e+00   0
+   1 -1.1877992e-13 4.93e-32 1.50e+08  -1.0 3.51e-08    -  1.00e+00 1.38e-08f 12
+   2 -1.1899770e-13 9.86e-32 1.24e-05  -2.5 6.25e-18    -  1.00e+00 1.00e+00   0
+   3 -1.1899775e-13 9.86e-32 3.12e-07 -11.0 6.90e-22    -  1.00e+00 1.00e+00   0
+   4 -4.8971827e-13 1.38e-30 2.46e+00 -11.0 8.11e-15    -  1.00e+00 1.00e+00f  1
+   5 -1.0610933e-12 1.77e-30 1.96e+00 -11.0 1.68e-14  14.0 1.00e+00 1.00e+00f  1
+   6 -3.2124399e-12 5.08e-30 1.04e+00 -11.0 7.73e-14    -  1.00e+00 1.00e+00f  1
+   7 -3.5272760e-12 7.15e-30 2.25e-02 -11.0 1.37e-14    -  1.00e+00 1.00e+00f  1
+   8 -3.5291493e-12 6.95e-30 1.63e-04 -11.0 7.22e-16    -  1.00e+00 1.00e+00   0
+   9 -3.5291594e-12 2.96e-30 4.68e-09 -11.0 3.98e-18    -  1.00e+00 1.00e+00T  0
+
+Number of Iterations....: 9
+
+                                   (scaled)                 (unscaled)
+Objective...............:  -7.4431558784044539e-13   -3.5291594320398967e-12
+Dual infeasibility......:   4.6814605525469233e-09    2.2197063899574444e-08
+Constraint violation....:   2.9582283945787943e-30    2.9582283945787943e-30
+Variable bound violation:   1.0066849641161203e-13    1.0066849641161203e-13
+Complementarity.........:   9.0909090909083569e-12    4.3104387558351086e-11
+Overall NLP error.......:   4.6814605525469233e-09    2.2197063899574444e-08
+
+
+Number of objective function evaluations             = 22
+Number of objective gradient evaluations             = 10
+Number of equality constraint evaluations            = 22
+Number of inequality constraint evaluations          = 0
+Number of equality constraint Jacobian evaluations   = 10
+Number of inequality constraint Jacobian evaluations = 0
+Number of Lagrangian Hessian evaluations             = 10
+Total seconds in IPOPT                               = 0.003
+
+EXIT: Search Direction is becoming Too Small.
+┌ Warning: Verbosity toggle: missing_second_order_ad
+│  The selected optimization algorithm requires second order derivatives, but `SecondOrder` ADtype was not provided. So a `SecondOrder` with AutoForwardDiff() for both inner and outer will be created, this can be suboptimal and not work in some cases so an explicit `SecondOrder` ADtype is recommended.
+└ @ OptimizationBase ~/.julia/packages/OptimizationBase/y1GZt/src/cache.jl:84
+┌ Info: Verbosity toggle: unsupported_kwargs
+└  common abstol is currently not used by IpoptOptimizer(1.0e-12, 1000, 1.0e-12, 1.0e-12, 0.0001, &quot;no&quot;, &quot;no&quot;, &quot;mumps&quot;, &quot;none&quot;, &quot;&quot;, &quot;&quot;, &quot;yes&quot;, &quot;gradient-based&quot;, 100.0, &quot;no&quot;, &quot;no&quot;, &quot;monotone&quot;, &quot;quality-function&quot;, 0.1, &quot;obj-constr-filter&quot;, &quot;no&quot;, &quot;exact&quot;, 6, &quot;bfgs&quot;, &quot;no&quot;, &quot;filter&quot;, &quot;no&quot;, Dict{String, Any}())
+This is Ipopt version 3.14.19, running with linear solver MUMPS 5.9.0.
+
+Number of nonzeros in equality constraint Jacobian...:       32
+Number of nonzeros in inequality constraint Jacobian.:        0
+Number of nonzeros in Lagrangian Hessian.............:       36
+
+Total number of variables............................:        8
+                     variables with only lower bounds:        0
+                variables with lower and upper bounds:        8
+                     variables with only upper bounds:        0
+Total number of equality constraints.................:        4
+Total number of inequality constraints...............:        0
+        inequality constraints with only lower bounds:        0
+   inequality constraints with lower and upper bounds:        0
+        inequality constraints with only upper bounds:        0
+
+iter    objective    inf_pr   inf_du lg(mu)  ||d||  lg(rg) alpha_du alpha_pr  ls
+   0 -1.4749985e-13 0.00e+00 3.34e+00  -1.0 0.00e+00    -  0.00e+00 0.00e+00   0
+   1 -1.1829458e-13 4.93e-32 1.50e+08  -1.0 3.49e-08    -  1.00e+00 1.39e-08f 12
+   2 -1.1851233e-13 4.93e-32 2.15e-05  -2.5 6.25e-18    -  1.00e+00 1.00e+00   0
+   3 -1.1851237e-13 4.93e-32 3.90e-07 -11.0 6.91e-22    -  1.00e+00 1.00e+00   0
+   4 -4.8845173e-13 1.43e-30 2.47e+00 -11.0 8.12e-15    -  1.00e+00 1.00e+00f  1
+   5 -1.0592903e-12 1.63e-30 1.97e+00 -11.0 1.68e-14  14.0 1.00e+00 1.00e+00f  1
+   6 -3.2056568e-12 1.64e-29 1.06e+00 -11.0 7.74e-14    -  1.00e+00 1.00e+00f  1
+   7 -3.5215504e-12 4.78e-30 2.20e-02 -11.0 1.36e-14    -  1.00e+00 1.00e+00h  1
+   8 -3.5233876e-12 1.03e-29 8.21e-05 -11.0 5.15e-16    -  1.00e+00 1.00e+00   0
+   9 -3.5233932e-12 8.83e-30 1.18e-09 -11.0 1.99e-18    -  1.00e+00 1.00e+00T  0
+
+Number of Iterations....: 9
+
+                                   (scaled)                 (unscaled)
+Objective...............:  -7.4563719284938099e-13   -3.5233932144404266e-12
+Dual infeasibility......:   1.1758363172020836e-09    5.5562326303635941e-09
+Constraint violation....:   8.8253813771600696e-30    8.8253813771600696e-30
+Variable bound violation:   1.0076034198984540e-13    1.0076034198984540e-13
+Complementarity.........:   9.0909090909086558e-12    4.2957684663769971e-11
+Overall NLP error.......:   1.1758363172020836e-09    5.5562326303635941e-09
+
+
+Number of objective function evaluations             = 22
+Number of objective gradient evaluations             = 10
+Number of equality constraint evaluations            = 22
+Number of inequality constraint evaluations          = 0
+Number of equality constraint Jacobian evaluations   = 10
+Number of inequality constraint Jacobian evaluations = 0
+Number of Lagrangian Hessian evaluations             = 10
+Total seconds in IPOPT                               = 0.003
+
+EXIT: Search Direction is becoming Too Small.
+┌ Warning: Verbosity toggle: missing_second_order_ad
+│  The selected optimization algorithm requires second order derivatives, but `SecondOrder` ADtype was not provided. So a `SecondOrder` with AutoForwardDiff() for both inner and outer will be created, this can be suboptimal and not work in some cases so an explicit `SecondOrder` ADtype is recommended.
+└ @ OptimizationBase ~/.julia/packages/OptimizationBase/y1GZt/src/cache.jl:84
+┌ Info: Verbosity toggle: unsupported_kwargs
+└  common abstol is currently not used by IpoptOptimizer(1.0e-12, 1000, 1.0e-12, 1.0e-12, 0.0001, &quot;no&quot;, &quot;no&quot;, &quot;mumps&quot;, &quot;none&quot;, &quot;&quot;, &quot;&quot;, &quot;yes&quot;, &quot;gradient-based&quot;, 100.0, &quot;no&quot;, &quot;no&quot;, &quot;monotone&quot;, &quot;quality-function&quot;, 0.1, &quot;obj-constr-filter&quot;, &quot;no&quot;, &quot;exact&quot;, 6, &quot;bfgs&quot;, &quot;no&quot;, &quot;filter&quot;, &quot;no&quot;, Dict{String, Any}())
+This is Ipopt version 3.14.19, running with linear solver MUMPS 5.9.0.
+
+Number of nonzeros in equality constraint Jacobian...:       32
+Number of nonzeros in inequality constraint Jacobian.:        0
+Number of nonzeros in Lagrangian Hessian.............:       36
+
+Total number of variables............................:        8
+                     variables with only lower bounds:        0
+                variables with lower and upper bounds:        8
+                     variables with only upper bounds:        0
+Total number of equality constraints.................:        4
+Total number of inequality constraints...............:        0
+        inequality constraints with only lower bounds:        0
+   inequality constraints with lower and upper bounds:        0
+        inequality constraints with only upper bounds:        0
+
+iter    objective    inf_pr   inf_du lg(mu)  ||d||  lg(rg) alpha_du alpha_pr  ls
+   0 -1.4699138e-13 0.00e+00 3.34e+00  -1.0 0.00e+00    -  0.00e+00 0.00e+00   0
+   1 -1.1781226e-13 4.93e-32 1.50e+08  -1.0 3.48e-08    -  1.00e+00 1.39e-08f 12
+   2 -1.1802998e-13 4.93e-32 1.48e-05  -2.5 6.25e-18    -  1.00e+00 1.00e+00   0
+   3 -1.1803003e-13 1.48e-31 6.34e-07 -11.0 6.92e-22    -  1.00e+00 1.00e+00   0
+   4 -4.8720641e-13 1.38e-30 2.47e+00 -11.0 8.12e-15    -  1.00e+00 1.00e+00f  1
+   5 -1.0575380e-12 3.99e-30 1.97e+00 -11.0 1.68e-14  14.0 1.00e+00 1.00e+00f  1
+   6 -3.1990503e-12 4.63e-30 1.07e+00 -11.0 7.74e-14    -  1.00e+00 1.00e+00f  1
+   7 -3.5159957e-12 5.67e-30 2.34e-02 -11.0 1.35e-14    -  1.00e+00 1.00e+00f  1
+   8 -3.5178297e-12 4.63e-30 3.00e-05 -11.0 4.05e-16    -  1.00e+00 1.00e+00   0
+   9 -3.5178315e-12 4.63e-30 1.48e-10 -11.0 7.02e-19    -  1.00e+00 1.00e+00T  0
+
+Number of Iterations....: 9
+
+                                   (scaled)                 (unscaled)
+Objective...............:  -7.4699333051500644e-13   -3.5178314936023297e-12
+Dual infeasibility......:   1.4754597543742420e-10    6.9484138337647392e-10
+Constraint violation....:   4.6345578181734444e-30    4.6345578181734444e-30
+Variable bound violation:   1.0085448390580427e-13    1.0085448390580427e-13
+Complementarity.........:   9.0909090909091324e-12    4.2812010494695322e-11
+Overall NLP error.......:   1.4754597543742420e-10    6.9484138337647392e-10
+
+
+Number of objective function evaluations             = 22
+Number of objective gradient evaluations             = 10
+Number of equality constraint evaluations            = 22
+Number of inequality constraint evaluations          = 0
+Number of equality constraint Jacobian evaluations   = 10
+Number of inequality constraint Jacobian evaluations = 0
+Number of Lagrangian Hessian evaluations             = 10
+Total seconds in IPOPT                               = 0.003
+
+EXIT: Search Direction is becoming Too Small.
+┌ Warning: Verbosity toggle: missing_second_order_ad
+│  The selected optimization algorithm requires second order derivatives, but `SecondOrder` ADtype was not provided. So a `SecondOrder` with AutoForwardDiff() for both inner and outer will be created, this can be suboptimal and not work in some cases so an explicit `SecondOrder` ADtype is recommended.
+└ @ OptimizationBase ~/.julia/packages/OptimizationBase/y1GZt/src/cache.jl:84
+┌ Info: Verbosity toggle: unsupported_kwargs
+└  common abstol is currently not used by IpoptOptimizer(1.0e-12, 1000, 1.0e-12, 1.0e-12, 0.0001, &quot;no&quot;, &quot;no&quot;, &quot;mumps&quot;, &quot;none&quot;, &quot;&quot;, &quot;&quot;, &quot;yes&quot;, &quot;gradient-based&quot;, 100.0, &quot;no&quot;, &quot;no&quot;, &quot;monotone&quot;, &quot;quality-function&quot;, 0.1, &quot;obj-constr-filter&quot;, &quot;no&quot;, &quot;exact&quot;, 6, &quot;bfgs&quot;, &quot;no&quot;, &quot;filter&quot;, &quot;no&quot;, Dict{String, Any}())
+This is Ipopt version 3.14.19, running with linear solver MUMPS 5.9.0.
+
+Number of nonzeros in equality constraint Jacobian...:       32
+Number of nonzeros in inequality constraint Jacobian.:        0
+Number of nonzeros in Lagrangian Hessian.............:       36
+
+Total number of variables............................:        8
+                     variables with only lower bounds:        0
+                variables with lower and upper bounds:        8
+                     variables with only upper bounds:        0
+Total number of equality constraints.................:        4
+Total number of inequality constraints...............:        0
+        inequality constraints with only lower bounds:        0
+   inequality constraints with lower and upper bounds:        0
+        inequality constraints with only upper bounds:        0
+
+iter    objective    inf_pr   inf_du lg(mu)  ||d||  lg(rg) alpha_du alpha_pr  ls
+   0 -1.4648640e-13 0.00e+00 3.34e+00  -1.0 0.00e+00    -  0.00e+00 0.00e+00   0
+   1 -1.1733293e-13 9.86e-32 1.50e+08  -1.0 3.47e-08    -  1.00e+00 1.39e-08f 12
+   2 -1.1755064e-13 9.86e-32 1.86e-05  -2.5 6.25e-18    -  1.00e+00 1.00e+00   0
+   3 -1.1755068e-13 1.48e-31 7.54e-07 -11.0 6.92e-22    -  1.00e+00 1.00e+00   0
+   4 -4.8598186e-13 1.63e-30 2.47e+00 -11.0 8.13e-15    -  1.00e+00 1.00e+00f  1
+   5 -1.0558352e-12 2.12e-30 1.98e+00 -11.0 1.69e-14  14.0 1.00e+00 1.00e+00f  1
+   6 -3.1926173e-12 3.35e-30 1.09e+00 -11.0 7.75e-14    -  1.00e+00 1.00e+00f  1
+   7 -3.5106090e-12 8.83e-30 3.99e-02 -11.0 1.36e-14    -  1.00e+00 1.00e+00f  1
+   8 -3.5124719e-12 8.83e-30 3.95e-06 -11.0 6.81e-16    -  1.00e+00 1.00e+00   0
+   9 -3.5124705e-12 9.66e-30 1.08e-12 -11.0 1.16e-19    -  1.00e+00 1.00e+00   0
+iter    objective    inf_pr   inf_du lg(mu)  ||d||  lg(rg) alpha_du alpha_pr  ls
+  10 -3.5124705e-12 4.63e-30 8.88e-15 -11.0 4.34e-26    -  1.00e+00 1.00e+00T  0
+
+Number of Iterations....: 10
+
+                                   (scaled)                 (unscaled)
+Objective...............:  -7.4838364751532561e-13   -3.5124705325103086e-12
+Dual infeasibility......:   8.8817841970012523e-15    4.1685845717845905e-14
+Constraint violation....:   4.6345578181734444e-30    4.6345578181734444e-30
+Variable bound violation:   1.0095087629021677e-13    1.0095087629021677e-13
+Complementarity.........:   9.0909090909090936e-12    4.2667354373071559e-11
+Overall NLP error.......:   9.0909090909090936e-12    4.2667354373071559e-11
+
+
+Number of objective function evaluations             = 23
+Number of objective gradient evaluations             = 11
+Number of equality constraint evaluations            = 23
+Number of inequality constraint evaluations          = 0
+Number of equality constraint Jacobian evaluations   = 11
+Number of inequality constraint Jacobian evaluations = 0
+Number of Lagrangian Hessian evaluations             = 10
+Total seconds in IPOPT                               = 0.003
+
+EXIT: Optimal Solution Found.
+┌ Warning: Verbosity toggle: missing_second_order_ad
+│  The selected optimization algorithm requires second order derivatives, but `SecondOrder` ADtype was not provided. So a `SecondOrder` with AutoForwardDiff() for both inner and outer will be created, this can be suboptimal and not work in some cases so an explicit `SecondOrder` ADtype is recommended.
+└ @ OptimizationBase ~/.julia/packages/OptimizationBase/y1GZt/src/cache.jl:84
+┌ Info: Verbosity toggle: unsupported_kwargs
+└  common abstol is currently not used by IpoptOptimizer(1.0e-12, 1000, 1.0e-12, 1.0e-12, 0.0001, &quot;no&quot;, &quot;no&quot;, &quot;mumps&quot;, &quot;none&quot;, &quot;&quot;, &quot;&quot;, &quot;yes&quot;, &quot;gradient-based&quot;, 100.0, &quot;no&quot;, &quot;no&quot;, &quot;monotone&quot;, &quot;quality-function&quot;, 0.1, &quot;obj-constr-filter&quot;, &quot;no&quot;, &quot;exact&quot;, 6, &quot;bfgs&quot;, &quot;no&quot;, &quot;filter&quot;, &quot;no&quot;, Dict{String, Any}())
+This is Ipopt version 3.14.19, running with linear solver MUMPS 5.9.0.
+
+Number of nonzeros in equality constraint Jacobian...:       32
+Number of nonzeros in inequality constraint Jacobian.:        0
+Number of nonzeros in Lagrangian Hessian.............:       36
+
+Total number of variables............................:        8
+                     variables with only lower bounds:        0
+                variables with lower and upper bounds:        8
+                     variables with only upper bounds:        0
+Total number of equality constraints.................:        4
+Total number of inequality constraints...............:        0
+        inequality constraints with only lower bounds:        0
+   inequality constraints with lower and upper bounds:        0
+        inequality constraints with only upper bounds:        0
+
+iter    objective    inf_pr   inf_du lg(mu)  ||d||  lg(rg) alpha_du alpha_pr  ls
+   0 -1.4598488e-13 0.00e+00 3.35e+00  -1.0 0.00e+00    -  0.00e+00 0.00e+00   0
+   1 -1.1685659e-13 9.86e-32 1.50e+08  -1.0 3.46e-08    -  1.00e+00 1.40e-08f 12
+   2 -1.1707427e-13 4.93e-32 2.05e-05  -2.5 6.25e-18    -  1.00e+00 1.00e+00   0
+   3 -1.1707432e-13 4.93e-32 5.47e-07 -11.0 6.93e-22    -  1.00e+00 1.00e+00   0
+   4 -4.8477766e-13 8.38e-31 2.47e+00 -11.0 8.13e-15    -  1.00e+00 1.00e+00f  1
+   5 -1.0541812e-12 1.63e-30 1.98e+00 -11.0 1.69e-14  14.0 1.00e+00 1.00e+00f  1
+   6 -3.1863551e-12 5.67e-30 1.11e+00 -11.0 7.75e-14    -  1.00e+00 1.00e+00f  1
+   7 -3.5053876e-12 9.27e-30 6.00e-02 -11.0 1.37e-14    -  1.00e+00 1.00e+00f  1
+   8 -3.5073107e-12 3.35e-30 2.24e-06 -11.0 9.51e-16    -  1.00e+00 1.00e+00   0
+   9 -3.5073068e-12 3.90e-30 1.38e-12 -11.0 2.61e-19    -  1.00e+00 1.00e+00   0
+iter    objective    inf_pr   inf_du lg(mu)  ||d||  lg(rg) alpha_du alpha_pr  ls
+  10 -3.5073068e-12 5.47e-30 8.88e-15 -11.0 1.64e-25    -  1.00e+00 1.00e+00T  0
+
+Number of Iterations....: 10
+
+                                   (scaled)                 (unscaled)
+Objective...............:  -7.4980781877477722e-13   -3.5073067774767852e-12
+Dual infeasibility......:   8.8817841970012523e-15    4.1545501567496582e-14
+Constraint violation....:   5.4727225299707694e-30    5.4727225299707694e-30
+Variable bound violation:   1.0104947545874047e-13    1.0104947545874047e-13
+Complementarity.........:   9.0909090909090936e-12    4.2523705767795002e-11
+Overall NLP error.......:   9.0909090909090936e-12    4.2523705767795002e-11
+
+
+Number of objective function evaluations             = 23
+Number of objective gradient evaluations             = 11
+Number of equality constraint evaluations            = 23
+Number of inequality constraint evaluations          = 0
+Number of equality constraint Jacobian evaluations   = 11
+Number of inequality constraint Jacobian evaluations = 0
+Number of Lagrangian Hessian evaluations             = 10
+Total seconds in IPOPT                               = 0.003
+
+EXIT: Optimal Solution Found.
+┌ Warning: Verbosity toggle: missing_second_order_ad
+│  The selected optimization algorithm requires second order derivatives, but `SecondOrder` ADtype was not provided. So a `SecondOrder` with AutoForwardDiff() for both inner and outer will be created, this can be suboptimal and not work in some cases so an explicit `SecondOrder` ADtype is recommended.
+└ @ OptimizationBase ~/.julia/packages/OptimizationBase/y1GZt/src/cache.jl:84
+┌ Info: Verbosity toggle: unsupported_kwargs
+└  common abstol is currently not used by IpoptOptimizer(1.0e-12, 1000, 1.0e-12, 1.0e-12, 0.0001, &quot;no&quot;, &quot;no&quot;, &quot;mumps&quot;, &quot;none&quot;, &quot;&quot;, &quot;&quot;, &quot;yes&quot;, &quot;gradient-based&quot;, 100.0, &quot;no&quot;, &quot;no&quot;, &quot;monotone&quot;, &quot;quality-function&quot;, 0.1, &quot;obj-constr-filter&quot;, &quot;no&quot;, &quot;exact&quot;, 6, &quot;bfgs&quot;, &quot;no&quot;, &quot;filter&quot;, &quot;no&quot;, Dict{String, Any}())
+This is Ipopt version 3.14.19, running with linear solver MUMPS 5.9.0.
+
+Number of nonzeros in equality constraint Jacobian...:       32
+Number of nonzeros in inequality constraint Jacobian.:        0
+Number of nonzeros in Lagrangian Hessian.............:       36
+
+Total number of variables............................:        8
+                     variables with only lower bounds:        0
+                variables with lower and upper bounds:        8
+                     variables with only upper bounds:        0
+Total number of equality constraints.................:        4
+Total number of inequality constraints...............:        0
+        inequality constraints with only lower bounds:        0
+   inequality constraints with lower and upper bounds:        0
+        inequality constraints with only upper bounds:        0
+
+iter    objective    inf_pr   inf_du lg(mu)  ||d||  lg(rg) alpha_du alpha_pr  ls
+   0 -1.4548678e-13 0.00e+00 3.35e+00  -1.0 0.00e+00    -  0.00e+00 0.00e+00   0
+   1 -1.1638320e-13 9.86e-32 1.50e+08  -1.0 3.45e-08    -  1.00e+00 1.40e-08f 12
+   2 -1.1660087e-13 4.93e-32 2.19e-05  -2.5 6.25e-18    -  1.00e+00 1.00e+00   0
+   3 -1.1660091e-13 4.93e-32 2.80e-07 -11.0 6.94e-22    -  1.00e+00 1.00e+00   0
+   4 -4.8359340e-13 1.38e-30 2.47e+00 -11.0 8.14e-15    -  1.00e+00 1.00e+00f  1
+   5 -1.0525750e-12 3.35e-30 1.99e+00 -11.0 1.69e-14  14.0 1.00e+00 1.00e+00f  1
+   6 -3.1802611e-12 1.01e-29 1.12e+00 -11.0 7.76e-14    -  1.00e+00 1.00e+00f  1
+   7 -3.5003290e-12 8.83e-30 7.97e-02 -11.0 1.37e-14    -  1.00e+00 1.00e+00f  1
+   8 -3.5023429e-12 1.01e-29 2.15e-05 -11.0 1.32e-15    -  1.00e+00 1.00e+00   0
+   9 -3.5023368e-12 3.35e-30 7.46e-11 -11.0 5.12e-19    -  1.00e+00 1.00e+00   0
+iter    objective    inf_pr   inf_du lg(mu)  ||d||  lg(rg) alpha_du alpha_pr  ls
+  10 -3.5023368e-12 3.99e-30 1.07e-14 -11.0 1.90e-24    -  1.00e+00 1.00e+00T  0
+
+Number of Iterations....: 10
+
+                                   (scaled)                 (unscaled)
+Objective...............:  -7.5126554560901991e-13   -3.5023368463937066e-12
+Dual infeasibility......:   1.0658141036401503e-14    4.9687357930928674e-14
+Constraint violation....:   3.9936083326813723e-30    3.9936083326813723e-30
+Variable bound violation:   1.0115023977162965e-13    1.0115023977162965e-13
+Complementarity.........:   9.0909090909090920e-12    4.2381054292188414e-11
+Overall NLP error.......:   9.0909090909090920e-12    4.2381054292188414e-11
+
+
+Number of objective function evaluations             = 23
+Number of objective gradient evaluations             = 11
+Number of equality constraint evaluations            = 23
+Number of inequality constraint evaluations          = 0
+Number of equality constraint Jacobian evaluations   = 11
+Number of inequality constraint Jacobian evaluations = 0
+Number of Lagrangian Hessian evaluations             = 10
+Total seconds in IPOPT                               = 0.003
+
+EXIT: Optimal Solution Found.
+┌ Warning: Verbosity toggle: missing_second_order_ad
+│  The selected optimization algorithm requires second order derivatives, but `SecondOrder` ADtype was not provided. So a `SecondOrder` with AutoForwardDiff() for both inner and outer will be created, this can be suboptimal and not work in some cases so an explicit `SecondOrder` ADtype is recommended.
+└ @ OptimizationBase ~/.julia/packages/OptimizationBase/y1GZt/src/cache.jl:84
+┌ Info: Verbosity toggle: unsupported_kwargs
+└  common abstol is currently not used by IpoptOptimizer(1.0e-12, 1000, 1.0e-12, 1.0e-12, 0.0001, &quot;no&quot;, &quot;no&quot;, &quot;mumps&quot;, &quot;none&quot;, &quot;&quot;, &quot;&quot;, &quot;yes&quot;, &quot;gradient-based&quot;, 100.0, &quot;no&quot;, &quot;no&quot;, &quot;monotone&quot;, &quot;quality-function&quot;, 0.1, &quot;obj-constr-filter&quot;, &quot;no&quot;, &quot;exact&quot;, 6, &quot;bfgs&quot;, &quot;no&quot;, &quot;filter&quot;, &quot;no&quot;, Dict{String, Any}())
+This is Ipopt version 3.14.19, running with linear solver MUMPS 5.9.0.
+
+Number of nonzeros in equality constraint Jacobian...:       32
+Number of nonzeros in inequality constraint Jacobian.:        0
+Number of nonzeros in Lagrangian Hessian.............:       36
+
+Total number of variables............................:        8
+                     variables with only lower bounds:        0
+                variables with lower and upper bounds:        8
+                     variables with only upper bounds:        0
+Total number of equality constraints.................:        4
+Total number of inequality constraints...............:        0
+        inequality constraints with only lower bounds:        0
+   inequality constraints with lower and upper bounds:        0
+        inequality constraints with only upper bounds:        0
+
+iter    objective    inf_pr   inf_du lg(mu)  ||d||  lg(rg) alpha_du alpha_pr  ls
+   0 -1.4499207e-13 0.00e+00 3.35e+00  -1.0 0.00e+00    -  0.00e+00 0.00e+00   0
+   1 -1.1591275e-13 4.93e-32 1.50e+08  -1.0 3.44e-08    -  1.00e+00 1.41e-08f 12
+   2 -1.1613039e-13 9.86e-32 1.96e-05  -2.5 6.25e-18    -  1.00e+00 1.00e+00   0
+   3 -1.1613044e-13 9.86e-32 4.03e-07 -11.0 6.95e-22    -  1.00e+00 1.00e+00   0
+   4 -4.8242869e-13 1.63e-30 2.48e+00 -11.0 8.14e-15    -  1.00e+00 1.00e+00f  1
+   5 -1.0510157e-12 1.77e-30 2.00e+00 -11.0 1.70e-14  14.0 1.00e+00 1.00e+00f  1
+   6 -3.1743326e-12 5.67e-30 1.14e+00 -11.0 7.76e-14    -  1.00e+00 1.00e+00f  1
+   7 -3.4954307e-12 9.66e-30 9.90e-02 -11.0 1.38e-14    -  1.00e+00 1.00e+00f  1
+   8 -3.4975653e-12 4.78e-30 6.13e-05 -11.0 1.69e-15    -  1.00e+00 1.00e+00   0
+   9 -3.4975575e-12 7.84e-30 6.70e-10 -11.0 1.50e-18    -  1.00e+00 1.00e+00   0
+iter    objective    inf_pr   inf_du lg(mu)  ||d||  lg(rg) alpha_du alpha_pr  ls
+  10 -3.4975575e-12 9.27e-30 1.07e-14 -11.0 1.65e-23    -  1.00e+00 1.00e+00T  0
+
+Number of Iterations....: 10
+
+                                   (scaled)                 (unscaled)
+Objective...............:  -7.5275655403263730e-13   -3.4975575179789092e-12
+Dual infeasibility......:   1.0658141036401503e-14    4.9521271000357649e-14
+Constraint violation....:   9.2691156363468887e-30    9.2691156363468887e-30
+Variable bound violation:   1.0125312950575730e-13    1.0125312950575730e-13
+Complementarity.........:   9.0909090909090936e-12    4.2239389701538660e-11
+Overall NLP error.......:   9.0909090909090936e-12    4.2239389701538660e-11
+
+
+Number of objective function evaluations             = 23
+Number of objective gradient evaluations             = 11
+Number of equality constraint evaluations            = 23
+Number of inequality constraint evaluations          = 0
+Number of equality constraint Jacobian evaluations   = 11
+Number of inequality constraint Jacobian evaluations = 0
+Number of Lagrangian Hessian evaluations             = 10
+Total seconds in IPOPT                               = 0.003
+
+EXIT: Optimal Solution Found.
+┌ Warning: Verbosity toggle: missing_second_order_ad
+│  The selected optimization algorithm requires second order derivatives, but `SecondOrder` ADtype was not provided. So a `SecondOrder` with AutoForwardDiff() for both inner and outer will be created, this can be suboptimal and not work in some cases so an explicit `SecondOrder` ADtype is recommended.
+└ @ OptimizationBase ~/.julia/packages/OptimizationBase/y1GZt/src/cache.jl:84
+┌ Info: Verbosity toggle: unsupported_kwargs
+└  common abstol is currently not used by IpoptOptimizer(1.0e-12, 1000, 1.0e-12, 1.0e-12, 0.0001, &quot;no&quot;, &quot;no&quot;, &quot;mumps&quot;, &quot;none&quot;, &quot;&quot;, &quot;&quot;, &quot;yes&quot;, &quot;gradient-based&quot;, 100.0, &quot;no&quot;, &quot;no&quot;, &quot;monotone&quot;, &quot;quality-function&quot;, 0.1, &quot;obj-constr-filter&quot;, &quot;no&quot;, &quot;exact&quot;, 6, &quot;bfgs&quot;, &quot;no&quot;, &quot;filter&quot;, &quot;no&quot;, Dict{String, Any}())
+This is Ipopt version 3.14.19, running with linear solver MUMPS 5.9.0.
+
+Number of nonzeros in equality constraint Jacobian...:       32
+Number of nonzeros in inequality constraint Jacobian.:        0
+Number of nonzeros in Lagrangian Hessian.............:       36
+
+Total number of variables............................:        8
+                     variables with only lower bounds:        0
+                variables with lower and upper bounds:        8
+                     variables with only upper bounds:        0
+Total number of equality constraints.................:        4
+Total number of inequality constraints...............:        0
+        inequality constraints with only lower bounds:        0
+   inequality constraints with lower and upper bounds:        0
+        inequality constraints with only upper bounds:        0
+
+iter    objective    inf_pr   inf_du lg(mu)  ||d||  lg(rg) alpha_du alpha_pr  ls
+   0 -1.4450072e-13 0.00e+00 3.35e+00  -1.0 0.00e+00    -  0.00e+00 0.00e+00   0
+   1 -1.1544520e-13 1.48e-31 1.50e+08  -1.0 3.42e-08    -  1.00e+00 1.41e-08f 12
+   2 -1.1566284e-13 4.93e-32 2.15e-05  -2.5 6.25e-18    -  1.00e+00 1.00e+00   0
+   3 -1.1566288e-13 4.93e-32 4.20e-07 -11.0 6.96e-22    -  1.00e+00 1.00e+00   0
+   4 -4.8128315e-13 1.77e-30 2.48e+00 -11.0 8.15e-15    -  1.00e+00 1.00e+00f  1
+   5 -1.0495024e-12 1.63e-30 2.00e+00 -11.0 1.70e-14  14.0 1.00e+00 1.00e+00f  1
+   6 -3.1685672e-12 3.11e-30 1.15e+00 -11.0 7.77e-14    -  1.00e+00 1.00e+00f  1
+   7 -3.4906907e-12 9.66e-30 1.18e-01 -11.0 1.39e-14    -  1.00e+00 1.00e+00f  1
+   8 -3.4929749e-12 7.94e-30 1.19e-04 -11.0 2.06e-15    -  1.00e+00 1.00e+00   0
+   9 -3.4929657e-12 1.02e-29 2.62e-09 -11.0 2.94e-18    -  1.00e+00 1.00e+00   0
+iter    objective    inf_pr   inf_du lg(mu)  ||d||  lg(rg) alpha_du alpha_pr  ls
+  10 -3.4929657e-12 1.01e-29 1.07e-14 -11.0 6.38e-23    -  1.00e+00 1.00e+00T  0
+
+Number of Iterations....: 10
+
+                                   (scaled)                 (unscaled)
+Objective...............:  -7.5428059319056088e-13   -3.4929657218121374e-12
+Dual infeasibility......:   1.0658141036401503e-14    4.9356329242033616e-14
+Constraint violation....:   1.0107280348144214e-29    1.0107280348144214e-29
+Variable bound violation:   1.0135810673510399e-13    1.0135810673510399e-13
+Complementarity.........:   9.0909090909090936e-12    4.2098701890681467e-11
+Overall NLP error.......:   9.0909090909090936e-12    4.2098701890681467e-11
+
+
+Number of objective function evaluations             = 23
+Number of objective gradient evaluations             = 11
+Number of equality constraint evaluations            = 23
+Number of inequality constraint evaluations          = 0
+Number of equality constraint Jacobian evaluations   = 11
+Number of inequality constraint Jacobian evaluations = 0
+Number of Lagrangian Hessian evaluations             = 10
+Total seconds in IPOPT                               = 0.003
+
+EXIT: Optimal Solution Found.
+┌ Warning: Verbosity toggle: missing_second_order_ad
+│  The selected optimization algorithm requires second order derivatives, but `SecondOrder` ADtype was not provided. So a `SecondOrder` with AutoForwardDiff() for both inner and outer will be created, this can be suboptimal and not work in some cases so an explicit `SecondOrder` ADtype is recommended.
+└ @ OptimizationBase ~/.julia/packages/OptimizationBase/y1GZt/src/cache.jl:84
+┌ Info: Verbosity toggle: unsupported_kwargs
+└  common abstol is currently not used by IpoptOptimizer(1.0e-12, 1000, 1.0e-12, 1.0e-12, 0.0001, &quot;no&quot;, &quot;no&quot;, &quot;mumps&quot;, &quot;none&quot;, &quot;&quot;, &quot;&quot;, &quot;yes&quot;, &quot;gradient-based&quot;, 100.0, &quot;no&quot;, &quot;no&quot;, &quot;monotone&quot;, &quot;quality-function&quot;, 0.1, &quot;obj-constr-filter&quot;, &quot;no&quot;, &quot;exact&quot;, 6, &quot;bfgs&quot;, &quot;no&quot;, &quot;filter&quot;, &quot;no&quot;, Dict{String, Any}())
+This is Ipopt version 3.14.19, running with linear solver MUMPS 5.9.0.
+
+Number of nonzeros in equality constraint Jacobian...:       32
+Number of nonzeros in inequality constraint Jacobian.:        0
+Number of nonzeros in Lagrangian Hessian.............:       36
+
+Total number of variables............................:        8
+                     variables with only lower bounds:        0
+                variables with lower and upper bounds:        8
+                     variables with only upper bounds:        0
+Total number of equality constraints.................:        4
+Total number of inequality constraints...............:        0
+        inequality constraints with only lower bounds:        0
+   inequality constraints with lower and upper bounds:        0
+        inequality constraints with only upper bounds:        0
+
+iter    objective    inf_pr   inf_du lg(mu)  ||d||  lg(rg) alpha_du alpha_pr  ls
+   0 -1.4401269e-13 0.00e+00 3.36e+00  -1.0 0.00e+00    -  0.00e+00 0.00e+00   0
+   1 -1.1498054e-13 1.48e-31 1.50e+08  -1.0 3.41e-08    -  1.00e+00 1.42e-08f 12
+   2 -1.1519816e-13 9.86e-32 2.10e-05  -2.5 6.25e-18    -  1.00e+00 1.00e+00   0
+   3 -1.1519821e-13 4.93e-32 3.90e-07 -11.0 6.97e-22    -  1.00e+00 1.00e+00   0
+   4 -4.8015643e-13 1.38e-30 2.48e+00 -11.0 8.16e-15    -  1.00e+00 1.00e+00f  1
+   5 -1.0480345e-12 1.68e-30 2.01e+00 -11.0 1.70e-14  14.0 1.00e+00 1.00e+00f  1
+   6 -3.1629626e-12 5.67e-30 1.17e+00 -11.0 7.77e-14    -  1.00e+00 1.00e+00f  1
+   7 -3.4861066e-12 2.96e-30 1.37e-01 -11.0 1.40e-14    -  1.00e+00 1.00e+00f  1
+   8 -3.4885690e-12 5.57e-30 1.94e-04 -11.0 2.42e-15    -  1.00e+00 1.00e+00h  1
+   9 -3.4885585e-12 3.90e-30 7.02e-09 -11.0 4.79e-18    -  1.00e+00 1.00e+00   0
+iter    objective    inf_pr   inf_du lg(mu)  ||d||  lg(rg) alpha_du alpha_pr  ls
+  10 -3.4885585e-12 3.35e-30 8.88e-15 -11.0 1.71e-22    -  1.00e+00 1.00e+00T  0
+
+Number of Iterations....: 10
+
+                                   (scaled)                 (unscaled)
+Objective...............:  -7.5583743392296687e-13   -3.4885585291872333e-12
+Dual infeasibility......:   8.8817841970012523e-15    4.0993767474616745e-14
+Constraint violation....:   3.3526588471893002e-30    3.3526588471893002e-30
+Variable bound violation:   1.0146513522023081e-13    1.0146513522023081e-13
+Complementarity.........:   9.0909090909090936e-12    4.1958980891635633e-11
+Overall NLP error.......:   9.0909090909090936e-12    4.1958980891635633e-11
+
+
+Number of objective function evaluations             = 23
+Number of objective gradient evaluations             = 11
+Number of equality constraint evaluations            = 23
+Number of inequality constraint evaluations          = 0
+Number of equality constraint Jacobian evaluations   = 11
+Number of inequality constraint Jacobian evaluations = 0
+Number of Lagrangian Hessian evaluations             = 10
+Total seconds in IPOPT                               = 0.003
+
+EXIT: Optimal Solution Found.
+┌ Warning: Verbosity toggle: missing_second_order_ad
+│  The selected optimization algorithm requires second order derivatives, but `SecondOrder` ADtype was not provided. So a `SecondOrder` with AutoForwardDiff() for both inner and outer will be created, this can be suboptimal and not work in some cases so an explicit `SecondOrder` ADtype is recommended.
+└ @ OptimizationBase ~/.julia/packages/OptimizationBase/y1GZt/src/cache.jl:84
+┌ Info: Verbosity toggle: unsupported_kwargs
+└  common abstol is currently not used by IpoptOptimizer(1.0e-12, 1000, 1.0e-12, 1.0e-12, 0.0001, &quot;no&quot;, &quot;no&quot;, &quot;mumps&quot;, &quot;none&quot;, &quot;&quot;, &quot;&quot;, &quot;yes&quot;, &quot;gradient-based&quot;, 100.0, &quot;no&quot;, &quot;no&quot;, &quot;monotone&quot;, &quot;quality-function&quot;, 0.1, &quot;obj-constr-filter&quot;, &quot;no&quot;, &quot;exact&quot;, 6, &quot;bfgs&quot;, &quot;no&quot;, &quot;filter&quot;, &quot;no&quot;, Dict{String, Any}())
+This is Ipopt version 3.14.19, running with linear solver MUMPS 5.9.0.
+
+Number of nonzeros in equality constraint Jacobian...:       32
+Number of nonzeros in inequality constraint Jacobian.:        0
+Number of nonzeros in Lagrangian Hessian.............:       36
+
+Total number of variables............................:        8
+                     variables with only lower bounds:        0
+                variables with lower and upper bounds:        8
+                     variables with only upper bounds:        0
+Total number of equality constraints.................:        4
+Total number of inequality constraints...............:        0
+        inequality constraints with only lower bounds:        0
+   inequality constraints with lower and upper bounds:        0
+        inequality constraints with only upper bounds:        0
+
+iter    objective    inf_pr   inf_du lg(mu)  ||d||  lg(rg) alpha_du alpha_pr  ls
+   0 -1.4352795e-13 0.00e+00 3.36e+00  -1.0 0.00e+00    -  0.00e+00 0.00e+00   0
+   1 -1.1451874e-13 4.93e-32 1.50e+08  -1.0 3.40e-08    -  1.00e+00 1.42e-08f 12
+   2 -1.1473636e-13 9.86e-32 1.96e-05  -2.5 6.25e-18    -  1.00e+00 1.00e+00   0
+   3 -1.1473640e-13 4.93e-32 5.08e-07 -11.0 6.98e-22    -  1.00e+00 1.00e+00   0
+   4 -4.7904817e-13 1.73e-30 2.48e+00 -11.0 8.16e-15    -  1.00e+00 1.00e+00f  1
+   5 -1.0466111e-12 1.48e-30 2.01e+00 -11.0 1.71e-14  14.0 1.00e+00 1.00e+00f  1
+   6 -3.1575165e-12 1.62e-29 1.18e+00 -11.0 7.78e-14    -  1.00e+00 1.00e+00f  1
+   7 -3.4816766e-12 1.01e-29 1.55e-01 -11.0 1.41e-14    -  1.00e+00 1.00e+00f  1
+   8 -3.4843446e-12 3.90e-30 2.85e-04 -11.0 2.77e-15    -  1.00e+00 1.00e+00h  1
+   9 -3.4843331e-12 5.67e-30 1.52e-08 -11.0 7.01e-18    -  1.00e+00 1.00e+00   0
+iter    objective    inf_pr   inf_du lg(mu)  ||d||  lg(rg) alpha_du alpha_pr  ls
+  10 -3.4843331e-12 1.01e-29 5.33e-15 -11.0 3.69e-22    -  1.00e+00 1.00e+00T  0
+
+Number of Iterations....: 10
+
+                                   (scaled)                 (unscaled)
+Objective...............:  -7.5742686743267756e-13   -3.4843331446189855e-12
+Dual infeasibility......:   5.3290705182007514e-15    2.4514917327287913e-14
+Constraint violation....:   1.0107280348144214e-29    1.0107280348144214e-29
+Variable bound violation:   1.0157418030581493e-13    1.0157418030581493e-13
+Complementarity.........:   9.0909090909090936e-12    4.1820216871284997e-11
+Overall NLP error.......:   9.0909090909090936e-12    4.1820216871284997e-11
+
+
+Number of objective function evaluations             = 23
+Number of objective gradient evaluations             = 11
+Number of equality constraint evaluations            = 23
+Number of inequality constraint evaluations          = 0
+Number of equality constraint Jacobian evaluations   = 11
+Number of inequality constraint Jacobian evaluations = 0
+Number of Lagrangian Hessian evaluations             = 10
+Total seconds in IPOPT                               = 0.003
+
+EXIT: Optimal Solution Found.
+┌ Warning: Verbosity toggle: missing_second_order_ad
+│  The selected optimization algorithm requires second order derivatives, but `SecondOrder` ADtype was not provided. So a `SecondOrder` with AutoForwardDiff() for both inner and outer will be created, this can be suboptimal and not work in some cases so an explicit `SecondOrder` ADtype is recommended.
+└ @ OptimizationBase ~/.julia/packages/OptimizationBase/y1GZt/src/cache.jl:84
+┌ Info: Verbosity toggle: unsupported_kwargs
+└  common abstol is currently not used by IpoptOptimizer(1.0e-12, 1000, 1.0e-12, 1.0e-12, 0.0001, &quot;no&quot;, &quot;no&quot;, &quot;mumps&quot;, &quot;none&quot;, &quot;&quot;, &quot;&quot;, &quot;yes&quot;, &quot;gradient-based&quot;, 100.0, &quot;no&quot;, &quot;no&quot;, &quot;monotone&quot;, &quot;quality-function&quot;, 0.1, &quot;obj-constr-filter&quot;, &quot;no&quot;, &quot;exact&quot;, 6, &quot;bfgs&quot;, &quot;no&quot;, &quot;filter&quot;, &quot;no&quot;, Dict{String, Any}())
+This is Ipopt version 3.14.19, running with linear solver MUMPS 5.9.0.
+
+Number of nonzeros in equality constraint Jacobian...:       32
+Number of nonzeros in inequality constraint Jacobian.:        0
+Number of nonzeros in Lagrangian Hessian.............:       36
+
+Total number of variables............................:        8
+                     variables with only lower bounds:        0
+                variables with lower and upper bounds:        8
+                     variables with only upper bounds:        0
+Total number of equality constraints.................:        4
+Total number of inequality constraints...............:        0
+        inequality constraints with only lower bounds:        0
+   inequality constraints with lower and upper bounds:        0
+        inequality constraints with only upper bounds:        0
+
+iter    objective    inf_pr   inf_du lg(mu)  ||d||  lg(rg) alpha_du alpha_pr  ls
+   0 -1.4304647e-13 0.00e+00 3.36e+00  -1.0 0.00e+00    -  0.00e+00 0.00e+00   0
+   1 -1.1405977e-13 4.93e-32 1.50e+08  -1.0 3.39e-08    -  1.00e+00 1.43e-08f 12
+   2 -1.1427739e-13 4.93e-32 7.63e-06  -2.5 6.25e-18    -  1.00e+00 1.00e+00   0
+   3 -1.1427743e-13 4.93e-32 4.76e-07 -11.0 6.98e-22    -  1.00e+00 1.00e+00   0
+   4 -4.7795804e-13 1.63e-30 2.49e+00 -11.0 8.17e-15    -  1.00e+00 1.00e+00f  1
+   5 -1.0452315e-12 1.68e-30 2.02e+00 -11.0 1.71e-14  14.0 1.00e+00 1.00e+00f  1
+   6 -3.1522267e-12 1.35e-29 1.19e+00 -11.0 7.78e-14    -  1.00e+00 1.00e+00f  1
+   7 -3.4773986e-12 5.47e-30 1.73e-01 -11.0 1.42e-14    -  1.00e+00 1.00e+00f  1
+   8 -3.4802993e-12 3.35e-30 3.89e-04 -11.0 3.11e-15    -  1.00e+00 1.00e+00h  1
+   9 -3.4802869e-12 8.83e-30 2.86e-08 -11.0 9.57e-18    -  1.00e+00 1.00e+00   0
+iter    objective    inf_pr   inf_du lg(mu)  ||d||  lg(rg) alpha_du alpha_pr  ls
+  10 -3.4802869e-12 6.95e-30 7.11e-15 -11.0 6.93e-22    -  1.00e+00 1.00e+00T  0
+
+Number of Iterations....: 10
+
+                                   (scaled)                 (unscaled)
+Objective...............:  -7.5904870406757780e-13   -3.4802868980467698e-12
+Dual infeasibility......:   7.1054273576010019e-15    3.2578839282861406e-14
+Constraint violation....:   6.9518367272601665e-30    6.9518367272601665e-30
+Variable bound violation:   1.0168520882625093e-13    1.0168520882625093e-13
+Complementarity.........:   9.0909090909090936e-12    4.1682400129107372e-11
+Overall NLP error.......:   9.0909090909090936e-12    4.1682400129107372e-11
+
+
+Number of objective function evaluations             = 23
+Number of objective gradient evaluations             = 11
+Number of equality constraint evaluations            = 23
+Number of inequality constraint evaluations          = 0
+Number of equality constraint Jacobian evaluations   = 11
+Number of inequality constraint Jacobian evaluations = 0
+Number of Lagrangian Hessian evaluations             = 10
+Total seconds in IPOPT                               = 0.003
+
+EXIT: Optimal Solution Found.
+┌ Warning: Verbosity toggle: missing_second_order_ad
+│  The selected optimization algorithm requires second order derivatives, but `SecondOrder` ADtype was not provided. So a `SecondOrder` with AutoForwardDiff() for both inner and outer will be created, this can be suboptimal and not work in some cases so an explicit `SecondOrder` ADtype is recommended.
+└ @ OptimizationBase ~/.julia/packages/OptimizationBase/y1GZt/src/cache.jl:84
+┌ Info: Verbosity toggle: unsupported_kwargs
+└  common abstol is currently not used by IpoptOptimizer(1.0e-12, 1000, 1.0e-12, 1.0e-12, 0.0001, &quot;no&quot;, &quot;no&quot;, &quot;mumps&quot;, &quot;none&quot;, &quot;&quot;, &quot;&quot;, &quot;yes&quot;, &quot;gradient-based&quot;, 100.0, &quot;no&quot;, &quot;no&quot;, &quot;monotone&quot;, &quot;quality-function&quot;, 0.1, &quot;obj-constr-filter&quot;, &quot;no&quot;, &quot;exact&quot;, 6, &quot;bfgs&quot;, &quot;no&quot;, &quot;filter&quot;, &quot;no&quot;, Dict{String, Any}())
+This is Ipopt version 3.14.19, running with linear solver MUMPS 5.9.0.
+
+Number of nonzeros in equality constraint Jacobian...:       32
+Number of nonzeros in inequality constraint Jacobian.:        0
+Number of nonzeros in Lagrangian Hessian.............:       36
+
+Total number of variables............................:        8
+                     variables with only lower bounds:        0
+                variables with lower and upper bounds:        8
+                     variables with only upper bounds:        0
+Total number of equality constraints.................:        4
+Total number of inequality constraints...............:        0
+        inequality constraints with only lower bounds:        0
+   inequality constraints with lower and upper bounds:        0
+        inequality constraints with only upper bounds:        0
+
+iter    objective    inf_pr   inf_du lg(mu)  ||d||  lg(rg) alpha_du alpha_pr  ls
+   0 -1.4256822e-13 0.00e+00 3.37e+00  -1.0 0.00e+00    -  0.00e+00 0.00e+00   0
+   1 -1.1360363e-13 1.48e-31 1.50e+08  -1.0 3.38e-08    -  1.00e+00 1.43e-08f 12
+   2 -1.1382124e-13 4.93e-32 2.24e-05  -2.5 6.25e-18    -  1.00e+00 1.00e+00   0
+   3 -1.1382129e-13 4.93e-32 2.15e-07 -11.0 6.99e-22    -  1.00e+00 1.00e+00   0
+   4 -4.7688572e-13 1.77e-30 2.49e+00 -11.0 8.17e-15    -  1.00e+00 1.00e+00f  1
+   5 -1.0438950e-12 2.61e-30 2.02e+00 -11.0 1.71e-14  14.0 1.00e+00 1.00e+00f  1
+   6 -3.1470912e-12 1.36e-29 1.21e+00 -11.0 7.79e-14    -  1.00e+00 1.00e+00f  1
+   7 -3.4732708e-12 3.80e-30 1.91e-01 -11.0 1.43e-14    -  1.00e+00 1.00e+00f  1
+   8 -3.4764306e-12 3.80e-30 5.07e-04 -11.0 3.45e-15    -  1.00e+00 1.00e+00h  1
+   9 -3.4764172e-12 3.80e-30 4.88e-08 -11.0 1.24e-17    -  1.00e+00 1.00e+00   0
+iter    objective    inf_pr   inf_du lg(mu)  ||d||  lg(rg) alpha_du alpha_pr  ls
+  10 -3.4764172e-12 6.95e-30 7.11e-15 -11.0 1.18e-21    -  1.00e+00 1.00e+00T  0
+
+Number of Iterations....: 10
+
+                                   (scaled)                 (unscaled)
+Objective...............:  -7.6070277218596222e-13   -3.4764172375721984e-12
+Dual infeasibility......:   7.1054273576010019e-15    3.2471855039122509e-14
+Constraint violation....:   6.9518367272601665e-30    6.9518367272601665e-30
+Variable bound violation:   1.0179818901789385e-13    1.0179818901789385e-13
+Complementarity.........:   9.0909090909090936e-12    4.1545521094949129e-11
+Overall NLP error.......:   9.0909090909090936e-12    4.1545521094949129e-11
+
+
+Number of objective function evaluations             = 23
+Number of objective gradient evaluations             = 11
+Number of equality constraint evaluations            = 23
+Number of inequality constraint evaluations          = 0
+Number of equality constraint Jacobian evaluations   = 11
+Number of inequality constraint Jacobian evaluations = 0
+Number of Lagrangian Hessian evaluations             = 10
+Total seconds in IPOPT                               = 0.003
+
+EXIT: Optimal Solution Found.
+┌ Warning: Verbosity toggle: missing_second_order_ad
+│  The selected optimization algorithm requires second order derivatives, but `SecondOrder` ADtype was not provided. So a `SecondOrder` with AutoForwardDiff() for both inner and outer will be created, this can be suboptimal and not work in some cases so an explicit `SecondOrder` ADtype is recommended.
+└ @ OptimizationBase ~/.julia/packages/OptimizationBase/y1GZt/src/cache.jl:84
+┌ Info: Verbosity toggle: unsupported_kwargs
+└  common abstol is currently not used by IpoptOptimizer(1.0e-12, 1000, 1.0e-12, 1.0e-12, 0.0001, &quot;no&quot;, &quot;no&quot;, &quot;mumps&quot;, &quot;none&quot;, &quot;&quot;, &quot;&quot;, &quot;yes&quot;, &quot;gradient-based&quot;, 100.0, &quot;no&quot;, &quot;no&quot;, &quot;monotone&quot;, &quot;quality-function&quot;, 0.1, &quot;obj-constr-filter&quot;, &quot;no&quot;, &quot;exact&quot;, 6, &quot;bfgs&quot;, &quot;no&quot;, &quot;filter&quot;, &quot;no&quot;, Dict{String, Any}())
+This is Ipopt version 3.14.19, running with linear solver MUMPS 5.9.0.
+
+Number of nonzeros in equality constraint Jacobian...:       32
+Number of nonzeros in inequality constraint Jacobian.:        0
+Number of nonzeros in Lagrangian Hessian.............:       36
+
+Total number of variables............................:        8
+                     variables with only lower bounds:        0
+                variables with lower and upper bounds:        8
+                     variables with only upper bounds:        0
+Total number of equality constraints.................:        4
+Total number of inequality constraints...............:        0
+        inequality constraints with only lower bounds:        0
+   inequality constraints with lower and upper bounds:        0
+        inequality constraints with only upper bounds:        0
+
+iter    objective    inf_pr   inf_du lg(mu)  ||d||  lg(rg) alpha_du alpha_pr  ls
+   0 -1.4209316e-13 0.00e+00 3.37e+00  -1.0 0.00e+00    -  0.00e+00 0.00e+00   0
+   1 -1.1315027e-13 4.93e-32 1.50e+08  -1.0 3.37e-08    -  1.00e+00 1.44e-08f 12
+   2 -1.1336789e-13 9.86e-32 1.67e-05  -2.5 6.25e-18    -  1.00e+00 1.00e+00   0
+   3 -1.1336793e-13 9.86e-32 3.89e-07 -11.0 7.00e-22    -  1.00e+00 1.00e+00   0
+   4 -4.7583090e-13 1.38e-30 2.49e+00 -11.0 8.18e-15    -  1.00e+00 1.00e+00f  1
+   5 -1.0426010e-12 2.51e-30 2.03e+00 -11.0 1.72e-14  14.0 1.00e+00 1.00e+00f  1
+   6 -3.1421081e-12 9.27e-30 1.22e+00 -11.0 7.80e-14    -  1.00e+00 1.00e+00f  1
+   7 -3.4692915e-12 3.35e-30 2.08e-01 -11.0 1.44e-14    -  1.00e+00 1.00e+00f  1
+   8 -3.4727359e-12 3.90e-30 6.36e-04 -11.0 3.79e-15    -  1.00e+00 1.00e+00h  1
+   9 -3.4727217e-12 1.01e-29 7.72e-08 -11.0 1.56e-17    -  1.00e+00 1.00e+00   0
+iter    objective    inf_pr   inf_du lg(mu)  ||d||  lg(rg) alpha_du alpha_pr  ls
+  10 -3.4727217e-12 5.18e-30 8.88e-15 -11.0 1.86e-21    -  1.00e+00 1.00e+00T  0
+
+Number of Iterations....: 10
+
+                                   (scaled)                 (unscaled)
+Objective...............:  -7.6238891711407427e-13   -3.4727217227606241e-12
+Dual infeasibility......:   8.8817841970012523e-15    4.0456995406693684e-14
+Constraint violation....:   5.1768996905128900e-30    5.1768996905128900e-30
+Variable bound violation:   1.0191309043790804e-13    1.0191309043790804e-13
+Complementarity.........:   9.0909090909090936e-12    4.1409570326844450e-11
+Overall NLP error.......:   9.0909090909090936e-12    4.1409570326844450e-11
+
+
+Number of objective function evaluations             = 23
+Number of objective gradient evaluations             = 11
+Number of equality constraint evaluations            = 23
+Number of inequality constraint evaluations          = 0
+Number of equality constraint Jacobian evaluations   = 11
+Number of inequality constraint Jacobian evaluations = 0
+Number of Lagrangian Hessian evaluations             = 10
+Total seconds in IPOPT                               = 0.003
+
+EXIT: Optimal Solution Found.
+┌ Warning: Verbosity toggle: missing_second_order_ad
+│  The selected optimization algorithm requires second order derivatives, but `SecondOrder` ADtype was not provided. So a `SecondOrder` with AutoForwardDiff() for both inner and outer will be created, this can be suboptimal and not work in some cases so an explicit `SecondOrder` ADtype is recommended.
+└ @ OptimizationBase ~/.julia/packages/OptimizationBase/y1GZt/src/cache.jl:84
+┌ Info: Verbosity toggle: unsupported_kwargs
+└  common abstol is currently not used by IpoptOptimizer(1.0e-12, 1000, 1.0e-12, 1.0e-12, 0.0001, &quot;no&quot;, &quot;no&quot;, &quot;mumps&quot;, &quot;none&quot;, &quot;&quot;, &quot;&quot;, &quot;yes&quot;, &quot;gradient-based&quot;, 100.0, &quot;no&quot;, &quot;no&quot;, &quot;monotone&quot;, &quot;quality-function&quot;, 0.1, &quot;obj-constr-filter&quot;, &quot;no&quot;, &quot;exact&quot;, 6, &quot;bfgs&quot;, &quot;no&quot;, &quot;filter&quot;, &quot;no&quot;, Dict{String, Any}())
+This is Ipopt version 3.14.19, running with linear solver MUMPS 5.9.0.
+
+Number of nonzeros in equality constraint Jacobian...:       32
+Number of nonzeros in inequality constraint Jacobian.:        0
+Number of nonzeros in Lagrangian Hessian.............:       36
+
+Total number of variables............................:        8
+                     variables with only lower bounds:        0
+                variables with lower and upper bounds:        8
+                     variables with only upper bounds:        0
+Total number of equality constraints.................:        4
+Total number of inequality constraints...............:        0
+        inequality constraints with only lower bounds:        0
+   inequality constraints with lower and upper bounds:        0
+        inequality constraints with only upper bounds:        0
+
+iter    objective    inf_pr   inf_du lg(mu)  ||d||  lg(rg) alpha_du alpha_pr  ls
+   0 -1.4162126e-13 0.00e+00 3.37e+00  -1.0 0.00e+00    -  0.00e+00 0.00e+00   0
+   1 -1.1269968e-13 9.86e-32 1.50e+08  -1.0 3.36e-08    -  1.00e+00 1.44e-08f 12
+   2 -1.1291730e-13 9.86e-32 1.72e-05  -2.5 6.25e-18    -  1.00e+00 1.00e+00   0
+   3 -1.1291735e-13 1.48e-31 5.06e-07 -11.0 7.01e-22    -  1.00e+00 1.00e+00   0
+   4 -4.7479327e-13 1.38e-30 2.49e+00 -11.0 8.19e-15    -  1.00e+00 1.00e+00f  1
+   5 -1.0413487e-12 2.12e-30 2.04e+00 -11.0 1.72e-14  14.0 1.00e+00 1.00e+00f  1
+   6 -3.1372754e-12 3.80e-30 1.23e+00 -11.0 7.80e-14    -  1.00e+00 1.00e+00f  1
+   7 -3.4654589e-12 2.96e-30 2.25e-01 -11.0 1.45e-14    -  1.00e+00 1.00e+00f  1
+   8 -3.4692131e-12 9.27e-30 7.76e-04 -11.0 4.11e-15    -  1.00e+00 1.00e+00h  1
+   9 -3.4691980e-12 9.66e-30 1.16e-07 -11.0 1.90e-17    -  1.00e+00 1.00e+00   0
+iter    objective    inf_pr   inf_du lg(mu)  ||d||  lg(rg) alpha_du alpha_pr  ls
+  10 -3.4691980e-12 6.95e-30 1.24e-14 -11.0 2.79e-21    -  1.00e+00 1.00e+00T  0
+
+Number of Iterations....: 10
+
+                                   (scaled)                 (unscaled)
+Objective...............:  -7.6410700017651567e-13   -3.4691980184057811e-12
+Dual infeasibility......:   1.2434497875801753e-14    5.6455097755467659e-14
+Constraint violation....:   6.9518367272601665e-30    6.9518367272601665e-30
+Variable bound violation:   1.0202988388879412e-13    1.0202988388879412e-13
+Complementarity.........:   9.0909090909090936e-12    4.1274538508878113e-11
+Overall NLP error.......:   9.0909090909090936e-12    4.1274538508878113e-11
+
+
+Number of objective function evaluations             = 23
+Number of objective gradient evaluations             = 11
+Number of equality constraint evaluations            = 23
+Number of inequality constraint evaluations          = 0
+Number of equality constraint Jacobian evaluations   = 11
+Number of inequality constraint Jacobian evaluations = 0
+Number of Lagrangian Hessian evaluations             = 10
+Total seconds in IPOPT                               = 0.003
+
+EXIT: Optimal Solution Found.
+┌ Warning: Verbosity toggle: missing_second_order_ad
+│  The selected optimization algorithm requires second order derivatives, but `SecondOrder` ADtype was not provided. So a `SecondOrder` with AutoForwardDiff() for both inner and outer will be created, this can be suboptimal and not work in some cases so an explicit `SecondOrder` ADtype is recommended.
+└ @ OptimizationBase ~/.julia/packages/OptimizationBase/y1GZt/src/cache.jl:84
+┌ Info: Verbosity toggle: unsupported_kwargs
+└  common abstol is currently not used by IpoptOptimizer(1.0e-12, 1000, 1.0e-12, 1.0e-12, 0.0001, &quot;no&quot;, &quot;no&quot;, &quot;mumps&quot;, &quot;none&quot;, &quot;&quot;, &quot;&quot;, &quot;yes&quot;, &quot;gradient-based&quot;, 100.0, &quot;no&quot;, &quot;no&quot;, &quot;monotone&quot;, &quot;quality-function&quot;, 0.1, &quot;obj-constr-filter&quot;, &quot;no&quot;, &quot;exact&quot;, 6, &quot;bfgs&quot;, &quot;no&quot;, &quot;filter&quot;, &quot;no&quot;, Dict{String, Any}())
+This is Ipopt version 3.14.19, running with linear solver MUMPS 5.9.0.
+
+Number of nonzeros in equality constraint Jacobian...:       32
+Number of nonzeros in inequality constraint Jacobian.:        0
+Number of nonzeros in Lagrangian Hessian.............:       36
+
+Total number of variables............................:        8
+                     variables with only lower bounds:        0
+                variables with lower and upper bounds:        8
+                     variables with only upper bounds:        0
+Total number of equality constraints.................:        4
+Total number of inequality constraints...............:        0
+        inequality constraints with only lower bounds:        0
+   inequality constraints with lower and upper bounds:        0
+        inequality constraints with only upper bounds:        0
+
+iter    objective    inf_pr   inf_du lg(mu)  ||d||  lg(rg) alpha_du alpha_pr  ls
+   0 -1.4115250e-13 0.00e+00 3.38e+00  -1.0 0.00e+00    -  0.00e+00 0.00e+00   0
+   1 -1.1225184e-13 4.93e-32 1.50e+08  -1.0 3.35e-08    -  1.00e+00 1.45e-08f 12
+   2 -1.1246947e-13 1.48e-31 2.10e-05  -2.5 6.25e-18    -  1.00e+00 1.00e+00   0
+   3 -1.1246951e-13 9.86e-32 4.03e-07 -11.0 7.02e-22    -  1.00e+00 1.00e+00   0
+   4 -4.7377255e-13 1.43e-30 2.50e+00 -11.0 8.19e-15    -  1.00e+00 1.00e+00f  1
+   5 -1.0401376e-12 3.35e-30 2.04e+00 -11.0 1.73e-14  14.0 1.00e+00 1.00e+00f  1
+   6 -3.1325913e-12 3.11e-30 1.25e+00 -11.0 7.81e-14    -  1.00e+00 1.00e+00f  1
+   7 -3.4617715e-12 3.80e-30 2.42e-01 -11.0 1.45e-14    -  1.00e+00 1.00e+00f  1
+   8 -3.4658599e-12 9.27e-30 9.26e-04 -11.0 4.44e-15    -  1.00e+00 1.00e+00h  1
+   9 -3.4658439e-12 3.35e-30 1.66e-07 -11.0 2.27e-17    -  1.00e+00 1.00e+00   0
+iter    objective    inf_pr   inf_du lg(mu)  ||d||  lg(rg) alpha_du alpha_pr  ls
+  10 -3.4658439e-12 9.27e-30 1.07e-14 -11.0 3.98e-21    -  1.00e+00 1.00e+00T  0
+
+Number of Iterations....: 10
+
+                                   (scaled)                 (unscaled)
+Objective...............:  -7.6585689780042876e-13   -3.4658438887510452e-12
+Dual infeasibility......:   1.0658141036401503e-14    4.8232839689177500e-14
+Constraint violation....:   9.2691156363468887e-30    9.2691156363468887e-30
+Variable bound violation:   1.0214854134833648e-13    1.0214854134833648e-13
+Complementarity.........:   9.0909090909090936e-12    4.1140416449091051e-11
+Overall NLP error.......:   9.0909090909090936e-12    4.1140416449091051e-11
+
+
+Number of objective function evaluations             = 23
+Number of objective gradient evaluations             = 11
+Number of equality constraint evaluations            = 23
+Number of inequality constraint evaluations          = 0
+Number of equality constraint Jacobian evaluations   = 11
+Number of inequality constraint Jacobian evaluations = 0
+Number of Lagrangian Hessian evaluations             = 10
+Total seconds in IPOPT                               = 0.003
+
+EXIT: Optimal Solution Found.
+┌ Warning: Verbosity toggle: missing_second_order_ad
+│  The selected optimization algorithm requires second order derivatives, but `SecondOrder` ADtype was not provided. So a `SecondOrder` with AutoForwardDiff() for both inner and outer will be created, this can be suboptimal and not work in some cases so an explicit `SecondOrder` ADtype is recommended.
+└ @ OptimizationBase ~/.julia/packages/OptimizationBase/y1GZt/src/cache.jl:84
+┌ Info: Verbosity toggle: unsupported_kwargs
+└  common abstol is currently not used by IpoptOptimizer(1.0e-12, 1000, 1.0e-12, 1.0e-12, 0.0001, &quot;no&quot;, &quot;no&quot;, &quot;mumps&quot;, &quot;none&quot;, &quot;&quot;, &quot;&quot;, &quot;yes&quot;, &quot;gradient-based&quot;, 100.0, &quot;no&quot;, &quot;no&quot;, &quot;monotone&quot;, &quot;quality-function&quot;, 0.1, &quot;obj-constr-filter&quot;, &quot;no&quot;, &quot;exact&quot;, 6, &quot;bfgs&quot;, &quot;no&quot;, &quot;filter&quot;, &quot;no&quot;, Dict{String, Any}())
+This is Ipopt version 3.14.19, running with linear solver MUMPS 5.9.0.
+
+Number of nonzeros in equality constraint Jacobian...:       32
+Number of nonzeros in inequality constraint Jacobian.:        0
+Number of nonzeros in Lagrangian Hessian.............:       36
+
+Total number of variables............................:        8
+                     variables with only lower bounds:        0
+                variables with lower and upper bounds:        8
+                     variables with only upper bounds:        0
+Total number of equality constraints.................:        4
+Total number of inequality constraints...............:        0
+        inequality constraints with only lower bounds:        0
+   inequality constraints with lower and upper bounds:        0
+        inequality constraints with only upper bounds:        0
+
+iter    objective    inf_pr   inf_du lg(mu)  ||d||  lg(rg) alpha_du alpha_pr  ls
+   0 -1.4068684e-13 0.00e+00 3.38e+00  -1.0 0.00e+00    -  0.00e+00 0.00e+00   0
+   1 -1.1180672e-13 4.93e-32 1.50e+08  -1.0 3.34e-08    -  1.00e+00 1.45e-08f 12
+   2 -1.1202436e-13 4.93e-32 2.10e-05  -2.5 6.25e-18    -  1.00e+00 1.00e+00   0
+   3 -1.1202440e-13 4.93e-32 5.12e-07 -11.0 7.03e-22    -  1.00e+00 1.00e+00   0
+   4 -4.7276845e-13 1.38e-30 2.50e+00 -11.0 8.20e-15    -  1.00e+00 1.00e+00f  1
+   5 -1.0389671e-12 1.48e-30 2.05e+00 -11.0 1.73e-14  14.0 1.00e+00 1.00e+00f  1
+   6 -3.1280541e-12 6.95e-30 1.26e+00 -11.0 7.81e-14    -  1.00e+00 1.00e+00f  1
+   7 -3.4582278e-12 3.90e-30 2.58e-01 -11.0 1.46e-14    -  1.00e+00 1.00e+00f  1
+   8 -3.4626743e-12 3.90e-30 1.09e-03 -11.0 4.75e-15    -  1.00e+00 1.00e+00h  1
+   9 -3.4626572e-12 9.66e-30 2.28e-07 -11.0 2.65e-17    -  1.00e+00 1.00e+00   0
+iter    objective    inf_pr   inf_du lg(mu)  ||d||  lg(rg) alpha_du alpha_pr  ls
+  10 -3.4626572e-12 3.35e-30 1.60e-14 -11.0 5.49e-21    -  1.00e+00 1.00e+00T  0
+
+Number of Iterations....: 10
+
+                                   (scaled)                 (unscaled)
+Objective...............:  -7.6763850068398657e-13   -3.4626571921141279e-12
+Dual infeasibility......:   1.5987211554602254e-14    7.2114977326004243e-14
+Constraint violation....:   3.3526588471893002e-30    3.3526588471893002e-30
+Variable bound violation:   1.0226903590442867e-13    1.0226903590442867e-13
+Complementarity.........:   9.0909090909090936e-12    4.1007195077427342e-11
+Overall NLP error.......:   9.0909090909090936e-12    4.1007195077427342e-11
+
+
+Number of objective function evaluations             = 23
+Number of objective gradient evaluations             = 11
+Number of equality constraint evaluations            = 23
+Number of inequality constraint evaluations          = 0
+Number of equality constraint Jacobian evaluations   = 11
+Number of inequality constraint Jacobian evaluations = 0
+Number of Lagrangian Hessian evaluations             = 10
+Total seconds in IPOPT                               = 0.003
+
+EXIT: Optimal Solution Found.
+┌ Warning: Verbosity toggle: missing_second_order_ad
+│  The selected optimization algorithm requires second order derivatives, but `SecondOrder` ADtype was not provided. So a `SecondOrder` with AutoForwardDiff() for both inner and outer will be created, this can be suboptimal and not work in some cases so an explicit `SecondOrder` ADtype is recommended.
+└ @ OptimizationBase ~/.julia/packages/OptimizationBase/y1GZt/src/cache.jl:84
+┌ Info: Verbosity toggle: unsupported_kwargs
+└  common abstol is currently not used by IpoptOptimizer(1.0e-12, 1000, 1.0e-12, 1.0e-12, 0.0001, &quot;no&quot;, &quot;no&quot;, &quot;mumps&quot;, &quot;none&quot;, &quot;&quot;, &quot;&quot;, &quot;yes&quot;, &quot;gradient-based&quot;, 100.0, &quot;no&quot;, &quot;no&quot;, &quot;monotone&quot;, &quot;quality-function&quot;, 0.1, &quot;obj-constr-filter&quot;, &quot;no&quot;, &quot;exact&quot;, 6, &quot;bfgs&quot;, &quot;no&quot;, &quot;filter&quot;, &quot;no&quot;, Dict{String, Any}())
+This is Ipopt version 3.14.19, running with linear solver MUMPS 5.9.0.
+
+Number of nonzeros in equality constraint Jacobian...:       32
+Number of nonzeros in inequality constraint Jacobian.:        0
+Number of nonzeros in Lagrangian Hessian.............:       36
+
+Total number of variables............................:        8
+                     variables with only lower bounds:        0
+                variables with lower and upper bounds:        8
+                     variables with only upper bounds:        0
+Total number of equality constraints.................:        4
+Total number of inequality constraints...............:        0
+        inequality constraints with only lower bounds:        0
+   inequality constraints with lower and upper bounds:        0
+        inequality constraints with only upper bounds:        0
+
+iter    objective    inf_pr   inf_du lg(mu)  ||d||  lg(rg) alpha_du alpha_pr  ls
+   0 -1.4022426e-13 0.00e+00 3.38e+00  -1.0 0.00e+00    -  0.00e+00 0.00e+00   0
+   1 -1.1136430e-13 4.93e-32 1.50e+08  -1.0 3.32e-08    -  1.00e+00 1.46e-08f 12
+   2 -1.1158195e-13 4.93e-32 2.34e-05  -2.5 6.25e-18    -  1.00e+00 1.00e+00   0
+   3 -1.1158199e-13 4.93e-32 7.24e-07 -11.0 7.04e-22    -  1.00e+00 1.00e+00   0
+   4 -4.7178070e-13 1.77e-30 2.50e+00 -11.0 8.21e-15    -  1.00e+00 1.00e+00f  1
+   5 -1.0378366e-12 2.96e-30 2.05e+00 -11.0 1.73e-14  14.0 1.00e+00 1.00e+00f  1
+   6 -3.1236621e-12 3.35e-30 1.27e+00 -11.0 7.82e-14    -  1.00e+00 1.00e+00f  1
+   7 -3.4548262e-12 2.96e-30 2.75e-01 -11.0 1.47e-14    -  1.00e+00 1.00e+00f  1
+   8 -3.4596541e-12 1.27e-29 1.25e-03 -11.0 5.06e-15    -  1.00e+00 1.00e+00h  1
+   9 -3.4596359e-12 6.95e-30 3.06e-07 -11.0 3.06e-17    -  1.00e+00 1.00e+00   0
+iter    objective    inf_pr   inf_du lg(mu)  ||d||  lg(rg) alpha_du alpha_pr  ls
+  10 -3.4596359e-12 1.06e-29 2.31e-14 -11.0 7.34e-21    -  1.00e+00 1.00e+00T  0
+
+Number of Iterations....: 10
+
+                                   (scaled)                 (unscaled)
+Objective...............:  -7.6945171302302977e-13   -3.4596358758783439e-12
+Dual infeasibility......:   2.3092638912203256e-14    1.0382993591044413e-13
+Constraint violation....:   1.0600318413907346e-29    1.0600318413907346e-29
+Variable bound violation:   1.0239134169434724e-13    1.0239134169434724e-13
+Complementarity.........:   9.0909090909090936e-12    4.0874865443721925e-11
+Overall NLP error.......:   9.0909090909090936e-12    4.0874865443721925e-11
+
+
+Number of objective function evaluations             = 23
+Number of objective gradient evaluations             = 11
+Number of equality constraint evaluations            = 23
+Number of inequality constraint evaluations          = 0
+Number of equality constraint Jacobian evaluations   = 11
+Number of inequality constraint Jacobian evaluations = 0
+Number of Lagrangian Hessian evaluations             = 10
+Total seconds in IPOPT                               = 0.003
+
+EXIT: Optimal Solution Found.
+┌ Warning: Verbosity toggle: missing_second_order_ad
+│  The selected optimization algorithm requires second order derivatives, but `SecondOrder` ADtype was not provided. So a `SecondOrder` with AutoForwardDiff() for both inner and outer will be created, this can be suboptimal and not work in some cases so an explicit `SecondOrder` ADtype is recommended.
+└ @ OptimizationBase ~/.julia/packages/OptimizationBase/y1GZt/src/cache.jl:84
+┌ Info: Verbosity toggle: unsupported_kwargs
+└  common abstol is currently not used by IpoptOptimizer(1.0e-12, 1000, 1.0e-12, 1.0e-12, 0.0001, &quot;no&quot;, &quot;no&quot;, &quot;mumps&quot;, &quot;none&quot;, &quot;&quot;, &quot;&quot;, &quot;yes&quot;, &quot;gradient-based&quot;, 100.0, &quot;no&quot;, &quot;no&quot;, &quot;monotone&quot;, &quot;quality-function&quot;, 0.1, &quot;obj-constr-filter&quot;, &quot;no&quot;, &quot;exact&quot;, 6, &quot;bfgs&quot;, &quot;no&quot;, &quot;filter&quot;, &quot;no&quot;, Dict{String, Any}())
+This is Ipopt version 3.14.19, running with linear solver MUMPS 5.9.0.
+
+Number of nonzeros in equality constraint Jacobian...:       32
+Number of nonzeros in inequality constraint Jacobian.:        0
+Number of nonzeros in Lagrangian Hessian.............:       36
+
+Total number of variables............................:        8
+                     variables with only lower bounds:        0
+                variables with lower and upper bounds:        8
+                     variables with only upper bounds:        0
+Total number of equality constraints.................:        4
+Total number of inequality constraints...............:        0
+        inequality constraints with only lower bounds:        0
+   inequality constraints with lower and upper bounds:        0
+        inequality constraints with only upper bounds:        0
+
+iter    objective    inf_pr   inf_du lg(mu)  ||d||  lg(rg) alpha_du alpha_pr  ls
+   0 -1.3976471e-13 0.00e+00 3.38e+00  -1.0 0.00e+00    -  0.00e+00 0.00e+00   0
+   1 -1.1092455e-13 1.48e-31 1.50e+08  -1.0 3.31e-08    -  1.00e+00 1.46e-08f 12
+   2 -1.1114222e-13 4.93e-32 3.29e-05  -2.5 6.25e-18    -  1.00e+00 1.00e+00   0
+   3 -1.1114226e-13 9.86e-32 3.23e-07 -11.0 7.04e-22    -  1.00e+00 1.00e+00   0
+   4 -4.7080904e-13 1.48e-30 2.50e+00 -11.0 8.21e-15    -  1.00e+00 1.00e+00f  1
+   5 -1.0367456e-12 4.39e-30 2.06e+00 -11.0 1.74e-14  14.0 1.00e+00 1.00e+00f  1
+   6 -3.1194137e-12 1.33e-29 1.28e+00 -11.0 7.83e-14    -  1.00e+00 1.00e+00f  1
+   7 -3.4515653e-12 9.66e-30 2.91e-01 -11.0 1.48e-14    -  1.00e+00 1.00e+00f  1
+   8 -3.4567975e-12 4.68e-30 1.43e-03 -11.0 5.36e-15    -  1.00e+00 1.00e+00h  1
+   9 -3.4567779e-12 3.35e-30 3.99e-07 -11.0 3.48e-17    -  1.00e+00 1.00e+00   0
+iter    objective    inf_pr   inf_du lg(mu)  ||d||  lg(rg) alpha_du alpha_pr  ls
+  10 -3.4567780e-12 3.35e-30 2.49e-14 -11.0 9.57e-21    -  1.00e+00 1.00e+00T  0
+
+Number of Iterations....: 10
+
+                                   (scaled)                 (unscaled)
+Objective...............:  -7.7129645179475436e-13   -3.4567779718371899e-12
+Dual infeasibility......:   2.4868995751603507e-14    1.1145726976419668e-13
+Constraint violation....:   3.3526588471893002e-30    3.3526588471893002e-30
+Variable bound violation:   1.0251543384822464e-13    1.0251543384822464e-13
+Complementarity.........:   9.0909090909090936e-12    4.0743418715728018e-11
+Overall NLP error.......:   9.0909090909090936e-12    4.0743418715728018e-11
+
+
+Number of objective function evaluations             = 23
+Number of objective gradient evaluations             = 11
+Number of equality constraint evaluations            = 23
+Number of inequality constraint evaluations          = 0
+Number of equality constraint Jacobian evaluations   = 11
+Number of inequality constraint Jacobian evaluations = 0
+Number of Lagrangian Hessian evaluations             = 10
+Total seconds in IPOPT                               = 0.003
+
+EXIT: Optimal Solution Found.</code></pre><p>The figures can then be drawn.</p><pre><code class="language-julia hljs">p1 = plot(collect(temperatures), pH_vals,
+    xlabel = &quot;T (°C)&quot;, ylabel = &quot;pH&quot;, label = &quot;pH&quot;,
+    marker = :circle, linewidth = 2, title = &quot;pH&quot;)
+p2 = plot(collect(temperatures), nCa_vals,
+    xlabel = &quot;T (°C)&quot;, ylabel = &quot;n (mmol)&quot;, label = &quot;Ca²⁺&quot;,
+    marker = :circle, linewidth = 2, title = &quot;Dissolved species&quot;)
+plot!(p2, collect(temperatures), nCal_vals,
+    label = &quot;Cal&quot;, marker = :square, linewidth = 2)
+plot(p1, p2, layout = (1, 2), size = (700, 350))</code></pre><img src="be0dd8fe.svg" alt="Example block output"/><div class="admonition is-info" id="Calcite-solubility-27b1c8cae6e7be4c"><header class="admonition-header">Calcite solubility<a class="admonition-anchor" href="#Calcite-solubility-27b1c8cae6e7be4c" title="Permalink"></a></header><div class="admonition-body"><p>Calcite is a <strong>retrograde soluble</strong> mineral: its solubility decreases with increasing temperature, so less Ca²⁺ is released and pH rises slightly as temperature increases.</p></div></div><hr/><h2 id="Activity-models"><a class="docs-heading-anchor" href="#Activity-models">Activity models</a><a id="Activity-models-1"></a><a class="docs-heading-anchor-permalink" href="#Activity-models" title="Permalink"></a></h2><p>All activity models inherit from <a href="../../api/equilibrium/#ChemistryLab.AbstractActivityModel"><code>AbstractActivityModel</code></a>. Three built-in models are provided, covering ideal behavior through to the extended Debye-Hückel level used by standard geochemical codes.</p><h3 id="Choosing-a-model"><a class="docs-heading-anchor" href="#Choosing-a-model">Choosing a model</a><a id="Choosing-a-model-1"></a><a class="docs-heading-anchor-permalink" href="#Choosing-a-model" title="Permalink"></a></h3><table><tr><th style="text-align: right">Model</th><th style="text-align: right">Formula</th><th style="text-align: right">Valid range</th><th style="text-align: right">Parameters needed</th></tr><tr><td style="text-align: right"><a href="../../api/equilibrium/#ChemistryLab.DiluteSolutionModel"><code>DiluteSolutionModel</code></a></td><td style="text-align: right">Raoult / Henry</td><td style="text-align: right">I ≪ 1 mol/kg</td><td style="text-align: right">none</td></tr><tr><td style="text-align: right"><a href="../../api/equilibrium/#ChemistryLab.HKFActivityModel"><code>HKFActivityModel</code></a></td><td style="text-align: right">B-dot extended Debye-Hückel</td><td style="text-align: right">I ≲ 1 mol/kg</td><td style="text-align: right"><code>A</code>, <code>B</code>, <code>Ḃ</code> (defaults at 25 °C)</td></tr><tr><td style="text-align: right"><a href="../../api/equilibrium/#ChemistryLab.DaviesActivityModel"><code>DaviesActivityModel</code></a></td><td style="text-align: right">Davies equation</td><td style="text-align: right">I ≲ 0.5 mol/kg</td><td style="text-align: right"><code>A</code>, <code>b</code> (defaults at 25 °C)</td></tr></table><hr/><h3 id="DiluteSolutionModel-(ideal-dilute-solution)"><a class="docs-heading-anchor" href="#DiluteSolutionModel-(ideal-dilute-solution)"><code>DiluteSolutionModel</code> (ideal dilute solution)</a><a id="DiluteSolutionModel-(ideal-dilute-solution)-1"></a><a class="docs-heading-anchor-permalink" href="#DiluteSolutionModel-(ideal-dilute-solution)" title="Permalink"></a></h3><table><tr><th style="text-align: right">Phase</th><th style="text-align: right">Law</th><th style="text-align: right">Expression</th></tr><tr><td style="text-align: right">Solvent (H₂O)</td><td style="text-align: right">Raoult</td><td style="text-align: right"><code>ln a = ln xₛ</code></td></tr><tr><td style="text-align: right">Aqueous solutes</td><td style="text-align: right">Henry</td><td style="text-align: right"><code>ln a = ln(cᵢ / c°)</code>, <code>c° = 1 mol/L</code></td></tr><tr><td style="text-align: right">Crystals</td><td style="text-align: right">Pure solid</td><td style="text-align: right"><code>ln a = 0</code></td></tr><tr><td style="text-align: right">Gas</td><td style="text-align: right">Ideal mixture</td><td style="text-align: right"><code>ln a = ln xᵢ</code></td></tr></table><pre><code class="language-julia hljs">state_eq = equilibrate(state)   # DiluteSolutionModel is the default</code></pre><hr/><h3 id="HKFActivityModel-(extended-Debye-Hückel-B-dot)"><a class="docs-heading-anchor" href="#HKFActivityModel-(extended-Debye-Hückel-B-dot)"><code>HKFActivityModel</code> (extended Debye-Hückel B-dot)</a><a id="HKFActivityModel-(extended-Debye-Hückel-B-dot)-1"></a><a class="docs-heading-anchor-permalink" href="#HKFActivityModel-(extended-Debye-Hückel-B-dot)" title="Permalink"></a></h3><p>Implements the extended Debye-Hückel model of Helgeson (1969) and Helgeson, Kirkham &amp; Flowers (1981), identical to the model used by PHREEQC and EQ3/6.</p><p><strong>Ion activity coefficient:</strong></p><pre><code class="nohighlight hljs">log₁₀ γᵢ = −A zᵢ² √I / (1 + B åᵢ √I)  +  Ḃ I</code></pre><p><strong>Neutral aqueous species (salting-out):</strong></p><pre><code class="nohighlight hljs">log₁₀ γᵢ = Kₙ I</code></pre><p><strong>Water activity</strong> is computed from the osmotic coefficient via Gibbs-Duhem (not Raoult), which is accurate up to <code>I ≈ 1 mol/kg</code>.</p><p><strong>Ionic radius lookup</strong> (priority order):</p><ol><li><code>sp[:å]</code> — explicit value set in species properties.</li><li><a href="../../api/equilibrium/#ChemistryLab.REJ_HKF"><code>REJ_HKF</code></a> — Helgeson et al. (1981) Table 3 (27 common ions).</li><li><a href="../../api/equilibrium/#ChemistryLab.REJ_CHARGE_DEFAULT"><code>REJ_CHARGE_DEFAULT</code></a> — fallback by formal charge.</li><li><code>model.å_default</code> (default: 3.72 Å).</li></ol><p><strong>Usage:</strong></p><pre><code class="language-julia hljs"># Fixed A, B at 25 °C / 1 bar (fast — suitable for isothermal calculations)
+state_eq = equilibrate(state; model=HKFActivityModel())
+
+# Temperature-dependent A and B (recomputed from T, P at each equilibrium solve)
+state_eq = equilibrate(state; model=HKFActivityModel(temperature_dependent=true))
+
+# Custom parameters
+model = HKFActivityModel(A=0.52, B=0.33, Ḃ=0.04)</code></pre><p>The A and B parameters depend on the water dielectric constant and density and can be computed explicitly via <a href="../../api/equilibrium/#ChemistryLab.hkf_debye_huckel_params-Tuple{Any, Any}"><code>hkf_debye_huckel_params</code></a>:</p><pre><code class="language-julia hljs">ab = hkf_debye_huckel_params(298.15, 1e5)   # → (A=0.5114, B=0.3288)</code></pre><div class="admonition is-info" id="Valid-range-ac81465262a6da2c"><header class="admonition-header">Valid range<a class="admonition-anchor" href="#Valid-range-ac81465262a6da2c" title="Permalink"></a></header><div class="admonition-body"><p>The B-dot model is reliable for <code>I ≲ 1 mol/kg</code>. For higher ionic strengths (brines, evaporites), use the Pitzer model (planned future extension).</p></div></div><hr/><h3 id="DaviesActivityModel-(Davies-equation)"><a class="docs-heading-anchor" href="#DaviesActivityModel-(Davies-equation)"><code>DaviesActivityModel</code> (Davies equation)</a><a id="DaviesActivityModel-(Davies-equation)-1"></a><a class="docs-heading-anchor-permalink" href="#DaviesActivityModel-(Davies-equation)" title="Permalink"></a></h3><p>Simpler alternative with no species-specific ionic radii. Suitable when ionic radii data are unavailable or for rapid screening calculations.</p><p><strong>Ion activity coefficient:</strong></p><pre><code class="nohighlight hljs">log₁₀ γᵢ = −A zᵢ² (√I / (1 + √I)  −  b I)</code></pre><p><strong>Water activity</strong> uses the Raoult (mole fraction) approximation.</p><pre><code class="language-julia hljs">state_eq = equilibrate(state; model=DaviesActivityModel())
+
+# Temperature-dependent A
+state_eq = equilibrate(state; model=DaviesActivityModel(temperature_dependent=true))</code></pre><hr/><h3 id="Custom-activity-models"><a class="docs-heading-anchor" href="#Custom-activity-models">Custom activity models</a><a id="Custom-activity-models-1"></a><a class="docs-heading-anchor-permalink" href="#Custom-activity-models" title="Permalink"></a></h3><p>To implement a custom activity model, define a new subtype and extend <code>activity_model</code>:</p><pre><code class="language-julia hljs">struct MyModel &lt;: AbstractActivityModel
+    # model parameters
+end
+
+function ChemistryLab.activity_model(cs::ChemicalSystem, ::MyModel)
+    # Precompute species indices and constants here (called once)
+    idx_solvent = only(cs.idx_solvent)
+    # ...
+
+    # Return a closure lna(n, p) -&gt; Vector compatible with ForwardDiff
+    function lna(n::AbstractVector, p)
+        # p contains at minimum: p.ΔₐG⁰overT, p.T, p.P, p.ϵ
+        # n is dimensionless mole vector, same indexing as cs.species
+        out = zeros(eltype(n), length(n))
+        # ... fill log-activities ...
+        return out
+    end
+    return lna
+end</code></pre><p>Pass your model to <code>equilibrate</code> or <code>EquilibriumSolver</code>:</p><pre><code class="language-julia hljs">state_eq = equilibrate(state; model=MyModel(...))</code></pre><hr/><h2 id="Solid-solutions"><a class="docs-heading-anchor" href="#Solid-solutions">Solid solutions</a><a id="Solid-solutions-1"></a><a class="docs-heading-anchor-permalink" href="#Solid-solutions" title="Permalink"></a></h2><p>Pure crystalline species have activity <code>ln a = 0</code>. <strong>Solid solutions</strong> are mineral phases with variable composition (e.g. C-S-H, AFm, hydrogarnet), where the activity of each end-member depends on its mole fraction within the phase.</p><h3 id="Defining-end-members-and-phases"><a class="docs-heading-anchor" href="#Defining-end-members-and-phases">Defining end-members and phases</a><a id="Defining-end-members-and-phases-1"></a><a class="docs-heading-anchor-permalink" href="#Defining-end-members-and-phases" title="Permalink"></a></h3><p>End-member species must carry <code>aggregate_state = AS_CRYSTAL</code>. <a href="../../api/equilibrium/#ChemistryLab.SolidSolutionPhase"><code>SolidSolutionPhase</code></a> automatically requalifies any end-member whose class is not already <code>SC_SSENDMEMBER</code>, so database species with <code>SC_COMPONENT</code> can be passed directly.</p><p><strong>Workflow A — pass database species directly:</strong></p><pre><code class="language-julia hljs">using ChemistryLab
+
+substances = build_species(&quot;data/cemdata18-thermofun.json&quot;)
+dict = Dict(symbol(s) =&gt; s for s in substances)
+
+# SolidSolutionPhase requalifies SC_COMPONENT → SC_SSENDMEMBER automatically
+ss_afm = SolidSolutionPhase(&quot;AFm&quot;, [dict[&quot;Ms&quot;], dict[&quot;Mc&quot;]])</code></pre><p><strong>Workflow B — automated via <a href="../../api/databases/#ChemistryLab.build_solid_solutions-Tuple{AbstractString, AbstractDict}"><code>build_solid_solutions</code></a> and a TOML file:</strong></p><pre><code class="language-julia hljs"># Load all phases defined in the TOML
+ss_phases = build_solid_solutions(&quot;data/solid_solutions.toml&quot;, dict)</code></pre><p>See the <a href="../databases/#sec-databases">Databases</a> tutorial for the TOML format and the pre-built <code>data/solid_solutions.toml</code> file shipped with ChemistryLab.</p><p>Then pass <code>solid_solutions</code> as a keyword to <code>ChemicalSystem</code>:</p><pre><code class="language-julia hljs">cs = ChemicalSystem(
+    [H2O_sp, dict[&quot;Ms&quot;], dict[&quot;Mc&quot;], ...],
+    [&quot;H2O@&quot;, &quot;Al+3&quot;, ...];           # primaries
+    solid_solutions = [ss_afm],      # or solid_solutions = ss_phases
+)</code></pre><h3 id="Activity-models-for-solid-solutions"><a class="docs-heading-anchor" href="#Activity-models-for-solid-solutions">Activity models for solid solutions</a><a id="Activity-models-for-solid-solutions-1"></a><a class="docs-heading-anchor-permalink" href="#Activity-models-for-solid-solutions" title="Permalink"></a></h3><table><tr><th style="text-align: right">Model</th><th style="text-align: right">Formula</th><th style="text-align: right">Notes</th></tr><tr><td style="text-align: right"><a href="../../api/equilibrium/#ChemistryLab.IdealSolidSolutionModel"><code>IdealSolidSolutionModel</code></a></td><td style="text-align: right"><code>ln aᵢ = ln xᵢ</code></td><td style="text-align: right">Default, any number of end-members</td></tr><tr><td style="text-align: right"><a href="../../api/equilibrium/#ChemistryLab.RedlichKisterModel"><code>RedlichKisterModel</code></a></td><td style="text-align: right"><code>ln aᵢ = ln xᵢ + ln γᵢ</code> (Margules)</td><td style="text-align: right">Binary only (2 end-members), parameters in J/mol</td></tr></table><p>The solid-solution activity is computed <strong>inside</strong> the aqueous activity closure — no separate activity model is needed. The existing <code>equilibrate(state)</code> call handles solid solutions automatically.</p><h3 id="Ideal-solid-solution"><a class="docs-heading-anchor" href="#Ideal-solid-solution">Ideal solid solution</a><a id="Ideal-solid-solution-1"></a><a class="docs-heading-anchor-permalink" href="#Ideal-solid-solution" title="Permalink"></a></h3><pre><code class="language-julia hljs">ss = SolidSolutionPhase(&quot;AFm&quot;, [em_ms, em_mc])   # IdealSolidSolutionModel() by default
+cs = ChemicalSystem([...]; solid_solutions=[ss])
+state_eq = equilibrate(state)</code></pre><h3 id="Non-ideal-binary:-Redlich-Kister"><a class="docs-heading-anchor" href="#Non-ideal-binary:-Redlich-Kister">Non-ideal binary: Redlich-Kister</a><a id="Non-ideal-binary:-Redlich-Kister-1"></a><a class="docs-heading-anchor-permalink" href="#Non-ideal-binary:-Redlich-Kister" title="Permalink"></a></h3><pre><code class="language-julia hljs"># Interaction parameters for monosulfoaluminate-monocarboaluminate (example values)
+rk = RedlichKisterModel(a0 = 3000.0, a1 = 500.0)          # a2 defaults to 0.0
+# or 3-parameter:  RedlichKisterModel(a0 = 3000.0, a1 = 500.0, a2 = 50.0)
+ss = SolidSolutionPhase(&quot;AFm&quot;, [em_ms, em_mc]; model=rk)</code></pre><p>Activity coefficients (Guggenheim / ThermoCalc convention):</p><p class="math-container">\[\begin{aligned}
+\ln \gamma_1 &amp;= \frac{x_2^2}{RT}\bigl[a_0 + a_1(3x_1 - x_2) + a_2(x_1 - x_2)(5x_1 - x_2)\bigr] \\[4pt]
+\ln \gamma_2 &amp;= \frac{x_1^2}{RT}\bigl[a_0 - a_1(3x_2 - x_1) + a_2(x_2 - x_1)(5x_2 - x_1)\bigr]
+\end{aligned}\]</p><div class="admonition is-info" id="Valid-range-8ca6812bef94d5a1"><header class="admonition-header">Valid range<a class="admonition-anchor" href="#Valid-range-8ca6812bef94d5a1" title="Permalink"></a></header><div class="admonition-body"><p><code>RedlichKisterModel</code> requires exactly 2 end-members. For ternary or higher-order solid solutions, use the ideal model (<code>IdealSolidSolutionModel</code>).</p></div></div><div class="admonition is-info" id="Integration-with-aqueous-models-26f45e0a9499c141"><header class="admonition-header">Integration with aqueous models<a class="admonition-anchor" href="#Integration-with-aqueous-models-26f45e0a9499c141" title="Permalink"></a></header><div class="admonition-body"><p>Solid-solution activities are computed independently of the aqueous activity model. You can combine <code>HKFActivityModel()</code> for the aqueous phase with any solid-solution model — the same <code>equilibrate</code> call handles both.</p></div></div></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../chemical_system_state/">« ChemicalSystem and ChemicalState</a><a class="docs-footer-nextpage" href="../kinetics/">Chemical Kinetics »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.17.0 on <span class="colophon-date" title="Monday 17 August 2026 18:21">Monday 17 August 2026</span>. Using Julia version 1.12.7.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
