@@ -3,7 +3,7 @@ using LinearAlgebra
 # Helpers guarding the element balance of a re-speciation. They exist because a
 # full OPC coupling stopped on a composition demanding 0.732 mol of sulfate
 # against the 0.267 mol present — 174 % over — while the reported residual read
-# 1.4e-2, because it was normalised by the 34 mol water budget.
+# 1.4e-2, because it was normalized by the 34 mol water budget.
 
 @testset "_row_residual scales each element by its own budget" begin
 
@@ -12,7 +12,7 @@ using LinearAlgebra
     # A violation on a small element must not be hidden by a large one. The
     # second element is out by 0.5, scaled by the larger of its budget (1.0) and
     # the matter flowing through the row (1.5), so a third — not 0.5/100, which
-    # is what normalising by the largest total across all rows used to give.
+    # is what normalizing by the largest total across all rows used to give.
     @test ChemistryLab._row_residual(A, [100.0, 1.5], [100.0, 1.0]) ≈ 1 / 3
     @test ChemistryLab._row_residual(A, [100.0, 1.5], [100.0, 1.0]) > 0.5 / 100
 
@@ -65,7 +65,7 @@ end
 
     # The cement case that motivated it: ettringite carries 3 sulfate against a
     # 0.267 mol budget, so no feasible point may hold more than 0.089 of it.
-    Ae = Float64[3 0; 2 2]                      # rows: sulfate, aluminium
+    Ae = Float64[3 0; 2 2]                      # rows: sulfate, aluminum
     be = [0.267, 0.488]
     ne = [0.244, 0.0]                           # the point the coupling stalled on
     @test 3 * ne[1] > be[1]                     # infeasible as it stands

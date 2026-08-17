@@ -575,7 +575,7 @@ function _respeciate_solve!(p, n_eq, be)
 
     # Element-balance residual of what was actually accepted, ROW BY ROW.
     #
-    # Normalising by `maximum(abs, be)` — as this did until 0.7.0 — divides every
+    # Normalizing by `maximum(abs, be)` — as this did until 0.7.0 — divides every
     # row by the water budget, which in a cement paste is 34 mol against 0.27 mol
     # of sulfur. A full OPC run reported 1.4e-2 while ettringite exceeded the
     # available sulfate by 0.465 mol, i.e. by a factor 2.7: the offending row was
@@ -625,7 +625,7 @@ totals `bₑ` can supply, `nⱼ ≤ minᵢ bᵢ/Aᵢⱼ` over the rows it consum
 
 This does not change the feasible set — it only moves the guess into it. It is
 what unblocks the OPC case: once the sulfate is spent the warm start still
-carried ettringite at the aluminium budget, three times the sulfur available,
+carried ettringite at the aluminum budget, three times the sulfur available,
 and the interior-point solve could not walk back from there.
 """
 function _budget_clip!(n_eq, Ae, be)
