@@ -314,8 +314,8 @@ end
 Compute the saturation ratio Ω = IAP / K for a kinetic reaction.
 
 ```
-ln Ω = Σᵢ νᵢ ln aᵢ + ln K
-     = Σᵢ νᵢ ln aᵢ + ΔᵣG⁰/(RT)   (note: ΔᵣG⁰/RT = Σᵢ νᵢ ΔₐG⁰ᵢ/RT for reactants→products)
+ln Ω = Σᵢ νᵢ ln aᵢ − ln K
+     = Σᵢ νᵢ ln aᵢ + ΔᵣG⁰/(RT)   (note: ln K = −ΔᵣG⁰/RT = −Σᵢ νᵢ ΔₐG⁰ᵢ/RT)
 ```
 
 where `stoich[i]` is the stoichiometric coefficient (positive for products,

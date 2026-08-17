@@ -314,10 +314,25 @@ function build_kinetics_params(kp::KineticsProblem; ϵ::Float64 = 1.0e-30)
     else
         sys_e = _equilibrium_subsystem(kp.system, kp.idx_equilibrium)
         es = kp.equilibrium_solver
+        # The sub-solver must be rebuilt because `sys_e` is a different system
+        # from `kp.system`, so the compiled `μ` does not carry over. It is
+        # rebuilt with the model the USER's solver was built from — not with
+        # `kp.activity_model`, which defaults to `DiluteSolutionModel()` and
+        # would silently downgrade an HKF run on a cement pore solution.
+        es_model = activity_model(es)
+        if typeof(es_model) !== typeof(kp.activity_model)
+            @warn """
+            The equilibrium solver and the kinetics problem carry different \
+            activity models. The equilibrium sub-solve uses the solver's \
+            ($(nameof(typeof(es_model)))), while the log-activities handed to the \
+            rate laws use the problem's ($(nameof(typeof(kp.activity_model)))). \
+            Pass `activity_model = $(nameof(typeof(es_model)))()` to \
+            `KineticsProblem` to make them agree.""" maxlog = 1
+        end
         (
             sys_e,
             EquilibriumSolver(
-                sys_e, kp.activity_model, es.solver;
+                sys_e, es_model, es.solver;
                 variable_space = es.variable_space, es.kwargs...
             ),
             Float64[n_initial_full[i] for i in kp.idx_equilibrium],
@@ -380,6 +395,10 @@ function build_kinetics_params(kp::KineticsProblem; ϵ::Float64 = 1.0e-30)
             zeros(Float64, 0, 0) : pinv(Float64.(kp.Ae)),
         state_ref = Ref{ChemicalState}(state),
         eq_failures = Ref(0),
+        # Worst |Aₑ n − bₑ|∞ over the run. This, not the optimizer's retcode, is
+        # the criterion with physical meaning: a solve can stall short of its
+        # tolerance and still satisfy the element balance to machine precision.
+        eq_worst_residual = Ref(0.0),
     )
 end
 
@@ -408,6 +427,20 @@ function _equilibrium_subsystem(system::ChemicalSystem, idx_equilibrium)
     prim = [sp for sp in sub_species if symbol(sp) in comp_names]
     return ChemicalSystem(sub_species, isempty(prim) ? sub_species : prim)
 end
+
+"""
+    _EQ_GUESS_FLOOR
+
+Lower floor applied to the starting guess of the equilibrium sub-solve, chosen
+strictly above the `1e-16` lower bound that `EquilibriumProblem` imposes.
+
+An interior-point method started on its own bound stalls short of its tolerance
+and returns `MaxIters`. Loosening that tolerance is *not* the fix: measured
+against Reaktoro on the calcite reference case, the worst species error grows
+from 4.3 % at `tol = 1e-10` to 38 % at `1e-8` and 252 % at `1e-7`. Moving the
+guess inside keeps the tight tolerance and removes the stalls.
+"""
+const _EQ_GUESS_FLOOR = 1.0e-10
 
 # ── respeciate! ──────────────────────────────────────────────────────────────
 
@@ -459,7 +492,14 @@ function respeciate!(p, u)
     n_eq = p.n_eq_buf
     mul!(n_eq, p.νe', ξ)
     for j in eachindex(n_eq)
-        n_eq[j] = max(n_eq[j] + p.n_eq_init[j], p.ϵ)
+        # Floor the STARTING GUESS strictly inside the feasible box, not at
+        # `p.ϵ`. `EquilibriumProblem` raises anything below 1e-16 to exactly its
+        # lower bound, and an interior-point method started on its own bound
+        # stalls: the calcite reference case reported 6 non-converged solves out
+        # of 8 steps for this reason alone. The guess does not bias the answer —
+        # the element totals `b` fix it — so a uniform interior floor is safe,
+        # and it is what the hand-written reference solves have always used.
+        n_eq[j] = max(n_eq[j] + p.n_eq_init[j], _EQ_GUESS_FLOOR)
     end
 
     state_eq = ChemicalState(p.eq_system, n_eq .* u"mol"; T = p.T_q[], P = p.P_q[])
@@ -481,6 +521,11 @@ function respeciate!(p, u)
     for (j, idx) in enumerate(p.idx_equilibrium)
         p.n_full[idx] = ustrip(us"mol", eq_result.n[j])
     end
+
+    # Element-balance residual of what was actually accepted.
+    n_e = [ustrip(us"mol", x) for x in eq_result.n]
+    res = maximum(abs, p.Ae * n_e .- be; init = 0.0) / max(1.0, maximum(abs, be; init = 1.0))
+    res > p.eq_worst_residual[] && (p.eq_worst_residual[] = res)
     return true
 end
 

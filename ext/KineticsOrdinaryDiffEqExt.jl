@@ -60,7 +60,7 @@ ks  = KineticsSolver(; ode_solver=Rodas5P(), reltol=1e-8, abstol=1e-10)
 sol = integrate(kp, ks)
 ```
 """
-function integrate(kp::KineticsProblem, ks::KineticsSolver)
+function integrate(kp::KineticsProblem, ks::KineticsSolver; kwargs...)
     # `KineticsSolver` also carries an equilibrium solver, and its docstring
     # advertises passing one there. Honor it: without this the field is dead
     # and re-speciation silently never happens.
@@ -85,8 +85,11 @@ function integrate(kp::KineticsProblem, ks::KineticsSolver)
         end
     end
 
+    # Precedence: call-site kwargs beat the solver's, which beat the defaults.
+    # `integrate(kp; reltol = …)` forwards through the one-argument method and
+    # used to hit a MethodError, this one taking no kwargs at all.
     defaults = (reltol = 1.0e-8, abstol = 1.0e-10)
-    merged = merge(defaults, ks.kwargs)
+    merged = merge(merge(defaults, ks.kwargs), values(kwargs))
     solver = isnothing(ks.ode_solver) ? Rodas5P() : ks.ode_solver
 
     prob = ODEProblem(f!, u0, kp.tspan, p)
@@ -95,6 +98,9 @@ function integrate(kp::KineticsProblem, ks::KineticsSolver)
     # speciation frozen, and this callback re-equilibrates once per accepted
     # step. Nothing in `u` is touched, so `save_positions = (false, false)`.
     if p.n_be > 0
+        # A non-converged solve is a warning, not an exception, and its result is
+        # used anyway — so it never reached `eq_failures`. Count it over the run.
+        nonconv0 = ChemistryLab.NONCONVERGED[]
         respeciate!(p, u0)          # start from an equilibrated state
         cb = DiscreteCallback(
             (u, t, integrator) -> true,
@@ -102,12 +108,23 @@ function integrate(kp::KineticsProblem, ks::KineticsSolver)
             save_positions = (false, false),
         )
         sol = solve(prob, solver; callback = cb, merged...)
+
+        if p.eq_failures[] > 0
+            @warn "re-speciation failed on $(p.eq_failures[]) step(s); those steps kept a frozen composition."
+        end
+        nonconv = ChemistryLab.NONCONVERGED[] - nonconv0
+        if nonconv > 0
+            res = p.eq_worst_residual[]
+            @warn """$nonconv equilibrium solve(s) stopped short of the optimizer's \
+            tolerance and were used anyway. Judge them on the element balance, \
+            not on the retcode: worst |Aₑn − bₑ|∞ over the run was $(round(res; sigdigits = 3)). \
+            A residual at machine precision means the stall was benign; a large \
+            one means the trajectory is not trustworthy. Do NOT simply loosen the \
+            optimizer tolerance — on the calcite reference case that degrades the \
+            speciation from 4 % to 250 % against Reaktoro."""
+        end
     else
         sol = solve(prob, solver; merged...)
-    end
-
-    if p.n_be > 0 && p.eq_failures[] > 0
-        @warn "re-speciation failed on $(p.eq_failures[]) step(s); those steps kept a frozen composition."
     end
     return sol
 end

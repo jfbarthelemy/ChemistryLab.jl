@@ -59,9 +59,10 @@ cs = ChemicalSystem(species, CEMDATA_PRIMARIES)
 ```
 
 !!! note "Why `cemdata18-merged`?"
-    The standard `cemdata18-thermofun.json` does not contain calcite as a standalone
-    mineral phase.  The merged database combines Cemdata18 with additional mineral
-    solubility data, making `Cal` available with a consistent thermodynamic dataset.
+    Not for calcite: `Cal` is present in `cemdata18-thermofun.json` too, and an
+    earlier version of this note said otherwise. The merged database carries the
+    phase-volume data of the PHREEQC `.dat` file alongside Cemdata18, which is
+    what makes volumes and porosity available on the same consistent dataset.
 
 ---
 

@@ -1,5 +1,81 @@
 # Changelog
 
+## v0.6.0 — the coupled path made trustworthy
+
+The v0.5.0 release opened the door to coupled dissolution/precipitation modeling.
+Building a cement model on it exposed five defects, four of which were silent.
+
+### Breaking
+
+- **`EquilibriumSolver` gained a `model` field**, so its signature is now
+  `EquilibriumSolver{F, S, V, M}`. Code constructing the raw struct positionally
+  must be updated; the documented `(cs, model, solver)` constructor is unchanged.
+  A new accessor `activity_model(::EquilibriumSolver)` returns it.
+- Being a minor bump below 1.0, a downstream `[compat] ChemistryLab = "0.5"`
+  will not accept 0.6 and must be widened.
+
+### Fixed — the activity model was silently discarded in a coupled run
+
+A coupled run must rebuild the equilibrium solver for the equilibrium
+*sub-system*, because the compiled potential does not carry over. Having no
+record of the model it was built from, it rebuilt with `kp.activity_model` —
+`DiluteSolutionModel()` by default. Asking for `HKFActivityModel` on a cement
+pore solution at I ≈ 0.5 mol/kg therefore gave an infinitely dilute solve, with
+no warning. The solver now remembers its model, the rebuild uses it, and a
+disagreement with the problem's own model is reported.
+
+### Fixed — the equilibrium sub-solve started on its own bound
+
+`respeciate!` floored its starting guess at `p.ϵ` (1e-30), which
+`EquilibriumProblem` raises to exactly the `1e-16` lower bound. An interior-point
+method started on its bound stalls: the package's own Reaktoro reference case
+reported six non-converged solves out of eight steps for this reason alone. The
+guess is now floored strictly inside the box.
+
+**Do not "fix" this class of stall by loosening the optimizer tolerance.**
+Measured against Reaktoro 2.13 on that same case, the worst species error grows
+from 4.3 % at the default `tol = 1e-10` to 13 % at `1e-9`, 38 % at `1e-8` and
+252 % at `1e-7`. A green retcode bought that way costs a factor of sixty in
+accuracy.
+
+### Fixed — a bad speciation was invisible
+
+A non-success retcode was a `@warn` at `maxlog = 1` whose result was used anyway,
+and it never reached the failure count reported by `integrate`, which only saw
+solves that *threw*. Over thousands of steps that is one warning for any number
+of bad speciations.
+
+- `NONCONVERGED` counts them, and `integrate` reports the total.
+- More usefully, `integrate` also reports the worst `|Aₑn − bₑ|∞` over the run.
+  That is the criterion with physical meaning here: a solve can stop short of the
+  optimizer's tolerance and still satisfy the element balance to machine
+  precision, which is exactly what the remaining stalls do (9e-12 on the
+  reference case).
+
+### Fixed — `integrate(kp; reltol = …)` threw a `MethodError`
+
+The documented shortcut forwarded its keywords to a concrete method that accepted
+none. Precedence is now explicit: call site beats the solver's own settings,
+which beat the defaults.
+
+### Fixed — two solid solutions were dead entries
+
+`data/solid_solutions.toml` declared AFm on `Ms`/`Mc` and Hydrotalcite on
+`Ht_OH`/`Ht_CO3`. None of those four symbols exists in either shipped database,
+so `build_solid_solutions` skipped both with a warning. AFm being the only
+Redlich-Kister entry, the non-ideal mixing path had no live case at all. They are
+now `monosulphate12`/`monocarbonate` and, for hydrotalcite, the OH/CO₃ couple at
+matching Mg:Al = 2 (`hydrotalcite`/`Mg2AlC0.5OH`). All five phases build.
+
+### Documentation
+
+- `saturation_ratio` stated `ln Ω = Σνᵢlnaᵢ + ln K`, contradicting both the next
+  line and the code. The sign is corrected.
+- `examples/cement_carbonation.md` claimed `cemdata18-thermofun.json` does not
+  contain calcite. It does; the merged database is needed for the phase volumes.
+- `man/kinetics.md` used `cs.dict_reactions` as though it were a catalog of the
+  database, when it holds only the declared kinetic reactions.
+
 ## v0.5.0 — the bridge from a kinetics run to a microstructure
 
 ### Breaking

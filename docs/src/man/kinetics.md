@@ -143,6 +143,11 @@ tst = transition_state(
 kr = KineticReaction(cs, cs.dict_reactions["calcite dissolution"], tst)
 ```
 
+!!! warning "`cs.dict_reactions` holds only the *kinetic* reactions"
+    The lookup above works only if calcite was declared kinetic on the
+    `ChemicalSystem`. For any other reaction, build the `Reaction` yourself and
+    pass it directly — `dict_reactions` is not a catalog of the database.
+
 The `transition_state` factory captures the ΔₐG⁰ callables from the reaction and
 recomputes `ln K(T)` at every ODE step, so the saturation ratio Ω is correct even
 when the temperature changes (semi-adiabatic calorimetry).

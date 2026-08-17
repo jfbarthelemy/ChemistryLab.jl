@@ -19,9 +19,13 @@ model       = "ideal"
 source      = "Lothenbach2015"
 
 # ── AFm phases (monosulfate / monocarbonate) — binary Redlich-Kister ─────────
+# The end-members were spelled "Ms" and "Mc", which exist in neither shipped
+# database: cemdata18 names them "monosulphate12" and "monocarbonate". The phase
+# was therefore skipped with a warning by `build_solid_solutions`, and being the
+# only non-ideal entry, the Redlich-Kister path had no live case at all.
 [[solid_solution]]
 name        = "AFm"
-end_members = ["Ms", "Mc"]
+end_members = ["monosulphate12", "monocarbonate"]
 model       = "redlich_kister"
 a0          = 3000.0   # J/mol
 a1          = 500.0    # J/mol
@@ -43,8 +47,13 @@ model       = "ideal"
 source      = "Lothenbach2019"
 
 # ── Hydrotalcite (OH/CO3) — binary ideal ─────────────────────────────────────
+# Likewise "Ht_OH"/"Ht_CO3" exist in neither database. The pair below is the
+# OH/CO3 couple at matching Mg:Al = 2, which is what a binary solid solution
+# requires: hydrotalcite is Mg4Al2O7(H2O)10 and Mg2AlC0.5OH is
+# Mg2Al(OH)6(CO3)0.5(H2O)2. The database also carries Mg3AlC0.5OH at Mg:Al = 3,
+# which would not pair consistently.
 [[solid_solution]]
 name        = "Hydrotalcite"
-end_members = ["Ht_OH", "Ht_CO3"]
+end_members = ["hydrotalcite", "Mg2AlC0.5OH"]
 model       = "ideal"
 source      = "Lothenbach2019"

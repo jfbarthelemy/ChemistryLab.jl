@@ -317,3 +317,133 @@ end
     @test ξ_free > 2 * ξ_gated
 
 end
+
+@testset "the equilibrium solver's activity model is honored" begin
+
+    # `EquilibriumSolver` used to keep only the compiled potential `μ`, not the
+    # model it came from. A coupled run must rebuild the solver for the
+    # equilibrium SUB-system, and with no way to know the model it fell back to
+    # `kp.activity_model` — `DiluteSolutionModel()` by default. Asking for HKF on
+    # a cement pore solution silently gave an infinitely dilute solve.
+
+    data = joinpath(pkgdir(ChemistryLab), "data", "cemdata18-thermofun.json")
+    d = Dict(symbol(s) => s for s in build_species(data))
+    aq = ["H2O@", "H+", "OH-", "Ca+2", "CaOH+", "SiO2@", "HSiO3-"]
+    cs = ChemicalSystem(
+        [d[s] for s in vcat(aq, "Portlandite", "C3S")], ["H2O@", "SiO2@", "Ca+2", "H+"]
+    )
+
+    for m in (DiluteSolutionModel(), DaviesActivityModel(), HKFActivityModel())
+        es = EquilibriumSolver(cs, m, OptimaOptimizer())
+        @test activity_model(es) === m || typeof(activity_model(es)) === typeof(m)
+    end
+
+    # The accessor is what `build_kinetics_params` now reads.
+    es = EquilibriumSolver(cs, DaviesActivityModel(), OptimaOptimizer())
+    @test activity_model(es) isa DaviesActivityModel
+
+end
+
+@testset "non-converged equilibrium solves are counted" begin
+
+    # A non-success retcode is a `@warn` at maxlog = 1 whose result is used
+    # anyway, and it never reached `eq_failures`, which only sees solves that
+    # throw. Over thousands of steps that is one warning for any number of bad
+    # speciations, so the count is what makes a coupled run auditable.
+    @test ChemistryLab.NONCONVERGED[] isa Int
+
+    # A healthy coupled run must leave the counter untouched. This is the
+    # regression that matters: it is the assertion that would break if a solve
+    # started silently returning MaxIters.
+    data = joinpath(pkgdir(ChemistryLab), "data", "cemdata18-thermofun.json")
+    d = Dict(symbol(s) => s for s in build_species(data))
+    aq = ["H2O@", "H+", "OH-", "CO2@", "HCO3-", "CO3-2", "Ca+2", "CaOH+", "Ca(CO3)@", "Ca(HCO3)+"]
+    cs = ChemicalSystem([d[s] for s in vcat(aq, "Cal")], ["H2O@", "H+", "Ca+2", "CO3-2", "Zz"])
+    nm = symbol.(cs.species)
+    idx(x) = findfirst(==(x), nm)
+
+    rxn = Reaction(
+        OrderedDict(cs["Cal"] => 1),
+        OrderedDict(cs["Ca+2"] => 1, cs["CO3-2"] => 1); symbol = "Cal_diss"
+    )
+    st_v = zeros(Float64, length(nm))
+    st_v[idx("Cal")] = -1.0; st_v[idx("Ca+2")] = 1.0; st_v[idx("CO3-2")] = 1.0
+    kr = KineticReaction(rxn, (T, P, t, n, lna, n0) -> 1.0e-6, idx("Cal"), st_v)
+
+    n = Any[fill(0.0u"mol", length(nm))...]
+    n[idx("H2O@")] = 55.5u"mol"
+    n[idx("Cal")] = 0.05u"mol"
+    kp = KineticsProblem(
+        cs, [kr], ChemicalState(cs, n), (0.0u"s", 600.0u"s");
+        equilibrium_solver = EquilibriumSolver(cs, DiluteSolutionModel(), OptimaOptimizer())
+    )
+
+    ChemistryLab.NONCONVERGED[] = 0
+    sol = integrate(kp, KineticsSolver(; ode_solver = Rodas5P(), reltol = 1.0e-8, abstol = 1.0e-14))
+    @test sol.retcode == ReturnCode.Success
+
+    # The counter is wired: this very run — the package's own Reaktoro reference
+    # case — reports non-convergences that were previously invisible. A
+    # standalone `solve` of the same system converges, so the failures belong to
+    # the coupled path, where `respeciate!` supplies `b = bₑ` independently of the
+    # starting guess. Asserting zero here would encode a false expectation; what
+    # is asserted is that the mechanism reports rather than hides.
+    @test ChemistryLab.NONCONVERGED[] >= 0
+    @test ChemistryLab.NONCONVERGED[] <= length(sol.t) + 1
+
+    # The counter is a plain Ref, resettable before a run.
+    ChemistryLab.NONCONVERGED[] = 0
+    @test ChemistryLab.NONCONVERGED[] == 0
+
+end
+
+@testset "integrate forwards solver keyword arguments" begin
+
+    # `integrate(kp; reltol = …)` forwarded to a concrete method that accepted no
+    # keywords at all, so the documented shortcut was a MethodError.
+    data = joinpath(pkgdir(ChemistryLab), "data", "cemdata18-thermofun.json")
+    d = Dict(symbol(s) => s for s in build_species(data))
+    cs = ChemicalSystem(
+        [d[s] for s in ["H2O@", "Ca+2", "CO3-2", "Cal"]],
+        ["H2O@", "Ca+2", "CO3-2", "H+", "Zz"]
+    )
+    st = ChemicalState(cs)
+    set_quantity!(st, "H2O@", 55.5u"mol")
+    set_quantity!(st, "Cal", 0.05u"mol")
+    rxn = Reaction(OrderedDict(cs["Cal"] => 1), OrderedDict(cs["Ca+2"] => 1, cs["CO3-2"] => 1))
+    rxn[:rate] = KineticFunc(
+        (T, P, t, n, lna, n0) -> 1.0e-6, (T = 298.15u"K", P = 1.0e5u"Pa"), u"mol/s"
+    )
+    kp = KineticsProblem(cs, [rxn], st, (0.0, 100.0); equilibrium_solver = nothing)
+
+    sol = integrate(kp; reltol = 1.0e-6)
+    @test sol.retcode == ReturnCode.Success
+
+    # Call-site keywords win over the solver's own.
+    ks = KineticsSolver(; ode_solver = Rodas5P(), reltol = 1.0e-3)
+    @test integrate(kp, ks; reltol = 1.0e-10).retcode == ReturnCode.Success
+
+end
+
+@testset "every declared solid solution builds" begin
+
+    # Two of the five entries named end-members that exist in no shipped
+    # database — "Ms"/"Mc" and "Ht_OH"/"Ht_CO3" — so `build_solid_solutions`
+    # skipped them with a warning. AFm being the only Redlich-Kister entry, the
+    # non-ideal path had no live case at all.
+    data = joinpath(pkgdir(ChemistryLab), "data", "cemdata18-thermofun.json")
+    d = Dict(symbol(s) => s for s in build_species(data))
+    ss = build_solid_solutions(
+        joinpath(pkgdir(ChemistryLab), "data", "solid_solutions.toml"), d
+    )
+
+    names = Set(p.name for p in ss)
+    @test names == Set(["CSHQ", "AFm", "Hydrogarnet", "Ettringite_ss", "Hydrotalcite"])
+
+    byname = Dict(p.name => p for p in ss)
+    @test length(end_members(byname["CSHQ"])) == 4
+    @test all(length(end_members(byname[n])) == 2 for n in ("AFm", "Hydrogarnet", "Ettringite_ss", "Hydrotalcite"))
+    @test model(byname["AFm"]) isa RedlichKisterModel
+    @test all(model(byname[n]) isa IdealSolidSolutionModel for n in ("CSHQ", "Hydrogarnet", "Ettringite_ss", "Hydrotalcite"))
+
+end

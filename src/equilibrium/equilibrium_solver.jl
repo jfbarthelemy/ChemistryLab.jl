@@ -38,11 +38,12 @@ julia> solver isa EquilibriumSolver
 true
 ```
 """
-struct EquilibriumSolver{F <: Function, S, V <: Val}
+struct EquilibriumSolver{F <: Function, S, V <: Val, M <: AbstractActivityModel}
     μ::F                    # potential closure — built once from cs and model
     solver::S               # SciML-compatible solver
     variable_space::V       # Val(:linear) or Val(:log)
     kwargs::Base.Pairs      # forwarded to solve
+    model::M                # the activity model μ was built from
 end
 
 """
@@ -70,8 +71,22 @@ function EquilibriumSolver(
         kwargs...,
     ) where {S, V <: Val}
     μ = build_potentials(cs, model)     # built once — captures indices and constants
-    return EquilibriumSolver{typeof(μ), S, V}(μ, solver, variable_space, kwargs)
+    # `model` is kept alongside `μ`, which is opaque once compiled. A coupled
+    # kinetics run has to rebuild the solver for the equilibrium SUB-system, and
+    # without this it had no way to know which activity model to rebuild with —
+    # it silently fell back to the problem's own default and ran a dilute solve
+    # on a pore solution the user had asked to treat with HKF.
+    return EquilibriumSolver{typeof(μ), S, V, typeof(model)}(
+        μ, solver, variable_space, kwargs, model
+    )
 end
+
+"""
+    activity_model(solver::EquilibriumSolver) -> AbstractActivityModel
+
+The activity model the solver's potential function was built from.
+"""
+activity_model(solver::EquilibriumSolver) = solver.model
 
 # ── Internal helper: build p from ChemicalState ───────────────────────────────
 
@@ -233,6 +248,22 @@ strictest possible reading.
 const STRICT_CONVERGENCE = Ref(false)
 
 """
+    NONCONVERGED :: Ref{Int}
+
+Running count of equilibrium solves that returned a non-success retcode.
+
+With `STRICT_CONVERGENCE[] = false` — the default — a non-converged solve is a
+`@warn` at `maxlog = 1` and its result is used anyway. Over the thousands of
+steps of a coupled kinetics run that is one warning for an arbitrary number of
+bad speciations, and it never reached the failure count reported by
+[`integrate`](@ref), which only saw solves that actually *threw*.
+
+Reset it with `ChemistryLab.NONCONVERGED[] = 0` before a run and read it after;
+[`integrate`](@ref) does exactly that and reports the total.
+"""
+const NONCONVERGED = Ref(0)
+
+"""
     EXACT_HESSIAN
 
 Whether to hand the back-end the exact Gibbs Hessian diagonal `∂μ/∂n` computed
@@ -293,6 +324,7 @@ it were the equilibrium.
 """
 function _check_converged(sol, what::AbstractString)
     SciMLBase.successful_retcode(sol) && return sol
+    NONCONVERGED[] += 1
     if !STRICT_CONVERGENCE[]
         @warn "$what returned `$(sol.retcode)`; the composition may not be an \
                equilibrium. Set `ChemistryLab.STRICT_CONVERGENCE[] = true` to \
