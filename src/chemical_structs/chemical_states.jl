@@ -675,8 +675,24 @@ pOH(state::ChemicalState) = state.pOH[]
 """
     porosity(state::ChemicalState) -> Real
 
-Return the porosity `(V_liquid + V_gas) / V_total`,
-or `NaN` if total volume is zero (no molar volumes available).
+Return `(V_liquid + V_gas) / V_total`, or `NaN` if the total volume is zero.
+
+!!! warning "This is not the porosity of a setting binder"
+    Both ends of that ratio are wrong for a hydrating cement:
+
+      - the denominator is the **current** total volume, which shrinks as
+        hydration proceeds, whereas a sealed specimen keeps the volume it was
+        cast with;
+      - the numerator has no gas term unless gas species were declared, so the
+        empty porosity left by the chemical shrinkage — products occupying less
+        space than the reactants they consume — is structurally invisible.
+
+    The two errors compound. On a w/c = 0.5 paste at 28 days this returns 0.327
+    where the porosity referred to the specimen is 0.375, the total volume having
+    shrunk by 7.2 %.
+
+    Use [`porosity(state, reference)`](@ref) for a binder. This method remains
+    the right one for a fixed-volume aqueous system, where nothing shrinks.
 
 # Examples
 ```jldoctest
@@ -692,6 +708,69 @@ true
 ```
 """
 porosity(state::ChemicalState) = state.porosity[]
+
+"""
+    porosity(state::ChemicalState, reference::ChemicalState) -> NamedTuple
+
+Porosity of a **setting binder**, in the sealed-curing convention: referred to
+the volume of `reference` — the fresh material — held fixed, and accounting for
+the chemical shrinkage.
+
+Returns `(; liquid, void, total)`, all dimensionless fractions of the reference
+volume:
+
+  - `liquid` — the water-filled porosity, `V_liquid(state) / V_ref`.
+  - `void` — the empty porosity created by the reactions,
+    `(V_ref − V_total(state)) / V_ref`. This is the Le Chatelier contraction:
+    hydration products occupy less space than the reactants they consume, and in
+    a sealed specimen the deficit is gas, not a reduction in size.
+  - `total` — their sum, the quantity a transport or micromechanical model wants.
+
+Consistent by construction with [`volume_fractions`](@ref) called with the same
+`reference`: `total` equals the sum of its `"water"`-like and `"void"` entries.
+
+# Examples
+
+```julia
+p = porosity(state_28d, state_0)
+p.total                     # 0.375 for a w/c = 0.5 paste
+p.void                      # 0.072 — the chemical shrinkage
+p.liquid / p.total          # degree of saturation
+```
+
+See also: [`saturation(state, reference)`](@ref), [`chemical_shrinkage`](@ref),
+[`volume_fractions`](@ref).
+"""
+function porosity(state::ChemicalState, reference::ChemicalState)
+    V_ref = volume(reference).total
+    _primal(ustrip(us"m^3", V_ref)) > 0 ||
+        throw(ArgumentError("the reference volume is zero: no porosity can be defined"))
+    V = volume(state)
+    liquid = _primal(ustrip((V.liquid + V.gas) / V_ref))
+    void = _primal(ustrip((V_ref - V.total) / V_ref))
+    # A negative deficit means the reactions expanded past the reference volume.
+    # Report it rather than hide it: the sealed convention no longer applies.
+    void < -1.0e-10 && @warn "the reactions expanded beyond the reference volume; " *
+        "the sealed-curing convention does not apply" excess = -void
+    void = max(void, 0.0)
+    return (; liquid = liquid, void = void, total = liquid + void)
+end
+
+"""
+    saturation(state::ChemicalState, reference::ChemicalState) -> Real
+
+Degree of saturation of a setting binder: the fraction of its porosity that is
+water-filled, `liquid / total` from [`porosity(state, reference)`](@ref).
+
+Falls to `NaN` when the porosity is zero. Unlike the one-argument method, the
+empty porosity left by the chemical shrinkage is counted, so a sealed paste
+desaturates as it hydrates even though no water ever leaves it.
+"""
+function saturation(state::ChemicalState, reference::ChemicalState)
+    p = porosity(state, reference)
+    p.total > 0 || return NaN
+    return p.liquid / p.total
+end
 
 """
     saturation(state::ChemicalState) -> Real

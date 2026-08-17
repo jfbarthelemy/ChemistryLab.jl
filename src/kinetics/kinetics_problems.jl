@@ -399,6 +399,8 @@ function build_kinetics_params(kp::KineticsProblem; ϵ::Float64 = 1.0e-30)
         # the criterion with physical meaning: a solve can stall short of its
         # tolerance and still satisfy the element balance to machine precision.
         eq_worst_residual = Ref(0.0),
+        # Set once a speciation exists, so `respeciate!` can warm-start from it.
+        eq_warm = Ref(false),
     )
 end
 
@@ -485,11 +487,30 @@ function respeciate!(p, u)
     be = collect(@view u[1:(p.n_be)])
 
     nk = @view u[(p.n_be + 1):(p.n_be + p.n_nk)]
+    n_eq = p.n_eq_buf
+
+    # WARM START. `p.n_full` holds the speciation left by the previous accepted
+    # step, which is an equilibrium for a nearby `bₑ` — by far the best guess
+    # available. The stoichiometric reconstruction below is only the cold start,
+    # used on the first call before any speciation exists.
+    #
+    # This matters far more than it looks. The reconstruction places every
+    # dissolved element in solution with ZERO hydrates, i.e. a wildly
+    # supersaturated composition, which for an aqueous-only system like the
+    # calcite reference is harmless and for a cement is nearly the worst possible
+    # starting point: more than half the solves failed, no hydrate ever
+    # precipitated, and the pore solution came out at pH 6 instead of 12.6.
+    if p.eq_warm[]
+        for (j, idx) in enumerate(p.idx_equilibrium)
+            n_eq[j] = max(p.n_full[idx], _EQ_GUESS_FLOOR)
+        end
+        return _respeciate_solve!(p, n_eq, be)
+    end
+
     ξ = p.xi_buf
     for (j, idx) in enumerate(p.idx_kinetic)
         ξ[j] = p.n_initial_full[idx] - nk[j]
     end
-    n_eq = p.n_eq_buf
     mul!(n_eq, p.νe', ξ)
     for j in eachindex(n_eq)
         # Floor the STARTING GUESS strictly inside the feasible box, not at
@@ -502,6 +523,16 @@ function respeciate!(p, u)
         n_eq[j] = max(n_eq[j] + p.n_eq_init[j], _EQ_GUESS_FLOOR)
     end
 
+    return _respeciate_solve!(p, n_eq, be)
+end
+
+"""
+    _respeciate_solve!(p, n_eq, be) -> Bool
+
+Solve `φ(bₑ)` from the guess `n_eq`, write the result into `p.n_full`, and record
+the element-balance residual. Returns `false` if the solve threw.
+"""
+function _respeciate_solve!(p, n_eq, be)
     state_eq = ChemicalState(p.eq_system, n_eq .* u"mol"; T = p.T_q[], P = p.P_q[])
 
     # `p.eq_solver` is a prebuilt `EquilibriumSolver` over the partition — a
@@ -521,6 +552,7 @@ function respeciate!(p, u)
     for (j, idx) in enumerate(p.idx_equilibrium)
         p.n_full[idx] = ustrip(us"mol", eq_result.n[j])
     end
+    p.eq_warm[] = true          # a speciation now exists: warm-start from here on
 
     # Element-balance residual of what was actually accepted.
     n_e = [ustrip(us"mol", x) for x in eq_result.n]

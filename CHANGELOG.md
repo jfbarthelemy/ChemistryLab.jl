@@ -1,5 +1,43 @@
 # Changelog
 
+## v0.7.0 — the real porosity of a setting binder, and a warm-started coupling
+
+### Breaking
+
+- Being a minor bump below 1.0, a downstream `[compat] ChemistryLab = "0.6"`
+  will not accept 0.7 and must be widened. No API was removed and no documented
+  behavior changed; the additions below are new methods.
+
+### The porosity of a cement was not available
+
+`porosity(state)` returns `(V_liquid + V_gas) / V_total`, and both ends of that
+ratio are wrong for a hydrating binder: the denominator is the *current* volume,
+which shrinks as the reactions proceed, while a sealed specimen keeps the volume
+it was cast with; and the numerator has no gas term, so the empty porosity left
+by the chemical shrinkage is structurally invisible. The errors compound — on a
+w/c = 0.5 paste at 28 days the method returns 0.327 where the porosity referred
+to the specimen is 0.375, the volume having shrunk 7.2 %.
+
+The method is unchanged, and correct for a fixed-volume aqueous system, but now
+carries that warning. Two new methods give the right calculation:
+
+- **`porosity(state, reference)`** → `(; liquid, void, total)`, referred to the
+  fresh material and counting the Le Chatelier contraction as empty porosity.
+- **`saturation(state, reference)`** — a sealed paste desaturates as it hydrates
+  though no water ever leaves it.
+
+`porosity(state, ref).void` is exactly the `"void"` entry of `volume_fractions`
+called with the same reference, so a transport or micromechanical model fed by
+either sees the same thing.
+
+### Fixed — the equilibrium sub-solve was restarted cold at every step
+
+`respeciate!` rebuilt its starting guess from the reaction extents each time,
+placing every dissolved element in solution with zero hydrates — a wildly
+supersaturated composition. Harmless for an aqueous-only system, nearly the worst
+possible start for a cement. It now warm-starts from the speciation left by the
+previous accepted step, which is an equilibrium for a nearby `bₑ`.
+
 ## v0.6.0 — the coupled path made trustworthy
 
 The v0.5.0 release opened the door to coupled dissolution/precipitation modeling.

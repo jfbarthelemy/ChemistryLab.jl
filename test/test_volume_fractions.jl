@@ -179,3 +179,59 @@ end
     @test isempty(missing_molar_volumes(state3))
 
 end
+
+@testset "porosity of a setting binder" begin
+
+    # The one-argument `porosity` is `(V_liquid + V_gas)/V_total`, which is wrong
+    # for a hydrating cement on both ends: the denominator shrinks with the
+    # reactions, and the empty porosity left by the chemical shrinkage is not a
+    # species and so is invisible. The two-argument method fixes both.
+    cs = _vf_system()
+
+    state0 = ChemicalState(cs)
+    set_quantity!(state0, "C3S", 1.0u"mol")
+    set_quantity!(state0, "H2O@", 5.0u"mol")
+
+    # The Jennite reaction, contracting (see the testset above).
+    ξ = 0.4
+    st = ChemicalState(cs)
+    set_quantity!(st, "C3S", (1.0 - ξ)u"mol")
+    set_quantity!(st, "H2O@", (5.0 - ξ * 103 / 30)u"mol")
+    set_quantity!(st, "Jennite", (ξ * 1.0)u"mol")
+    set_quantity!(st, "Portlandite", (ξ * 4 / 3)u"mol")
+
+    p = porosity(st, state0)
+    @test p.liquid > 0
+    @test p.void > 0                                   # sealed hydration contracts
+    @test p.total ≈ p.liquid + p.void
+
+    # ── Consistent with `volume_fractions` on the same reference ─────────────
+    # This is the contract: the porosity is the water plus the void of the very
+    # same balance, so a micromechanical model fed by either agrees.
+    f = volume_fractions(st, ["water" => "H2O@"]; reference = state0)
+    @test isapprox(p.void, f["void"]; rtol = 1.0e-10)
+    # `f["water"]` is the solvent only; `p.liquid` is the whole aqueous phase,
+    # solutes included, so it is the larger of the two by the (negative) solute
+    # contribution — tiny here, but the ordering is the point.
+    @test p.liquid <= f["water"] + 1.0e-6
+
+    # ── It is strictly larger than the one-argument version ──────────────────
+    # Both errors push the same way: the naive ratio understates the porosity.
+    @test p.total > porosity(st)
+
+    # ── At the reference state the void vanishes ─────────────────────────────
+    p0 = porosity(state0, state0)
+    @test isapprox(p0.void, 0.0; atol = 1.0e-10)
+    @test isapprox(p0.total, porosity(state0); rtol = 1.0e-10)
+
+    # ── Saturation counts the empty porosity ────────────────────────────────
+    s = saturation(st, state0)
+    @test 0 < s < 1
+    @test isapprox(s, p.liquid / p.total; rtol = 1.0e-12)
+    # A sealed paste desaturates as it hydrates, though no water ever leaves it.
+    @test s < saturation(state0, state0)
+
+    # ── Guard rail ───────────────────────────────────────────────────────────
+    @test_throws ArgumentError porosity(st, ChemicalState(cs))
+
+end
