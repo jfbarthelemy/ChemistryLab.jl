@@ -52,7 +52,7 @@ and gypsum dissolved, with ettringite, monosulphate, katoite, portlandite and
 C-S-H free to precipitate — this takes the achieved element balance from 174 %
 to `2e-15`, machine precision, and returns the textbook assemblage: AFm 0.2323,
 ettringite 0.0116, C-S-H 1.8556, portlandite 2.3021, at pH 12.58. Both budgets
-close on the last digit — sulfate `0.2323 + 3x0.0116 = 0.2672` and aluminium
+close on the last digit — sulfate `0.2323 + 3x0.0116 = 0.2672` and aluminum
 `2x(0.2323 + 0.0116) = 0.4879` — against the 0.2672 and 0.4879 available.
 
 ### Known limitation
