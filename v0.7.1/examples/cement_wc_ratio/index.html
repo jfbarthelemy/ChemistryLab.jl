@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Effect of Water/Cement Ratio on Cement Hydration · ChemistryLab.jl</title><meta name="title" content="Effect of Water/Cement Ratio on Cement Hydration · ChemistryLab.jl"/><meta property="og:title" content="Effect of Water/Cement Ratio on Cement Hydration · ChemistryLab.jl"/><meta property="twitter:title" content="Effect of Water/Cement Ratio on Cement Hydration · ChemistryLab.jl"/><meta name="description" content="Documentation for ChemistryLab.jl."/><meta property="og:description" content="Documentation for ChemistryLab.jl."/><meta property="twitter:description" content="Documentation for ChemistryLab.jl."/><meta property="og:url" content="https://MicroPoroChemoMechanics.github.io/ChemistryLab.jl/examples/cement_wc_ratio/"/><meta property="twitter:url" content="https://MicroPoroChemoMechanics.github.io/ChemistryLab.jl/examples/cement_wc_ratio/"/><link rel="canonical" href="https://MicroPoroChemoMechanics.github.io/ChemistryLab.jl/examples/cement_wc_ratio/"/><script data-outdated-warner src="../../assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.050/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.8/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="../.."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../../assets/documenter.js"></script><script src="../../search_index.js"></script><script src="../../siteinfo.js"></script><script src="../../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-mocha.css" data-theme-name="catppuccin-mocha"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-macchiato.css" data-theme-name="catppuccin-macchiato"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-frappe.css" data-theme-name="catppuccin-frappe"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-latte.css" data-theme-name="catppuccin-latte"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../../assets/themeswap.js"></script><link href="../../assets/favicon.ico" rel="icon" type="image/x-icon"/><link href="../../assets/custom.css" rel="stylesheet" type="text/css"/></head><body><div id="documenter"><nav class="docs-sidebar"><a class="docs-logo" href="../../"><img src="../../assets/logo.svg" alt="ChemistryLab.jl logo"/></a><div class="docs-package-name"><span class="docs-autofit"><a href="../../">ChemistryLab.jl</a></span></div><button class="docs-search-query input is-rounded is-small is-clickable my-2 mx-auto py-1 px-2" id="documenter-search-query">Search docs (Ctrl + /)</button><ul class="docs-menu"><li><a class="tocitem" href="../../">Home</a></li><li><a class="tocitem" href="../../quickstart/">Getting Started</a></li><li><input class="collapse-toggle" id="menuitem-3" type="checkbox"/><label class="tocitem" for="menuitem-3"><span class="docs-label">Tutorial</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../../man/formula_manipulation/">Chemical Formula Manipulation</a></li><li><a class="tocitem" href="../../man/species/">Species</a></li><li><a class="tocitem" href="../../man/cement_species/">Cement Species</a></li><li><a class="tocitem" href="../../man/databases/">Database Interoperability</a></li><li><a class="tocitem" href="../../man/stoich_matrices/">Stoichiometric Matrix</a></li><li><a class="tocitem" href="../../man/reactions/">Chemical Reactions</a></li><li><a class="tocitem" href="../../man/thermodynamics/">Thermodynamic Functions</a></li><li><a class="tocitem" href="../../man/chemical_system_state/">ChemicalSystem and ChemicalState</a></li><li><a class="tocitem" href="../../man/equilibrium/">Chemical Equilibrium</a></li><li><a class="tocitem" href="../../man/kinetics/">Chemical Kinetics</a></li><li><a class="tocitem" href="../../man/coupling/">Coupling kinetics and equilibrium</a></li><li><a class="tocitem" href="../../man/reaktoro_comparison/">Validation against Reaktoro</a></li><li><a class="tocitem" href="../../man/advanced/">Advanced Topics</a></li></ul></li><li><input class="collapse-toggle" id="menuitem-4" type="checkbox"/><label class="tocitem" for="menuitem-4"><span class="docs-label">Examples</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../bogue_calculation/">Bogue Calculation</a></li><li><a class="tocitem" href="../example_stoich_matrix/">Stoichiometric Matrix</a></li><li><a class="tocitem" href="../from_scratch/">Calculation of thermodynamic properties of calcite dissolution</a></li><li><a class="tocitem" href="../titration_acetic_acid/">Titration of Acetic Acid by NaOH</a></li><li><a class="tocitem" href="../titration_maleic_acid/">Titration of Maleic Acid by NaOH</a></li><li><a class="tocitem" href="../co2_carbonate_system/">CO₂ Dissolution and the Carbonate System</a></li><li><a class="tocitem" href="../simplified_clinker_dissolution/">Simplified Clinker Dissolution</a></li><li><a class="tocitem" href="../cement_carbonation/">Carbonation of a Cement Paste</a></li><li><a class="tocitem" href="../cement_clinker_kinetics/">Cement clinker hydration kinetics</a></li><li><a class="tocitem" href="../coupled_hydration/">The hydrating paste, end to end</a></li></ul></li><li><input class="collapse-toggle" id="menuitem-5" type="checkbox"/><label class="tocitem" for="menuitem-5"><span class="docs-label">API</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../../api/thermo_functions/">Thermodynamical functions</a></li><li><a class="tocitem" href="../../api/thermo_models/">Thermodynamical models</a></li><li><a class="tocitem" href="../../api/water_properties/">Water properties</a></li><li><a class="tocitem" href="../../api/element_order/">Element order</a></li><li><a class="tocitem" href="../../api/parsing_tools/">Parsing tools</a></li><li><a class="tocitem" href="../../api/formulas/">Formulas</a></li><li><a class="tocitem" href="../../api/species/">Species</a></li><li><a class="tocitem" href="../../api/stoich_matrices/">Stoichiometric Matrix</a></li><li><a class="tocitem" href="../../api/reactions/">Reactions</a></li><li><a class="tocitem" href="../../api/databases/">Databases</a></li><li><a class="tocitem" href="../../api/chemical_systems/">Chemical systems and states</a></li><li><a class="tocitem" href="../../api/equilibrium/">Equilibrium</a></li><li><a class="tocitem" href="../../api/kinetics/">Kinetics</a></li><li><a class="tocitem" href="../../api/utils/">Utilities</a></li></ul></li><li><a class="tocitem" href="../../references/">References</a></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><a class="docs-sidebar-button docs-navbar-link fa-solid fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a><nav class="breadcrumb"><ul class="is-hidden-mobile"><li class="is-active"><a href>Effect of Water/Cement Ratio on Cement Hydration</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>Effect of Water/Cement Ratio on Cement Hydration</a></li></ul></nav><div class="docs-right"><a class="docs-navbar-link" href="https://github.com/MicroPoroChemoMechanics/ChemistryLab.jl" title="View the repository on GitHub"><span class="docs-icon fa-brands"></span><span class="docs-label is-hidden-touch">GitHub</span></a><a class="docs-settings-button docs-navbar-link fa-solid fa-gear" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-article-toggle-button fa-solid fa-chevron-up" id="documenter-article-toggle-button" href="javascript:;" title="Collapse all docstrings"></a></div></header><article class="content" id="documenter-page"><h1 id="sec-wc-ratio"><a class="docs-heading-anchor" href="#sec-wc-ratio">Effect of Water/Cement Ratio on Cement Hydration</a><a id="sec-wc-ratio-1"></a><a class="docs-heading-anchor-permalink" href="#sec-wc-ratio" title="Permalink"></a></h1><p>The <strong>water-to-cement ratio</strong> (w/c) is the single most important mix-design parameter of concrete. It controls workability, compressive strength, and durability simultaneously. From a thermodynamic perspective, it determines how much water is available to hydrate the clinker phases, which in turn governs the nature and amount of hydration products, the capillary porosity of the paste, and the pH of the pore solution.</p><p>This example scans w/c from 0.25 to 0.60 and tracks, at full thermodynamic equilibrium:</p><ul><li>the <strong>pH</strong> of the pore solution,</li><li>the amounts of <strong>portlandite</strong> Ca(OH)₂ and <strong>ettringite</strong> formed,</li><li>the <strong>porosity</strong> of the hardened paste.</li></ul><hr/><h2 id="System-setup"><a class="docs-heading-anchor" href="#System-setup">System setup</a><a id="System-setup-1"></a><a class="docs-heading-anchor-permalink" href="#System-setup" title="Permalink"></a></h2><p>The same clinker composition and species set as the &quot;simplified clinker dissolution&quot; example are used here.</p><pre><code class="language-julia hljs">using ChemistryLab
+using DynamicQuantities
+
+substances = build_species(&quot;../../../data/cemdata18-thermofun.json&quot;)
+
+input_species = split(&quot;C3S C2S C3A C4AF Gp Anh Portlandite Jennite H2O@ ettringite monosulphate12 C3AH6 C3FH6 C4FH13&quot;)
+species = speciation(substances, input_species; aggregate_state = [AS_AQUEOUS])
+
+cs = ChemicalSystem(species, CEMDATA_PRIMARIES)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">54-element ChemicalSystem{Species, AbstractReaction, StoichMatrix{Real, Symbol, Vector{Symbol}, Matrix{Real}, Species}, StoichMatrix{Real, Species, Vector{Species}, Matrix{Real}, Species}, Nothing}:
+ H2O@ {H2O  l} [H2O@ ◆ H₂O@]
+ CaSiO3@ {CaSiO3  aq } [CaSiO3@ ◆ CaSiO₃@]
+ SiO3-2 {SiO3-2  aq } [SiO3-2 ◆ SiO₃²⁻]
+ AlSiO5-3 {AlSiO5-3  aq } [AlSiO5-3 ◆ AlSiO₅³⁻]
+ Si4O10-4 {Si4O10-4  aq } [Si4O10-4 ◆ Si₄O₁₀⁴⁻]
+ SiO2@ {SiO2  aq ( + 2 H2O = Si(OH)4  aq )} [SiO2@ ◆ SiO₂@]
+ Al(SO4)2- {Al(SO4)2-} [Al(SO4)2- ◆ Al(SO₄)₂⁻]
+ Fe(SO4)@ {FeSO4  aq} [Fe(SO4)@ ◆ Fe(SO₄)@]
+ Fe(SO4)+ {FeSO4+} [Fe|3|(SO4)+ ◆ Fe(SO₄)⁺]
+ Fe(SO4)2- {Fe(SO4)2-} [Fe|3|(SO4)2- ◆ Fe(SO₄)₂⁻]
+ Al(SO4)+ {AlSO4+} [Al(SO4)+ ◆ Al(SO₄)⁺]
+ Fe(HSO4)+2 {FeHSO4+2} [Fe|3|HSO4+2 ◆ FeHSO₄²⁺]
+ Fe(HSO4)+ {FeHSO4+} [FeHSO4+ ◆ FeHSO₄⁺]
+ Al+3 {Al+3} [Al+3 ◆ Al³⁺]
+ Ca+2 {Ca+2} [Ca+2 ◆ Ca²⁺]
+ Fe+2 {Fe+2} [Fe+2 ◆ Fe²⁺]
+ H+ {H+} [H+ ◆ H⁺]
+ SO4-2 {SO4-2} [S|6|O4-2 ◆ SO₄²⁻]
+ AlO2- {AlO2-  ( + 2 H2O = Al(OH)4- )} [AlO2- ◆ AlO₂⁻]
+ FeO2- {FeO2- ( + 2 H2O = Fe(OH)4- )} [Fe|3|O2- ◆ FeO₂⁻]
+ HS- {HS-} [HS|-2|- ◆ HS⁻]
+ AlOH+2 {AlOH+2} [Al(OH)+2 ◆ Al(OH)²⁺]
+ AlO+ {AlO+  ( + H2O = Al(OH)2+ )} [AlO+ ◆ AlO⁺]
+ AlO2H@ {AlO2H  aq ( + 2H2O = Al(OH)3  aq )} [AlO2H@ ◆ AlO₂H@]
+ CaOH+ {CaOH+} [Ca(OH)+ ◆ Ca(OH)⁺]
+ FeOH+2 {FeOH+2} [Fe|3|(OH)+2 ◆ Fe(OH)²⁺]
+ FeO+ {FeO+ ( + H2O = Fe(OH)2+ )} [Fe|3|O+ ◆ FeO⁺]
+ FeO2H@ {FeO2H  aq  ( + H2O = Fe(OH)3  aq)} [Fe|3|O2H@ ◆ FeO₂H@]
+ FeOH+ {FeOH+} [FeOH+ ◆ FeOH⁺]
+ HSO3- {HSO3-} [HS|4|O3- ◆ HSO₃⁻]
+ HSO4- {HSO4-} [HS|6|O4- ◆ HSO₄⁻]
+ OH- {OH-} [OH- ◆ OH⁻]
+ S2O3-2 {S2O3-2} [S|2|2O3-2 ◆ S₂O₃²⁻]
+ SO3-2 {SO3-2} [S|4|O3-2 ◆ SO₃²⁻]
+ Fe+3 {Fe+3} [Fe|3|+3 ◆ Fe³⁺]
+ Ca(HSiO3)+ {CaHSiO3+  ( + H2O = CaSiO(OH)3+ )} [Ca(HSiO3)+ ◆ Ca(HSiO₃)⁺]
+ H2S@ {H2S  aq} [H2S|-2|@ ◆ H₂S@]
+ H2@ {H2  aq} [H|0|2@ ◆ H₂@]
+ O2@ {O2  aq} [O|0|2@ ◆ O₂@]
+ Ca(SO4)@ {CaSO4  aq} [CaSO4@ ◆ CaSO₄@]
+ HSiO3- {HSiO3-  ( + H2O = SiO(OH)3- )} [HSiO3- ◆ HSiO₃⁻]
+ monosulphate12 {Monosulphate12} [Ca4Al2SO10(H2O)12 ◆ Ca₄Al₂SO₁₀(H₂O)₁₂]
+ C3FH6 {C3FH6 (metastable, tentative data)} [Ca3Fe|3|2O6(H2O)6 ◆ Ca₃Fe₂O₆(H₂O)₆]
+ C4FH13 {C4FH13 (metastable, tentative data)} [Ca4Fe|3|2(OH)14(H2O)6 ◆ Ca₄Fe₂(OH)₁₄(H₂O)₆]
+ Jennite {Jennite   10/6 end-member of  id CSH SS (norm per 1 Si)  } [(SiO2)1(CaO)1.666667(H2O)2.1 ◆ (SiO₂)₁(CaO)₅//₃(H₂O)₂.₁]
+ C3S {C3S} [(CaO)3SiO2 ◆ (CaO)₃SiO₂]
+ C2S {C2S-beta} [(CaO)2SiO2 ◆ (CaO)₂SiO₂]
+ C3A {C3A (3CaO_Al2O3)} [(CaO)3Al2O3 ◆ (CaO)₃Al₂O₃]
+ C4AF {C4AF} [(CaO)4(Al2O3)(Fe|3|2O3) ◆ (CaO)₄(Al₂O₃)(Fe₂O₃)]
+ ettringite {Ettringite with 32 H2O} [((H2O)2)Ca6Al2(SO4)3(OH)12(H2O)24 ◆ ((H₂O)₂)Ca₆Al₂(SO₄)₃(OH)₁₂(H₂O)₂₄]
+ C3AH6 {C3AH6} [Ca3Al2O6(H2O)6 ◆ Ca₃Al₂O₆(H₂O)₆]
+ Portlandite {Portlandite} [Ca(OH)2 ◆ Ca(OH)₂]
+ Gp {Gypsum} [CaSO4(H2O)2 ◆ CaSO₄(H₂O)₂]
+ Anh {Anhydrite} [CaSO4 ◆ CaSO₄]</code></pre><p>The clinker composition (mass fractions of the anhydrous cement phases) is fixed throughout the scan:</p><table><tr><th style="text-align: right">Phase</th><th style="text-align: right">Symbol</th><th style="text-align: right">Mass fraction</th></tr><tr><td style="text-align: right">Alite</td><td style="text-align: right"><code>C3S</code></td><td style="text-align: right">67.8 %</td></tr><tr><td style="text-align: right">Belite</td><td style="text-align: right"><code>C2S</code></td><td style="text-align: right">16.6 %</td></tr><tr><td style="text-align: right">Aluminate</td><td style="text-align: right"><code>C3A</code></td><td style="text-align: right">4.0 %</td></tr><tr><td style="text-align: right">Ferrite</td><td style="text-align: right"><code>C4AF</code></td><td style="text-align: right">7.2 %</td></tr><tr><td style="text-align: right">Gypsum</td><td style="text-align: right"><code>Gp</code></td><td style="text-align: right">2.8 %</td></tr></table><pre><code class="language-julia hljs">compo = [&quot;C3S&quot; =&gt; 0.678, &quot;C2S&quot; =&gt; 0.166, &quot;C3A&quot; =&gt; 0.040, &quot;C4AF&quot; =&gt; 0.072, &quot;Gp&quot; =&gt; 0.028]
+c     = sum(last.(compo))   # cement mass fraction (= 0.984 here)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">0.9840000000000001</code></pre><hr/><h2 id="Building-the-equilibrium-solver"><a class="docs-heading-anchor" href="#Building-the-equilibrium-solver">Building the equilibrium solver</a><a id="Building-the-equilibrium-solver-1"></a><a class="docs-heading-anchor-permalink" href="#Building-the-equilibrium-solver" title="Permalink"></a></h2><p>A single <a href="../../api/equilibrium/#ChemistryLab.EquilibriumSolver"><code>EquilibriumSolver</code></a> is compiled once and reused for every w/c point:</p><pre><code class="language-julia hljs">using Optimization, OptimizationIpopt
+
+opt = IpoptOptimizer(
+    acceptable_tol        = 1e-10,
+    dual_inf_tol          = 1e-10,
+    acceptable_iter       = 100,
+    constr_viol_tol       = 1e-10,
+    warm_start_init_point = &quot;no&quot;,
+)
+
+solver = EquilibriumSolver(
+    cs,
+    DiluteSolutionModel(),
+    opt;
+    variable_space = Val(:linear),
+    abstol  = 1e-8,
+    reltol  = 1e-8,
+)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">EquilibriumSolver{ChemistryLab.var&quot;#μ#build_potentials##0&quot;{ChemistryLab.var&quot;#lna#activity_model##2&quot;{Nothing, Bool, Bool, Vector{Vector{Int64}}, Float64, Vector{Int64}, Vector{Int64}, Int64, Bool}}, IpoptOptimizer, Val{:linear}, DiluteSolutionModel}(ChemistryLab.var&quot;#μ#build_potentials##0&quot;{ChemistryLab.var&quot;#lna#activity_model##2&quot;{Nothing, Bool, Bool, Vector{Vector{Int64}}, Float64, Vector{Int64}, Vector{Int64}, Int64, Bool}}(ChemistryLab.var&quot;#lna#activity_model##2&quot;{Nothing, Bool, Bool, Vector{Vector{Int64}}, Float64, Vector{Int64}, Vector{Int64}, Int64, Bool}(nothing, false, false, Vector{Int64}[], 4.016550535127659, Int64[], [2, 3, 4, 5, 6, 7, 8, 9, 10, 11  …  32, 33, 34, 35, 36, 37, 38, 39, 40, 41], 1, true)), IpoptOptimizer(1.0e-10, 100, 1.0e-10, 1.0e-10, 0.0001, &quot;no&quot;, &quot;no&quot;, &quot;mumps&quot;, &quot;none&quot;, &quot;&quot;, &quot;&quot;, &quot;yes&quot;, &quot;gradient-based&quot;, 100.0, &quot;no&quot;, &quot;no&quot;, &quot;monotone&quot;, &quot;quality-function&quot;, 0.1, &quot;obj-constr-filter&quot;, &quot;no&quot;, &quot;exact&quot;, 6, &quot;bfgs&quot;, &quot;no&quot;, &quot;filter&quot;, &quot;no&quot;, Dict{String, Any}()), Val{:linear}(), Base.Pairs(:abstol =&gt; 1.0e-8, :reltol =&gt; 1.0e-8), DiluteSolutionModel())</code></pre><hr/><h2 id="Scanning-the-w/c-ratio"><a class="docs-heading-anchor" href="#Scanning-the-w/c-ratio">Scanning the w/c ratio</a><a id="Scanning-the-w/c-ratio-1"></a><a class="docs-heading-anchor-permalink" href="#Scanning-the-w/c-ratio" title="Permalink"></a></h2><p>For each value of w/c, the initial composition is set from scratch and the equilibrium is computed.  The total mass is normalized to 1 kg (cement + water) so that all amounts are directly comparable across the scan.</p><pre><code class="language-julia hljs">sp_idx = Dict(symbol(s) =&gt; i for (i, s) in enumerate(cs.species))
+
+wc_range = range(0.3, 0.60; length = 15)
+
+pH_vals          = Float64[]
+porosity_vals    = Float64[]
+n_portlandite    = Float64[]
+n_ettringite     = Float64[]
+n_C3S_remaining  = Float64[]
+
+state = ChemicalState(cs)
+
+for wc in wc_range
+    w    = wc * c
+    mtot = c + w
+
+    for (sym, mfrac) in compo
+        set_quantity!(state, sym, mfrac / mtot * u&quot;kg&quot;)
+    end
+    set_quantity!(state, &quot;H2O@&quot;, w / mtot * u&quot;kg&quot;)
+
+    V = volume(state)
+    set_quantity!(state, &quot;H+&quot;,  1e-7u&quot;mol/L&quot; * V.liquid)
+    set_quantity!(state, &quot;OH-&quot;, 1e-7u&quot;mol/L&quot; * V.liquid)
+
+    state_eq = solve(solver, state)
+
+    push!(pH_vals,         pH(state_eq))
+    push!(porosity_vals,   porosity(state_eq))
+    push!(n_portlandite,   ustrip(state_eq.n[sp_idx[&quot;Portlandite&quot;]]))
+    push!(n_ettringite,    ustrip(state_eq.n[sp_idx[&quot;ettringite&quot;]]))
+    push!(n_C3S_remaining, ustrip(state_eq.n[sp_idx[&quot;C3S&quot;]]))
+end</code></pre><hr/><h2 id="Results"><a class="docs-heading-anchor" href="#Results">Results</a><a id="Results-1"></a><a class="docs-heading-anchor-permalink" href="#Results" title="Permalink"></a></h2><h3 id="pH-and-porosity"><a class="docs-heading-anchor" href="#pH-and-porosity">pH and porosity</a><a id="pH-and-porosity-1"></a><a class="docs-heading-anchor-permalink" href="#pH-and-porosity" title="Permalink"></a></h3><pre><code class="language-julia hljs">using Plots
+
+p1 = plot(
+    collect(wc_range), pH_vals;
+    xlabel    = &quot;w/c ratio&quot;,
+    ylabel    = &quot;Pore solution pH&quot;,
+    label     = &quot;pH&quot;,
+    linewidth = 2,
+    marker    = :circle,
+    markersize = 4,
+    color     = :steelblue,
+    title     = &quot;pH of pore solution vs w/c ratio&quot;,
+    ylims     = (12, 13.5),
+    legend    = :bottomright,
+)
+
+p2 = plot(
+    collect(wc_range), porosity_vals .* 100;
+    xlabel    = &quot;w/c ratio&quot;,
+    ylabel    = &quot;Porosity (%)&quot;,
+    label     = &quot;Total porosity&quot;,
+    linewidth = 2,
+    marker    = :circle,
+    markersize = 4,
+    color     = :firebrick,
+    title     = &quot;Capillary porosity vs w/c ratio&quot;,
+    ylims     = (0, 50),
+    legend    = :topleft,
+)
+
+plot(p1, p2; layout = (1, 2), size = (800, 350))</code></pre><p><img src="../../assets/wc_ph_porosity.png" alt="pH and porosity vs w/c"/></p><h3 id="Phase-assemblage"><a class="docs-heading-anchor" href="#Phase-assemblage">Phase assemblage</a><a id="Phase-assemblage-1"></a><a class="docs-heading-anchor-permalink" href="#Phase-assemblage" title="Permalink"></a></h3><pre><code class="language-julia hljs">p3 = plot(
+    collect(wc_range), n_portlandite;
+    xlabel    = &quot;w/c ratio&quot;,
+    ylabel    = &quot;Amount (mol / kg total paste)&quot;,
+    label     = &quot;Portlandite  Ca(OH)₂&quot;,
+    linewidth = 2,
+    marker    = :circle,
+    markersize = 4,
+    color     = :steelblue,
+    title     = &quot;Hydration products vs w/c ratio&quot;,
+    legend    = :topright,
+)
+p3</code></pre><p><img src="../../assets/wc_phases.png" alt="Phase assemblage vs w/c"/></p><hr/><h2 id="Analysis"><a class="docs-heading-anchor" href="#Analysis">Analysis</a><a id="Analysis-1"></a><a class="docs-heading-anchor-permalink" href="#Analysis" title="Permalink"></a></h2><table><tr><th style="text-align: right">w/c zone</th><th style="text-align: right">Limiting factor</th><th style="text-align: right">Key observations</th></tr><tr><td style="text-align: right">&lt; 0.35</td><td style="text-align: right"><strong>Water</strong></td><td style="text-align: right">Incomplete hydration; unreacted C₃S persists; low porosity</td></tr><tr><td style="text-align: right">≈ 0.40–0.42</td><td style="text-align: right">Balanced</td><td style="text-align: right">Complete hydration just achievable; minimum porosity</td></tr><tr><td style="text-align: right">&gt; 0.45</td><td style="text-align: right"><strong>Clinker</strong></td><td style="text-align: right">All clinker dissolves; excess water becomes capillary porosity</td></tr><tr><td style="text-align: right">&gt; 0.55</td><td style="text-align: right">—</td><td style="text-align: right">High porosity; strength and durability decrease significantly</td></tr></table><p>Key findings:</p><ul><li><strong>pH</strong> is buffered by portlandite (pKₛ Ca(OH)₂ ≈ 5.2) and remains relatively constant around 12.5–12.9 across the entire range, increasing slightly with w/c as more portlandite forms and the pore volume grows.</li><li><strong>Portlandite</strong> increases monotonically with w/c.  At low w/c it is water-limited; once enough water is available (w/c ≳ 0.42), the cement fully hydrates and portlandite reaches a plateau determined by the clinker C₃S + C₂S content.</li><li><strong>Ettringite</strong> is controlled by the aluminate (C₃A) and sulfate (Gp) contents, which are fixed in this scan, so its amount is nearly independent of w/c once hydration is complete.</li><li><strong>Porosity</strong> grows roughly linearly once all the clinker has reacted: the excess water that cannot fill hydration-product volume becomes capillary porosity.</li><li><strong>Unreacted C₃S</strong> disappears above the critical w/c threshold (≈ 0.40–0.42 for this composition), marking the transition from the water-limited to the clinker-limited regime.</li></ul><div class="admonition is-success" id="Powers-hydration-model-579678181f6ab569"><header class="admonition-header">Powers hydration model<a class="admonition-anchor" href="#Powers-hydration-model-579678181f6ab569" title="Permalink"></a></header><div class="admonition-body"><p>The inflection observed around w/c ≈ 0.40–0.42 corresponds qualitatively to the critical ratio predicted by Powers&#39; model: <span>$w/c_{\text{crit}} = 0.36 \, \alpha_{\max}$</span>, where <span>$\alpha_{\max}$</span> is the maximum degree of hydration.  ChemistryLab computes the same threshold from first thermodynamic principles, without any empirical fitting parameter.</p></div></div><div class="admonition is-info" id="Extending-the-scan-a5bcdea9af819f7f"><header class="admonition-header">Extending the scan<a class="admonition-anchor" href="#Extending-the-scan-a5bcdea9af819f7f" title="Permalink"></a></header><div class="admonition-body"><p>To study the effect of <strong>supplementary cementitious materials</strong> (SCMs) such as slag or fly ash, replace or partially substitute the clinker composition and add the corresponding species from the <code>cemdata18</code> database (e.g. <code>slag</code>, <code>C2ASH8</code>). To include <strong>carbonation</strong> effects, add <code>CO2@</code>, <code>HCO3-</code>, <code>CO3-2</code> and carbonate mineral phases from the merged database.</p></div></div></article><nav class="docs-footer"><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.17.0 on <span class="colophon-date" title="Monday 17 August 2026 20:16">Monday 17 August 2026</span>. Using Julia version 1.12.7.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
