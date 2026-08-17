@@ -55,21 +55,30 @@ ettringite 0.0116, C-S-H 1.8556, portlandite 2.3021, at pH 12.58. Both budgets
 close on the last digit — sulfate `0.2323 + 3x0.0116 = 0.2672` and aluminum
 `2x(0.2323 + 0.0116) = 0.4879` — against the 0.2672 and 0.4879 available.
 
-### Known limitation
+### The cold start was supersaturated in every phase at once
 
-The same chemistry driven through a full kinetic coupling still does not
-converge, and the cause is not in this package. For one fixed `be` the back-end
-returns a different composition from every starting guess, where the Gibbs
-minimum is unique: it stops near its start instead of minimizing. The mechanism
-is identified — a pure phase has `d(mu)/dn = 0` exactly, so the Hessian diagonal
-vanishes on every mineral column, and the Newton step divides by it. Flooring
-that diagonal does move the minerals, but to a point of higher Gibbs energy
-(-5299.90 against -5303.46) with katoite replacing the AFm, so it is not applied
-here; the fix belongs in the back-end's handling of the rank-deficient block.
+The cold-start guess added the stoichiometric reconstruction `Ne^T xi`, which
+places every dissolved element in solution with no hydrates at all. For an
+aqueous-only system that is harmless; for a cement it is close to the worst
+possible start, supersaturated in every phase simultaneously, with an H+ entry
+so negative that it is clamped to the floor and loses the acidity the hydroxides
+must balance. The guess is now the composition the specimen was cast with, which
+`_restore_feasibility!` then carries onto the current `be`.
 
-The element-conservation set itself was verified feasible to `3e-12` by an
-independent projected-gradient phase-1, and the Reaktoro reference coupling
-still agrees within 5 %, so the defect is specific to that system.
+### What this unblocks
+
+A full ordinary Portland cement now runs end to end: alite, belite, aluminate,
+ferrite and gypsum, over 28 days, 202 accepted steps, `retcode = Success`. The
+pore solution holds at pH 12.58, and the aluminate sequence comes out of the
+thermodynamics with no sequencing rule written anywhere -- ettringite forms
+early, peaks at 6 hours and converts to monosulphate once the sulfate is spent,
+the AFm settling at 0.26719 mol, exactly the sulfate budget at one SO4 per
+formula.
+
+Note that `p.n_full` is a scratch buffer rewritten at every right-hand-side
+evaluation, Jacobian differences and rejected steps included; it is not the
+accepted composition at `t_end`. Recover a speciation from a solution by taking
+`be` from the ODE state and re-equilibrating, as `state_at` already documents.
 
 ## v0.7.0 — the real porosity of a setting binder, and a warm-started coupling
 

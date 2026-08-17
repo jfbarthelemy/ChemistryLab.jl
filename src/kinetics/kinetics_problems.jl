@@ -529,16 +529,26 @@ function respeciate!(p, u)
     for (j, idx) in enumerate(p.idx_kinetic)
         ξ[j] = p.n_initial_full[idx] - nk[j]
     end
-    mul!(n_eq, p.νe', ξ)
     for j in eachindex(n_eq)
-        # Floor the STARTING GUESS strictly inside the feasible box, not at
-        # `p.ϵ`. `EquilibriumProblem` raises anything below 1e-16 to exactly its
-        # lower bound, and an interior-point method started on its own bound
-        # stalls: the calcite reference case reported 6 non-converged solves out
-        # of 8 steps for this reason alone. The guess does not bias the answer —
-        # the element totals `b` fix it — so a uniform interior floor is safe,
-        # and it is what the hand-written reference solves have always used.
-        n_eq[j] = max(n_eq[j] + p.n_eq_init[j], _EQ_GUESS_FLOOR)
+        # Start from the composition the specimen was cast with — for a paste,
+        # the mixing water and nothing precipitated — and let
+        # `_restore_feasibility!` below carry it onto the current `bₑ`.
+        #
+        # The stoichiometric reconstruction `νₑᵀξ` that used to be added here
+        # placed every dissolved element in solution with ZERO hydrates. For an
+        # aqueous-only system that is harmless, but for a cement it is close to
+        # the worst possible start: it is supersaturated in every phase at once,
+        # and its H⁺ entry is strongly negative (−6 per mole of alite) so it is
+        # clamped to the floor, losing the acidity that the hydroxides have to
+        # balance. Started there, the back-end stops next to its own guess and
+        # returned an assemblage demanding 174 % of the sulfate present.
+        #
+        # Floor strictly inside the box, not at `p.ϵ`: `EquilibriumProblem`
+        # raises anything below 1e-16 to exactly its lower bound, and an
+        # interior-point method started on its own bound stalls — the calcite
+        # reference reported 6 non-converged solves out of 8 steps for that
+        # reason alone.
+        n_eq[j] = max(p.n_eq_init[j], _EQ_GUESS_FLOOR)
     end
     _budget_clip!(n_eq, p.Ae, be)
     _restore_feasibility!(n_eq, p.Ae, be)
