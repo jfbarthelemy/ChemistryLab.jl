@@ -444,6 +444,15 @@ guess inside keeps the tight tolerance and removes the stalls.
 """
 const _EQ_GUESS_FLOOR = 1.0e-10
 
+"""
+    EQ_RESIDUAL_TOL
+
+Largest per-element balance violation, relative to that element's own total,
+that still counts as a converged speciation. Above it the point is not handed
+on as a warm start and the solve is retried from a budget-clipped guess.
+"""
+const EQ_RESIDUAL_TOL = 1.0e-8
+
 # ── respeciate! ──────────────────────────────────────────────────────────────
 
 """
@@ -504,7 +513,16 @@ function respeciate!(p, u)
         for (j, idx) in enumerate(p.idx_equilibrium)
             n_eq[j] = max(p.n_full[idx], _EQ_GUESS_FLOOR)
         end
-        return _respeciate_solve!(p, n_eq, be)
+        # The previous speciation was an equilibrium for the PREVIOUS `bₑ`. When
+        # an element has since been spent — the sulfate of an OPC once the gypsum
+        # is gone — that guess demands more of it than now exists, and the solve
+        # starts outside the feasible set. Clipping costs nothing when the guess
+        # is already feasible, which is the ordinary case.
+        _budget_clip!(n_eq, p.Ae, be)
+        _restore_feasibility!(n_eq, p.Ae, be)
+        _respeciate_solve!(p, n_eq, be) && return true
+        # Infeasible or stalled: fall through to the cold reconstruction rather
+        # than carry the bad point into the next step.
     end
 
     ξ = p.xi_buf
@@ -522,6 +540,8 @@ function respeciate!(p, u)
         # and it is what the hand-written reference solves have always used.
         n_eq[j] = max(n_eq[j] + p.n_eq_init[j], _EQ_GUESS_FLOOR)
     end
+    _budget_clip!(n_eq, p.Ae, be)
+    _restore_feasibility!(n_eq, p.Ae, be)
 
     return _respeciate_solve!(p, n_eq, be)
 end
@@ -552,13 +572,105 @@ function _respeciate_solve!(p, n_eq, be)
     for (j, idx) in enumerate(p.idx_equilibrium)
         p.n_full[idx] = ustrip(us"mol", eq_result.n[j])
     end
-    p.eq_warm[] = true          # a speciation now exists: warm-start from here on
 
-    # Element-balance residual of what was actually accepted.
+    # Element-balance residual of what was actually accepted, ROW BY ROW.
+    #
+    # Normalising by `maximum(abs, be)` — as this did until 0.7.0 — divides every
+    # row by the water budget, which in a cement paste is 34 mol against 0.27 mol
+    # of sulfur. A full OPC run reported 1.4e-2 while ettringite exceeded the
+    # available sulfate by 0.465 mol, i.e. by a factor 2.7: the offending row was
+    # diluted a hundredfold and read as harmless. Scale each row by its own
+    # budget so a violated element shows up at its true relative size.
     n_e = [ustrip(us"mol", x) for x in eq_result.n]
-    res = maximum(abs, p.Ae * n_e .- be; init = 0.0) / max(1.0, maximum(abs, be; init = 1.0))
+    res = _row_residual(p.Ae, n_e, be)
+
+    # Warm-starting from an INFEASIBLE point locks the error in: the next step
+    # starts where this one ended, so a single bad solve poisons every solve
+    # after it. Only hand over a speciation that actually satisfies the element
+    # balance; otherwise leave `eq_warm` as it was and let the caller retry.
+    res <= EQ_RESIDUAL_TOL && (p.eq_warm[] = true)
     res > p.eq_worst_residual[] && (p.eq_worst_residual[] = res)
-    return true
+    return res <= EQ_RESIDUAL_TOL
+end
+
+"""
+    _row_residual(Ae, n_e, be) -> Float64
+
+Largest element-balance violation `|Aₑnₑ − bₑ|` relative to that element's own
+budget. Unlike a single global scale it cannot hide a small element behind a
+large one, which is what let a 0.465 mol sulfur violation report as 1.4e-2.
+"""
+function _row_residual(Ae, n_e, be)
+    r = Ae * n_e .- be
+    worst = 0.0
+    for i in eachindex(r)
+        # Scale by the larger of the element total and the matter actually
+        # flowing through the row. The total alone is not enough: the charge row
+        # has `bᵢ = 0` by electroneutrality, and dividing by it turns a rounding
+        # error into a reported residual of 2·10³.
+        flux = zero(eltype(r))
+        for j in eachindex(n_e)
+            flux += abs(Ae[i, j] * n_e[j])
+        end
+        worst = max(worst, abs(r[i]) / max(1.0e-10, abs(be[i]), flux))
+    end
+    return worst
+end
+
+"""
+    _budget_clip!(n_eq, Ae, be)
+
+Clip a starting guess to the element budget: no species may exceed what the
+totals `bₑ` can supply, `nⱼ ≤ minᵢ bᵢ/Aᵢⱼ` over the rows it consumes.
+
+This does not change the feasible set — it only moves the guess into it. It is
+what unblocks the OPC case: once the sulfate is spent the warm start still
+carried ettringite at the aluminium budget, three times the sulfur available,
+and the interior-point solve could not walk back from there.
+"""
+function _budget_clip!(n_eq, Ae, be)
+    for j in eachindex(n_eq)
+        cap = Inf
+        for i in axes(Ae, 1)
+            a = Ae[i, j]
+            # Only rows with a POSITIVE total bound a species from above; a
+            # negative total (H⁺ in a hydrating cement) is met by the hydroxides
+            # and bounds nothing.
+            (a > 0 && be[i] >= 0) && (cap = min(cap, be[i] / a))
+        end
+        isfinite(cap) && (n_eq[j] = min(n_eq[j], max(cap, _EQ_GUESS_FLOOR)))
+    end
+    return n_eq
+end
+
+"""
+    _restore_feasibility!(n_eq, Ae, be; maxit, tol) -> n_eq
+
+Move a starting guess into `{Aₑn = bₑ, n ≥ 0}` by alternating projection: clamp
+to the box, then project onto the affine set through the 7×7 system `AₑAₑᵀ`.
+
+The Gibbs minimization is posed with `A n = b` as a hard equality, so a guess
+that violates it starts the interior-point method outside its own feasible set.
+On a full OPC this was not a detail: the solve stopped on a point demanding
+0.732 mol of sulfate against the 0.267 mol available — 174 % over — and no
+tolerance, iteration budget, barrier setting or bound changed it, because none
+of them addresses an infeasible start. A projected-gradient phase-1 proved the
+set is non-empty (residual 3·10⁻¹²); this is the cheap way to land in it.
+
+Ending on the box clamp rather than the affine step matters: the affine
+projection alone leaves small negative amounts, which the barrier cannot accept.
+"""
+function _restore_feasibility!(n_eq, Ae, be; maxit::Int = 200, tol::Float64 = 1.0e-12)
+    G = cholesky(Symmetric(Ae * Ae' + 1.0e-14I))
+    sc = max(1.0, maximum(abs, be; init = 1.0))
+    for _ in 1:maxit
+        @. n_eq = max(n_eq, _EQ_GUESS_FLOOR)
+        r = Ae * n_eq .- be
+        maximum(abs, r; init = 0.0) <= tol * sc && break
+        n_eq .-= Ae' * (G \ r)
+    end
+    @. n_eq = max(n_eq, _EQ_GUESS_FLOOR)
+    return n_eq
 end
 
 # ── build_kinetics_ode ───────────────────────────────────────────────────────

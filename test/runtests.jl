@@ -59,6 +59,7 @@ end
     include("kinetics/test_rate_models.jl")
     include("kinetics/test_calorimetry.jl")
     include("kinetics/test_postprocessing.jl")
+    include("kinetics/test_feasibility.jl")
     include("coupling_reference.jl")
 end
 

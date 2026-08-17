@@ -1,5 +1,68 @@
 # Changelog
 
+## v0.7.1 — the element balance of a re-speciation, measured and enforced
+
+Bug fixes only. No API was removed or renamed, and no documented behavior
+changed, so a downstream `[compat] ChemistryLab = "0.7"` accepts this release
+unchanged.
+
+### The reported element-balance residual could not see a violated element
+
+`_respeciate_solve!` scaled the whole residual `|Aₑnₑ − bₑ|` by
+`maximum(abs, bₑ)` — in a cement paste, by the water budget. Water is 34 mol
+against 0.27 mol of sulfate, so a violation of 0.465 mol of sulfate, i.e. 174 %
+of the sulfate present, was reported as `1.4e-2` and read as a converged solve.
+
+The residual is now taken row by row and scaled by each element's own budget,
+or by the matter flowing through that row when the budget is zero — as it is for
+the charge row, where dividing by `bᵢ` alone turned a rounding error into a
+reported residual of 2·10³.
+
+This is a diagnostic change, but not a cosmetic one: every convergence study
+run against the old number was measuring the wrong quantity.
+
+### A non-converged speciation was handed on as the next warm start
+
+`eq_warm` was set after any solve that did not throw, non-converged ones
+included, so a single bad point seeded every step after it and the error was
+locked in for the rest of the run. A speciation is now handed on only when its
+per-element residual is within `EQ_RESIDUAL_TOL`; otherwise the step falls back
+to the cold stoichiometric reconstruction.
+
+### Re-speciation could start outside its own feasible set
+
+The Gibbs minimization is posed with `Aₑn = bₑ` as a hard equality, and the
+warm start is the equilibrium of the *previous* `bₑ`. Once an element has been
+spent — the sulfate of an ordinary Portland cement, after the gypsum is gone —
+that guess demands more of it than now exists, and the interior-point solve
+starts infeasible.
+
+Two guards now run before the solve, both of which leave a feasible guess
+untouched:
+
+- `_budget_clip!` caps each species at what the totals can supply,
+  `nⱼ ≤ minᵢ bᵢ/Aᵢⱼ`, over the rows it consumes. Rows with a negative total —
+  H⁺ in a hydrating cement, met by the hydroxides — bound nothing.
+- `_restore_feasibility!` then lands the guess in `{Aₑn = bₑ, n ≥ 0}` by
+  alternating projection, ending on the positivity clamp so no small negative
+  amount survives for the barrier to reject.
+
+On an isolated cement equilibrium this moves the achieved balance from 174 % to
+1·10⁻⁴ and brings the pore solution to pH 12.58 with the silicon fully in C-S-H,
+both of which are right.
+
+### Known limitation
+
+A full OPC coupling — alite, belite, aluminate and gypsum together, with
+ettringite among the equilibrium phases — still does not converge. The cause is
+now localized and is *not* in this package: for a fixed `bₑ` the back-end
+returns three different compositions from three different starting guesses,
+where the Gibbs minimum is unique. It stops near its start rather than
+minimizing. The element-conservation set itself was verified feasible to
+3·10⁻¹² by an independent projected-gradient phase-1, and the Reaktoro
+reference coupling continues to agree within 5 %, so the defect is specific to
+that system rather than general.
+
 ## v0.7.0 — the real porosity of a setting binder, and a warm-started coupling
 
 ### Breaking
