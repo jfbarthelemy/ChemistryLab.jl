@@ -47,21 +47,29 @@ untouched:
   alternating projection, ending on the positivity clamp so no small negative
   amount survives for the barrier to reject.
 
-On an isolated cement equilibrium this moves the achieved balance from 174 % to
-1·10⁻⁴ and brings the pore solution to pH 12.58 with the silicon fully in C-S-H,
-both of which are right.
+On an isolated ordinary-Portland-cement equilibrium — alite, belite, aluminate
+and gypsum dissolved, with ettringite, monosulphate, katoite, portlandite and
+C-S-H free to precipitate — this takes the achieved element balance from 174 %
+to `2e-15`, machine precision, and returns the textbook assemblage: AFm 0.2323,
+ettringite 0.0116, C-S-H 1.8556, portlandite 2.3021, at pH 12.58. Both budgets
+close on the last digit — sulfate `0.2323 + 3x0.0116 = 0.2672` and aluminium
+`2x(0.2323 + 0.0116) = 0.4879` — against the 0.2672 and 0.4879 available.
 
 ### Known limitation
 
-A full OPC coupling — alite, belite, aluminate and gypsum together, with
-ettringite among the equilibrium phases — still does not converge. The cause is
-now localized and is *not* in this package: for a fixed `bₑ` the back-end
-returns three different compositions from three different starting guesses,
-where the Gibbs minimum is unique. It stops near its start rather than
-minimizing. The element-conservation set itself was verified feasible to
-3·10⁻¹² by an independent projected-gradient phase-1, and the Reaktoro
-reference coupling continues to agree within 5 %, so the defect is specific to
-that system rather than general.
+The same chemistry driven through a full kinetic coupling still does not
+converge, and the cause is not in this package. For one fixed `be` the back-end
+returns a different composition from every starting guess, where the Gibbs
+minimum is unique: it stops near its start instead of minimizing. The mechanism
+is identified — a pure phase has `d(mu)/dn = 0` exactly, so the Hessian diagonal
+vanishes on every mineral column, and the Newton step divides by it. Flooring
+that diagonal does move the minerals, but to a point of higher Gibbs energy
+(-5299.90 against -5303.46) with katoite replacing the AFm, so it is not applied
+here; the fix belongs in the back-end's handling of the rank-deficient block.
+
+The element-conservation set itself was verified feasible to `3e-12` by an
+independent projected-gradient phase-1, and the Reaktoro reference coupling
+still agrees within 5 %, so the defect is specific to that system.
 
 ## v0.7.0 — the real porosity of a setting binder, and a warm-started coupling
 
