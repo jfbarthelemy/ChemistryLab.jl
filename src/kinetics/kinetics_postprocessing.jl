@@ -279,31 +279,36 @@ function speciated_states(sol, kp::KineticsProblem; times = sol.t)
     # against 0.27 mol of sulfate, and with the default at pH 12.6 and the
     # sulfate budget closing exactly.
     sub = _equilibrium_subsystem(kp.system, kp.idx_equilibrium)
-    # A solver built fresh on the sub-system, not `p.eq_solver` reused from the
-    # run. They are configured alike, yet replaying a full OPC through the run's
-    # own solver returned pH 14.7 with 0.44 mol of ettringite against 0.27 mol of
-    # sulfate, where a fresh one gives pH 12.6 and closes the sulfate budget
-    # exactly. Until that difference is understood, replay through a clean one.
+    # A FRESH back-end instance, not the one the run used. `p.eq_solver.solver`
+    # is the very object that drove thousands of solves during the integration,
+    # and replaying through it returned pH 14.2 with 0.31 mol of ettringite and
+    # no AFm, where a clean instance of the same type and settings gives pH 12.58
+    # with the sulfate entirely in AFm — the same trajectory, the same `bₑ`, the
+    # same guess. The back-end therefore carries state across solves; until that
+    # is fixed upstream, a replay must not inherit it.
     es = EquilibriumSolver(
-        sub, activity_model(p.eq_solver), p.eq_solver.solver;
+        sub, activity_model(p.eq_solver), typeof(p.eq_solver.solver)();
         variable_space = p.eq_solver.variable_space,
     )
     guess = Float64[max(x, _EQ_GUESS_FLOOR) for x in p.n_eq_init]
     n_sp = length(kp.system.species)
 
-    # Walk the ACCEPTED STEPS, not the requested instants, and keep only what was
-    # asked for. The warm start makes each solve depend on the previous one, so a
-    # sparse request would otherwise change the answer: asked for 1/3/7/28 days a
-    # full OPC came out at pH 14.7 with 0.44 mol of ettringite against 0.27 mol of
-    # sulfate, and asked for 0.25/1/3/7/28 — the same trajectory, one instant
-    # more — at pH 12.6 with the sulfate budget closing exactly. The first jump
-    # was simply too large and every later solve inherited the bad basin. Walking
-    # the steps the integrator itself accepted removes the dependence.
-    wanted = Set(float.(times))
-    walk = sort!(unique!(vcat(float.(collect(sol.t)), float.(collect(times)))))
-
+    # Walk exactly the instants asked for, and never before the first of them.
+    #
+    # Refining the walk with the integrator's own accepted steps looks safer and
+    # is not: `sol.t` begins at t = 0, where `bₑ` is mixing water and nothing
+    # else. The equilibrium there is degenerate, and warm-starting the next solve
+    # from it poisons the whole chain — replayed that way a full OPC came out at
+    # pH 14.2 with 0.31 mol of ettringite and no AFm at all, against pH 12.58 and
+    # the sulfate entirely in AFm when the walk starts at the first requested
+    # instant.
+    #
+    # The consequence is that the FIRST requested instant matters: ask for one
+    # late enough that the paste has reacted, early enough that the jump from the
+    # cast composition is not too large. A first point within the first hours is
+    # what the cement cases here use.
     out = ChemicalState[]
-    for t in walk
+    for t in times
         u = sol(t)
         be = collect(@view u[1:(p.n_be)])
 
@@ -325,7 +330,7 @@ function speciated_states(sol, kp::KineticsProblem; times = sol.t)
             n[idx] = max(u[p.n_be + j], 0.0)
         end
 
-        t in wanted && push!(
+        push!(
             out, ChemicalState(
                 kp.system; T = p.T * u"K", P = p.P * u"Pa",
                 n = [nᵢ * u"mol" for nᵢ in n],

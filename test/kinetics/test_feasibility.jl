@@ -75,3 +75,64 @@ end
     @test 3 * ne[1] <= be[1] + 1.0e-10          # sulfate no longer over-spent
 
 end
+
+@testset "speciated_states replays the equilibrium partition" begin
+
+    # A small carbonate system: enough to exercise the replay without paying for
+    # a cement. The point is the contract, not the chemistry.
+    data = joinpath(pkgdir(ChemistryLab), "data", "cemdata18-thermofun.json")
+    subs = build_species(data)
+    sp = speciation(subs, ["Cal", "Portlandite"]; aggregate_state = [AS_AQUEOUS])
+    cs = ChemicalSystem(sp, CEMDATA_PRIMARIES)
+
+    st0 = ChemicalState(cs)
+    set_quantity!(st0, "Cal", 0.05u"kg")
+    set_quantity!(st0, "H2O@", 1.0u"kg")
+
+    prim = [p for p in ("Ca+2", "CO3-2", "H2O@", "H+") if p in symbol.(cs.species)]
+    rxn = Reaction([cs["Cal"]], [cs[p] for p in prim]; symbol = "calcite dissolution")
+    rxn[:rate] = KineticFunc(
+        (T, P, t, n, lna, n0) -> 1.0e-6 * max(n["Cal"], zero(eltype(n.data))),
+        (T = 298.15u"K", P = 1.0e5u"Pa"), u"mol/s",
+    )
+
+    model = DiluteSolutionModel()
+    kp = KineticsProblem(
+        cs, [rxn], st0, (0.0, 3600.0);
+        activity_model = model,
+        equilibrium_solver = EquilibriumSolver(cs, model, OptimaOptimizer()),
+    )
+    sol = integrate(kp, KineticsSolver(; ode_solver = Rodas5P(), reltol = 1.0e-8, abstol = 1.0e-12))
+
+    times = [600.0, 1800.0, 3600.0]
+    states = speciated_states(sol, kp; times = times)
+
+    @test length(states) == length(times)
+    @test all(s -> s isa ChemicalState, states)
+
+    # The replayed partition must satisfy the element balance the ODE carried.
+    # The FIRST instant is the loose one — it has no previous speciation to start
+    # from, only the cast composition — and every one after it, warm-started,
+    # lands at machine precision. Asking for an early first instant is therefore
+    # not a detail of taste.
+    p = sol.prob.p
+    res = map(enumerate(times)) do (i, t)
+        be = collect(sol(t)[1:(p.n_be)])
+        ne = Float64[ustrip(us"mol", moles(states[i], symbol(cs.species[j]))) for j in kp.idx_equilibrium]
+        ChemistryLab._row_residual(p.Ae, ne, be)
+    end
+    @test res[1] < 1.0e-2
+    @test all(<(1.0e-10), res[2:end])
+
+    # The kinetic species come from the ODE state, not from the equilibrium solve
+    for (i, t) in enumerate(times)
+        @test ustrip(us"mol", moles(states[i], "Cal")) ≈ sol(t)[p.n_be + 1] atol = 1.0e-10
+    end
+
+    # Calcite dissolves, so its amount decreases along the replay
+    @test ustrip(us"mol", moles(states[1], "Cal")) > ustrip(us"mol", moles(states[end], "Cal"))
+
+    # Descending instants are refused: each solve warm-starts from the previous
+    @test_throws ArgumentError speciated_states(sol, kp; times = [3600.0, 600.0])
+
+end

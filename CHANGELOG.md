@@ -1,5 +1,58 @@
 # Changelog
 
+## v0.8.0 — a public replay of the equilibrium partition
+
+### Breaking changes
+
+- **New exported name: `speciated_states`.** Below 1.0 Julia's resolver treats a
+  minor bump as breaking whatever the API did, so a downstream
+  `[compat] ChemistryLab = "0.7"` will **not** accept 0.8 and must be widened.
+  Nothing was removed or renamed, and no existing behavior changed, so widening
+  the bound is the only adjustment required.
+
+### The composition at a given time was not recoverable
+
+`state_at` returns the purely kinetic reconstruction `n(0) + νᵀξ` and says so:
+the redistribution performed by the equilibrium solve is not recoverable from
+the stoichiometry. For a cement that reconstruction is meaningless — every
+dissolved element in solution, not one hydrate. The composition left in the
+solver's buffers is no better: it is rewritten at every right-hand-side
+evaluation, Jacobian differences and rejected steps included, so it is not the
+accepted composition at any time. Reading it is what made a full OPC look as
+though it held 0.244 mol of ettringite against 0.267 mol of sulfate.
+
+**`speciated_states(sol, kp; times)`** does the recovery properly: the kinetic
+species from the ODE state, and the equilibrium partition re-solved from the
+element totals the run carried, walking the instants in order.
+
+Two things it must do, both found the hard way:
+
+- **cap and restore the guess.** The warm start is the equilibrium of the
+  *previous* `bₑ`, so once an element has been spent it demands more of it than
+  now exists and the interior-point solve begins outside its own feasible set.
+- **use a back-end instance the integration has not touched.** Replaying through
+  `p.eq_solver.solver` — the object that drove thousands of solves during the
+  run — returned pH 14.2 with 0.31 mol of ettringite and no AFm, where a clean
+  instance of the same type and settings gives pH 12.58 with the sulfate
+  entirely in AFm, on the same trajectory, the same `bₑ` and the same guess.
+  **The back-end carries state across solves**; this is a defect upstream, and
+  until it is fixed a replay must not inherit it.
+
+The first requested instant is the loose one, having only the cast composition
+to start from; every instant after it lands at machine precision. Ask for a
+first point within the first hours.
+
+### The back-end defect is fixed upstream
+
+The state the replay had to avoid was `OptimaOptimizer._cache`: with
+`warm_start = true` the algorithm object started every solve from its previous
+solution, discarding an explicit `u0` — including the guess this package builds
+in `respeciate!`, so the caps and projections above were partly defeated during
+the run itself. **OptimaSolver 0.2.7** consults the cache only when the caller
+supplies no interior point, and `[compat]` now requires it. `speciated_states`
+still builds a clean back-end instance, which costs nothing and keeps the replay
+correct against an older back-end.
+
 ## v0.7.1 — the element balance of a re-speciation, measured and enforced
 
 Bug fixes only. No API was removed or renamed, and no documented behavior
