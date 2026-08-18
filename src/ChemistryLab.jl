@@ -125,7 +125,7 @@ module ChemistryLab
     include("equilibrium/activities.jl")
     include("equilibrium/equilibrium_problems.jl")
     include("equilibrium/equilibrium_solver.jl")
-include("equilibrium/dual_solver.jl")
+    include("equilibrium/dual_solver.jl")
 
     include("kinetics/rate_models.jl")
     include("kinetics/kinetics_reactions.jl")
