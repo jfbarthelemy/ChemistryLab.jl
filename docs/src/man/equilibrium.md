@@ -66,7 +66,7 @@ both back-ends reach a balance of the order of `1e-14`, and OptimaSolver is 3 to
 
 ## Proving that an answer is the answer
 
-An interior-point method minimises `G` by walking the interior of the feasible
+An interior-point method minimizes `G` by walking the interior of the feasible
 set, and on a cement equilibrium it stops on `MaxIters` — at any tolerance.
 Whether the point it returns is the minimum is then an open question, and the
 package can now settle it rather than assume it.
@@ -92,7 +92,7 @@ is convex, the feasible set ``\{An=b,\ n\ge 0\}`` is a polyhedron, and — the
 constraints being affine, so that the linearity constraint qualification holds
 everywhere — the KKT conditions are **necessary and sufficient**.
 
-Two consequences follow. The minimiser is unique, so a solver returning different
+Two consequences follow. The minimizer is unique, so a solver returning different
 answers from different starting points is not finding local minima but stopping
 short of stationarity. And optimality can be *checked*: a composition satisfying
 the KKT conditions is proved globally optimal.
@@ -135,7 +135,7 @@ criterion.
 Two levels. The inner one inverts the **solutes'** mass-action laws at fixed
 potentials and fixed solvent amount; the outer is a Newton on ``1 + m + |P|``
 unknowns — the solvent, the `m` element potentials, and the amounts of the
-active phases. Parameterising the solutes by ``\ln n`` makes their positivity
+active phases. Parameterizing the solutes by ``\ln n`` makes their positivity
 automatic, which is what removes the fraction-to-boundary limit that caps the
 interior-point step at every iteration.
 

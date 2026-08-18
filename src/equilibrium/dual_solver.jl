@@ -14,7 +14,7 @@
 #   1. the conservation matrix `A` and the reference potentials `g = Δ_a G⁰/RT`;
 #   2. the activity model, as the callback `h` with `∇f = g + h(n)`;
 #   3. which species are strictly positive at any solution — the aqueous ones,
-#      parameterised by `ln n` — and which may vanish — the pure phases;
+#      parameterized by `ln n` — and which may vanish — the pure phases;
 #   4. which species plays the reference role: the solvent, whose activity is a
 #      mole fraction and therefore bounded above, so that its stationarity cannot
 #      be inverted and must be carried by the outer system.
@@ -30,7 +30,7 @@ using LinearAlgebra
 
 Equilibrium by Newton on the KKT system, in element-potential space.
 
-Where [`EquilibriumSolver`](@ref) minimises `G` by an interior-point method over
+Where [`EquilibriumSolver`](@ref) minimizes `G` by an interior-point method over
 all species and stops on `MaxIters` for a cement, this solves the stationarity
 conditions directly and returns a result that
 [`optimality_certificate`](@ref) can **prove** optimal — the Gibbs problem being
@@ -41,7 +41,7 @@ mass-action law `aᵢ = exp(uᵢ − gᵢ)` and a pure phase is present exactly 
 `uᵢ = gᵢ`, absent when undersaturated: the classical phase-stability criterion.
 
 Starting from the answer of an [`EquilibriumSolver`](@ref) is the intended use —
-the interior-point method reaches a neighbourhood, this reaches the conditions.
+the interior-point method reaches a neighborhood, this reaches the conditions.
 
 See also: [`optimality_certificate`](@ref), [`speciated_states`](@ref).
 """

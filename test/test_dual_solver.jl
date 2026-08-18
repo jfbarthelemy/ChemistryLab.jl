@@ -131,7 +131,7 @@ end
 @testset "a vanished component is recognised by sign, not by zero" begin
 
     # The criterion itself is linear algebra and is tested in OptimaSolver. What
-    # belongs here is its chemical consequence: with iron, sulfur and aluminium
+    # belongs here is its chemical consequence: with iron, sulfur and aluminum
     # absent from a calcite–water system, their species must come back at exactly
     # zero while the carbonate system is untouched.
     #
@@ -163,7 +163,7 @@ end
     @test optimality_certificate(des, dual; b = bv).optimal
 
     # And the reduction itself, on a system that HAS an absent component: bring
-    # ettringite in, which puts sulfur and aluminium among the components, and
+    # ettringite in, which puts sulfur and aluminum among the components, and
     # start with none of either. Every species carrying them must be excluded —
     # they are zero by the CONSTRAINT, and the potential of a component nobody
     # supplies is determined by nothing, so their saturation indices are

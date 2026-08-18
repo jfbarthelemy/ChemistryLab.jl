@@ -179,7 +179,7 @@ end
 
 ## Caveats worth carrying
 
-  - **The C-S-H is `Jennite`**, the Cemdata18 end-member normalised per silicon.
+  - **The C-S-H is `Jennite`**, the Cemdata18 end-member normalized per silicon.
     A real C-S-H is a solid solution of varying Ca/Si; using the CSHQ solid
     solution inside a coupled run is not exercised by this package's tests.
   - **The interior-point optimizer rarely reports convergence** on a cement
@@ -201,7 +201,7 @@ end
 
 Nothing above asks you to take the composition on trust. `G` is convex — an ideal
 mixing entropy plus terms linear in the amounts of the pure phases, over a
-polyhedron — so its minimiser is unique and the KKT conditions are sufficient.
+polyhedron — so its minimizer is unique and the KKT conditions are sufficient.
 [`optimality_certificate`](@ref) checks them.
 
 ```@example coupled

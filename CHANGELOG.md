@@ -11,14 +11,14 @@ the resolver treats a minor bump as breaking regardless, so a downstream
 
 ### The interior-point solver could not say whether its answer was the answer
 
-`EquilibriumSolver` minimises `G` by an interior-point method and, on a cement,
+`EquilibriumSolver` minimizes `G` by an interior-point method and, on a cement,
 it stops on `MaxIters` — at any tolerance. That was known. What was not known is
 how much it costs, because nothing in the package could check.
 
 The Gibbs problem is **convex**: an ideal mixing entropy, which is convex, plus
 terms that are LINEAR in the amounts of the pure phases, whose potential does not
 depend on how much of them there is, over the polyhedron `{A n = b, n ≥ 0}`. The
-minimiser is therefore unique and every stationary point is global — so a solver
+minimizer is therefore unique and every stationary point is global — so a solver
 returning different answers from different starting points is not finding local
 minima, it is stopping short of stationarity, and the KKT conditions are
 *sufficient*: they can be checked, and checking them is a proof.
@@ -33,7 +33,7 @@ mass-action value is `e⁻³⁰⁰` misstates its log-activity by 263 RT units.
 ### `DualEquilibriumSolver`
 
 Newton on the KKT system in element-potential space — the Brinkley–Karpov
-formulation of the geochemical Gibbs-minimisation codes. Writing `u = −Aᵀy`, an
+formulation of the geochemical Gibbs-minimization codes. Writing `u = −Aᵀy`, an
 aqueous species obeys `aᵢ = exp(uᵢ − gᵢ)` and a pure phase is present exactly
 when `uᵢ = gᵢ` and absent when undersaturated, which is the classical
 phase-stability criterion.
@@ -53,7 +53,7 @@ Two levels. The inner one inverts the **solutes'** mass-action laws at fixed
 potentials and fixed solvent amount; the outer is a Newton on `1 + m + |P|`
 unknowns — the solvent, the `m` element potentials, the amounts of the active
 phases — some fourteen numbers for a cement, against forty-seven species in the
-interior-point route. Parameterising the solutes by `ln n` makes their positivity
+interior-point route. Parameterizing the solutes by `ln n` makes their positivity
 automatic, so the fraction-to-boundary rule that capped the interior-point step
 at *every* iteration has nothing left to act on.
 
@@ -81,7 +81,7 @@ Six things had to be right, and each was found the hard way:
   - **a component whose total has vanished must be removed from the unknowns.**
     Its element potential is determined by nothing, the Jacobian is singular in
     that direction, and this is the ordinary state early in a hydration run, where
-    the iron, sulfur and aluminium totals are at machine zero. The test is not
+    the iron, sulfur and aluminum totals are at machine zero. The test is not
     `bₖ ≈ 0` but `bₖ ≈ 0` **with the non-zero entries of row `k` sharing a sign** —
     only then does `Σ Aₖᵢnᵢ = 0` with `n ≥ 0` force each term to vanish. The `H⁺`
     row carries `+1` for `H⁺` and `−1` for `OH⁻`, so its zero total is the
@@ -140,9 +140,9 @@ trajectory, and would need this closed first.
 ### Still true
 
 The interior-point solver is unchanged and still does not report convergence on a
-cement. It is what gets the certifying Newton into the neighbourhood — on 74 of
+cement. It is what gets the certifying Newton into the neighborhood — on 74 of
 80 measured cement equilibria the certified answer is reached from its guess —
-and that division of labour is deliberate.
+and that division of labor is deliberate.
 
 ## v0.8.2 — a replay that conserves matter, solid solutions that reach the solve
 

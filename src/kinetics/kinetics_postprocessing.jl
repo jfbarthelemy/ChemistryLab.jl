@@ -354,7 +354,7 @@ function speciated_states(sol, kp::KineticsProblem; times = sol.t)
         )
         n_eq = Float64[ustrip(us"mol", x) for x in eq.n]
 
-        # CERTIFY. The interior-point solve reaches a neighbourhood;
+        # CERTIFY. The interior-point solve reaches a neighborhood;
         # `DualEquilibriumSolver` brings the KKT conditions to tolerance and
         # PROVES optimality, the Gibbs problem being convex. This is not a
         # refinement: on the package's calcite reference the interior-point answer
