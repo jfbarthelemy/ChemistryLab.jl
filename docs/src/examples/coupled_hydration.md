@@ -34,7 +34,7 @@ Take the two silicate clinker phases, the hydrates Cemdata18 offers for them,
 and the aqueous species `speciation` pulls in from the primaries.
 
 ```@example coupled
-using ChemistryLab, DynamicQuantities, OptimaSolver, OrdinaryDiffEq, SciMLBase, Printf
+using ChemistryLab, DynamicQuantities, OptimaSolver, OrdinaryDiffEq, Printf
 
 data = joinpath(pkgdir(ChemistryLab), "data", "cemdata18-thermofun.json")
 substances = build_species(data)
