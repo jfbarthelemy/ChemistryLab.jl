@@ -12,7 +12,8 @@ import ChemistryLab:
     _build_n0,
     _solution_transform,
     _update_derived!
-using OptimaSolver: OptimaOptimizer
+using OptimaSolver: OptimaOptimizer, DualNewtonProblem, DualNewtonOptions,
+    dual_newton_solve, kkt_certificate
 using SciMLBase
 using LinearAlgebra: dot, mul!
 using DynamicQuantities
@@ -152,6 +153,35 @@ _default_optima_solver() = OptimaOptimizer(;
     use_fd_hessian = !ChemistryLab.EXACT_HESSIAN[],
     nullspace_step = ChemistryLab.NULLSPACE_STEP[],
 )
+
+# ── the certified KKT solver ──────────────────────────────────────────────────
+#
+# `ChemistryLab.DualEquilibriumSolver` supplies the chemistry — the conservation
+# matrix, the reference potentials, the activity model, and which species are
+# strictly positive, which may vanish, and which is the solvent. The algorithm
+# is `OptimaSolver`'s, and these three methods are the join.
+
+function ChemistryLab._optima_dual_problem(A, g, lna, idx_log, idx_bounded, j_ref, params)
+    return DualNewtonProblem(
+        A, g, lna;
+        idx_log = idx_log, idx_bounded = idx_bounded, j_ref = j_ref, params = params,
+    )
+end
+
+function ChemistryLab._optima_dual_solve(prob, b, x0, o)
+    return dual_newton_solve(
+        prob, b, x0;
+        opts = DualNewtonOptions(;
+            tol = o.tol, maxit = o.maxit,
+            max_active_updates = o.max_active_updates,
+            si_tol = o.si_tol, verbose = o.verbose,
+        ),
+    )
+end
+
+function ChemistryLab._optima_kkt_certificate(prob, x, b, floor, tol, si_tol)
+    return kkt_certificate(prob, x, b; floor = floor, tol = tol, si_tol = si_tol)
+end
 
 function __init__()
     return ChemistryLab._DEFAULT_SOLVER_FACTORY[] = _default_optima_solver

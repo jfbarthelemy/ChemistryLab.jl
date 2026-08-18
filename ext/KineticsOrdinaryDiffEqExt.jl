@@ -104,7 +104,14 @@ function integrate(kp::KineticsProblem, ks::KineticsSolver; kwargs...)
         respeciate!(p, u0)          # start from an equilibrated state
         cb = DiscreteCallback(
             (u, t, integrator) -> true,
-            integrator -> (respeciate!(integrator.p, integrator.u); SciMLBase.u_modified!(integrator, false));
+            integrator -> begin
+                # Flag the trajectory: only speciations computed here belong to
+                # the solution. Everything else is a probe.
+                integrator.p.on_accepted[] = true
+                respeciate!(integrator.p, integrator.u)
+                integrator.p.on_accepted[] = false
+                SciMLBase.u_modified!(integrator, false)
+            end;
             save_positions = (false, false),
         )
         sol = solve(prob, solver; callback = cb, merged...)
@@ -115,17 +122,24 @@ function integrate(kp::KineticsProblem, ks::KineticsSolver; kwargs...)
         nonconv = ChemistryLab.NONCONVERGED[] - nonconv0
         if nonconv > 0
             res = p.eq_worst_residual[]
-            abs_res = p.eq_worst_abs[]
+            abs_res = p.eq_worst_abs_acc[]
+            abs_all = p.eq_worst_abs[]
             @warn """$nonconv equilibrium solve(s) stopped short of the optimizer's \
             tolerance and were used anyway. Judge them on the element balance, not \
             on the retcode: worst |Aₑn − bₑ|∞ over the run was \
-            $(round(abs_res; sigdigits = 3)) mol \
-            ($(round(res; sigdigits = 3)) relative to the element totals). \
-            The absolute figure is the one to read: 1e-10 mol is machine precision \
-            whatever the system, while 1e-2 mol against a 0.3 mol sulfate budget is \
-            not. These worst cases are typically the first steps, where the paste \
-            has barely reacted and there is little for a speciation to hold on to; \
-            check a late instant with `speciated_states` before distrusting the run. \
+            $(round(abs_res; sigdigits = 3)) mol ON THE ACCEPTED STEPS, i.e. on the \
+            trajectory itself; $(round(abs_all; sigdigits = 3)) mol counting also the \
+            Jacobian probes and rejected steps, which never enter the solution. \
+            Read the first figure: 1e-10 mol is machine precision whatever the \
+            system, while 1e-2 mol against a 0.3 mol sulfate budget is not. \
+            How much it matters depends on the RATE LAWS: `bₑ` is integrated from \
+            the rates alone, so a law that reads only its own degree of reaction \
+            (Parrot-Killoh, Waller) gives a trajectory independent of the \
+            speciation, and this figure then bears on the reported composition \
+            only — recover that with `speciated_states`, which certifies each instant against the KKT conditions. A \
+            law reading log-activities (a saturation ratio) does feed the \
+            speciation back into the trajectory, and there this figure is a \
+            direct measure of the error. \
             Do NOT simply loosen the optimizer tolerance — on the calcite reference \
             case that degrades the speciation from 4 % to 250 % against Reaktoro."""
         end

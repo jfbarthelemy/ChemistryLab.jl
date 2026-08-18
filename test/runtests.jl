@@ -49,6 +49,7 @@ end
     include("activities.jl")
     include("solid_solutions.jl")
     include("equilibrium_reference.jl")
+    include("test_dual_solver.jl")
 end
 
 @testsection "Utils tests" begin

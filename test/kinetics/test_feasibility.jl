@@ -136,3 +136,48 @@ end
     @test_throws ArgumentError speciated_states(sol, kp; times = [3600.0, 600.0])
 
 end
+
+@testset "the equilibrium partition keeps its solid solutions" begin
+
+    # `_equilibrium_subsystem` rebuilds a `ChemicalSystem` for the partition the
+    # equilibrium is solved on. Until 0.8.2 it dropped `solid_solutions` on the
+    # way, silently and completely: a coupled run could declare CSHQ, AFm or
+    # Hydrogarnet and the solve would treat their end-members as separate pure
+    # phases, the mixing entropy never entering the Gibbs energy.
+
+    data = joinpath(pkgdir(ChemistryLab), "data", "cemdata18-thermofun.json")
+    substances = build_species(data)
+    toml = joinpath(pkgdir(ChemistryLab), "data", "solid_solutions.toml")
+
+    members = ["CSHQ-TobD", "CSHQ-TobH", "CSHQ-JenH", "CSHQ-JenD"]
+    sp = speciation(substances, vcat("C3S", "Portlandite", members); aggregate_state = [AS_AQUEOUS])
+    byname = Dict(symbol(s) => s for s in sp)
+    ss = [x for x in build_solid_solutions(toml, byname) if x.name == "CSHQ"]
+    @test length(ss) == 1                       # the declaration is usable at all
+
+    cs = ChemicalSystem(sp, CEMDATA_PRIMARIES; solid_solutions = ss)
+    @test cs.solid_solutions !== nothing
+
+    # The partition excludes the kinetic species, here C3S. All four CSHQ
+    # end-members stay, so the solution must survive into the sub-system.
+    idx_eq = [i for (i, s) in enumerate(cs.species) if symbol(s) != "C3S"]
+    sub = ChemistryLab._equilibrium_subsystem(cs, idx_eq)
+
+    @test sub.solid_solutions !== nothing
+    @test length(sub.solid_solutions) == 1
+    @test sub.solid_solutions[1].name == "CSHQ"
+    @test Set(symbol.(sub.solid_solutions[1].end_members)) == Set(members)
+
+    # A solution whose end-members are NOT all in the partition cannot be mixed
+    # there, and must be dropped rather than passed truncated.
+    idx_partial = [i for (i, s) in enumerate(cs.species) if symbol(s) != "CSHQ-JenD"]
+    sub2 = ChemistryLab._equilibrium_subsystem(cs, idx_partial)
+    @test sub2.solid_solutions === nothing
+
+    # A system with no solid solutions at all still yields a partition, and
+    # `nothing` rather than an empty vector.
+    cs_plain = ChemicalSystem(sp, CEMDATA_PRIMARIES)
+    sub3 = ChemistryLab._equilibrium_subsystem(cs_plain, idx_eq)
+    @test sub3.solid_solutions === nothing
+
+end

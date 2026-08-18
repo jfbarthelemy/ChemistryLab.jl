@@ -272,59 +272,178 @@ function speciated_states(sol, kp::KineticsProblem; times = sol.t)
         )
     )
 
-    # NOTE the absent `ϵ`. `build_kinetics_params` defaults it to 1e-30, which as
-    # a lower bound is fourteen orders below the solve's own 1e-16, and an
-    # interior-point method pinned that close to zero does not recover: replayed
-    # with 1e-30 a full OPC came out at pH 14.7 with 0.44 mol of ettringite
-    # against 0.27 mol of sulfate, and with the default at pH 12.6 and the
-    # sulfate budget closing exactly.
     sub = _equilibrium_subsystem(kp.system, kp.idx_equilibrium)
+
     # A FRESH back-end instance, not the one the run used. `p.eq_solver.solver`
     # is the very object that drove thousands of solves during the integration,
     # and replaying through it returned pH 14.2 with 0.31 mol of ettringite and
     # no AFm, where a clean instance of the same type and settings gives pH 12.58
     # with the sulfate entirely in AFm — the same trajectory, the same `bₑ`, the
-    # same guess. The back-end therefore carries state across solves; until that
-    # is fixed upstream, a replay must not inherit it.
+    # same guess. The back-end carries state across solves; a replay must not
+    # inherit it.
     es = EquilibriumSolver(
         sub, activity_model(p.eq_solver), typeof(p.eq_solver.solver)();
         variable_space = p.eq_solver.variable_space,
     )
+
+    # The certifying solver. It needs an aqueous phase with `H2O@`: the element
+    # potentials are fixed by the mass-action laws of the aqueous species, and a
+    # solid-only partition cannot pose the problem.
+    des = try
+        DualEquilibriumSolver(sub, activity_model(p.eq_solver))
+    catch
+        nothing
+    end
+
     guess = Float64[max(x, _EQ_GUESS_FLOOR) for x in p.n_eq_init]
     n_sp = length(kp.system.species)
 
-    # Walk exactly the instants asked for, and never before the first of them.
-    #
-    # Refining the walk with the integrator's own accepted steps looks safer and
-    # is not: `sol.t` begins at t = 0, where `bₑ` is mixing water and nothing
-    # else. The equilibrium there is degenerate, and warm-starting the next solve
-    # from it poisons the whole chain — replayed that way a full OPC came out at
-    # pH 14.2 with 0.31 mol of ettringite and no AFm at all, against pH 12.58 and
-    # the sulfate entirely in AFm when the walk starts at the first requested
-    # instant.
-    #
-    # The consequence is that the FIRST requested instant matters: ask for one
-    # late enough that the paste has reacted, early enough that the jump from the
-    # cast composition is not too large. A first point within the first hours is
-    # what the cement cases here use.
+    certified = nothing            # last composition that carried a certificate
+    t_prev = nothing               # the time that composition belongs to
+    uncertified = Float64[]        # instants that could not be proved optimal
+
+    # Seed the chain at the start of the run, where `bₑ` is the mixing water and
+    # little else, so the equilibrium is easy and certifies at once. The FIRST
+    # requested instant then has a certified predecessor to start from, which it
+    # otherwise lacks by construction — and on a cement without limestone that is
+    # exactly the instant that could not be proved, neither the interior-point
+    # answer nor the cast composition putting the Newton close enough.
+    if des !== nothing
+        # A LADDER of candidate seeds, not one point. The start of the run is the
+        # obvious candidate and often the worst: there most component totals are
+        # at machine zero, so their element potentials are undetermined and the
+        # balance settles a few orders above tolerance. An instant a little later,
+        # where the clinker has begun to dissolve but the assemblage is still
+        # simple, certifies at once — on a cement without limestone the run start
+        # does not certify and 432 s does, to 2e-12.
+        t1 = float(first(times))
+        for tc in (float(first(sol.t)), t1 / 100, t1 / 30, t1 / 10, t1 / 3)
+            tc < float(first(sol.t)) && continue
+            try
+                be0 = collect(@view sol(tc)[1:(p.n_be)])
+                seed = Float64[max(x, _EQ_GUESS_FLOOR) for x in p.n_eq_init]
+                _budget_clip!(seed, p.Ae, be0)
+                _restore_feasibility!(seed, p.Ae, be0; maxit = 100_000)
+                st0 = SciMLBase.solve(
+                    des, ChemicalState(sub, seed .* u"mol"; T = p.T_q[], P = p.P_q[]);
+                    b = be0,
+                )
+                if optimality_certificate(des, st0; b = be0).optimal
+                    certified = Float64[ustrip(us"mol", x) for x in st0.n]
+                    t_prev = tc
+                    break
+                end
+            catch
+                # A seed that fails is not an error: the next candidate is tried.
+            end
+        end
+    end
+
     out = ChemicalState[]
     for t in times
         u = sol(t)
         be = collect(@view u[1:(p.n_be)])
 
         _budget_clip!(guess, p.Ae, be)
-        _restore_feasibility!(guess, p.Ae, be)
+        _restore_feasibility!(guess, p.Ae, be; maxit = 100_000)
 
         eq = SciMLBase.solve(
             es,
             ChemicalState(sub, guess .* u"mol"; T = p.T_q[], P = p.P_q[]);
             b = be,
         )
-        guess = Float64[max(ustrip(us"mol", x), _EQ_GUESS_FLOOR) for x in eq.n]
+        n_eq = Float64[ustrip(us"mol", x) for x in eq.n]
+
+        # CERTIFY. The interior-point solve reaches a neighbourhood;
+        # `DualEquilibriumSolver` brings the KKT conditions to tolerance and
+        # PROVES optimality, the Gibbs problem being convex. This is not a
+        # refinement: on the package's calcite reference the interior-point answer
+        # is pH 6.96 against a certified 9.90, and 147 % out on a trace species
+        # that the test suite records as `@test_broken`.
+        #
+        # Three starting points, in order of expected quality: the interior-point
+        # answer for this instant; the last certified composition, whose active
+        # set is usually the right one; and the cast composition, which carries no
+        # active set at all.
+        if des !== nothing
+            cold_start = Float64[max(x, _EQ_GUESS_FLOOR) for x in p.n_eq_init]
+            _budget_clip!(cold_start, p.Ae, be)
+            _restore_feasibility!(cold_start, p.Ae, be; maxit = 100_000)
+
+            proved = false
+            for guess0 in (n_eq, certified, cold_start)
+                guess0 === nothing && continue
+                try
+                    st_dual = SciMLBase.solve(
+                        des,
+                        ChemicalState(sub, guess0 .* u"mol"; T = p.T_q[], P = p.P_q[]);
+                        b = be,
+                    )
+                    if optimality_certificate(des, st_dual; b = be).optimal
+                        n_eq = Float64[ustrip(us"mol", x) for x in st_dual.n]
+                        eq = st_dual
+                        certified = copy(n_eq)
+                        proved = true
+                        break
+                    end
+                catch err
+                    @warn (
+                        """a certifying solve raised for one instant; another start is tried, and the interior-point composition is used if none succeeds."""
+                    ) exception = err maxlog = 1
+                end
+            end
+            # CONTINUATION. If no start works, the jump in `bₑ` from the last
+            # certified instant is too large for the Newton. Walk it in halves:
+            # each intermediate equilibrium is closer to the last certified one,
+            # and certifying it moves the starting point forward. This is a
+            # homotopy in the component totals, and it terminates — either an
+            # intermediate certifies, moving `t_prev` strictly toward `t`, or the
+            # budget runs out and the instant is reported.
+            if !proved && t_prev !== nothing
+                lo = t_prev
+                for _ in 1:(_CONTINUATION_STEPS)
+                    tm = 0.5 * (lo + float(t))
+                    tm <= lo && break
+                    try
+                        be_m = collect(@view sol(tm)[1:(p.n_be)])
+                        gm = copy(certified)
+                        _budget_clip!(gm, p.Ae, be_m)
+                        _restore_feasibility!(gm, p.Ae, be_m; maxit = 100_000)
+                        st_m = SciMLBase.solve(
+                            des, ChemicalState(sub, gm .* u"mol"; T = p.T_q[], P = p.P_q[]);
+                            b = be_m,
+                        )
+                        if optimality_certificate(des, st_m; b = be_m).optimal
+                            certified = Float64[ustrip(us"mol", x) for x in st_m.n]
+                            lo = tm
+                            st_t = SciMLBase.solve(
+                                des,
+                                ChemicalState(sub, certified .* u"mol"; T = p.T_q[], P = p.P_q[]);
+                                b = be,
+                            )
+                            if optimality_certificate(des, st_t; b = be).optimal
+                                n_eq = Float64[ustrip(us"mol", x) for x in st_t.n]
+                                eq = st_t
+                                certified = copy(n_eq)
+                                proved = true
+                                break
+                            end
+                        end
+                    catch
+                        break
+                    end
+                end
+            end
+
+            proved && (t_prev = float(t))
+            proved || push!(uncertified, float(t))
+        end
+
+        guess = Float64[max(x, _EQ_GUESS_FLOOR) for x in n_eq]
 
         n = zeros(Float64, n_sp)
         for (j, idx) in enumerate(kp.idx_equilibrium)
-            n[idx] = ustrip(us"mol", eq.n[j])
+            n[idx] = n_eq[j]
         end
         for (j, idx) in enumerate(kp.idx_kinetic)
             n[idx] = max(u[p.n_be + j], 0.0)
@@ -337,5 +456,17 @@ function speciated_states(sol, kp::KineticsProblem; times = sol.t)
             )
         )
     end
+
+    # Say which instants are not proved. Falling back silently would leave the
+    # caller unable to tell a certified trajectory from an uncertified one, and
+    # those are not the same object: a certified composition satisfies the KKT
+    # conditions of a convex problem and is therefore THE global minimum, while
+    # the other is wherever an iteration reporting `MaxIters` happened to stop.
+    if des !== nothing && !isempty(uncertified)
+        @warn (
+            """$(length(uncertified)) of $(length(times)) replayed instants could not be certified optimal and fall back to the interior-point composition, at t = $(round.(uncertified; sigdigits = 4)) s. Audit them with `optimality_certificate`."""
+        ) maxlog = 1
+    end
+
     return out
 end

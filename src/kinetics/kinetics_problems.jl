@@ -386,6 +386,7 @@ function build_kinetics_params(kp::KineticsProblem; ϵ::Float64 = 1.0e-30)
         eq_solver = eq_sub,
         n_eq_init = n_eq_init,
         n_eq_buf = similar(n_eq_init),
+        n_eq_buf2 = similar(n_eq_init),
         xi_buf = zeros(Float64, length(kp.idx_kinetic)),
         T_q = Ref(temperature(state)),
         P_q = Ref(pressure(state)),
@@ -400,6 +401,8 @@ function build_kinetics_params(kp::KineticsProblem; ϵ::Float64 = 1.0e-30)
         # tolerance and still satisfy the element balance to machine precision.
         eq_worst_residual = Ref(0.0),
         eq_worst_abs = Ref(0.0),
+        eq_worst_abs_acc = Ref(0.0),
+        on_accepted = Ref(false),
         # Set once a speciation exists, so `respeciate!` can warm-start from it.
         eq_warm = Ref(false),
     )
@@ -428,7 +431,37 @@ function _equilibrium_subsystem(system::ChemicalSystem, idx_equilibrium)
     # assemblage with essentially no water left.
     comp_names = Set(symbol(sp) for sp in system.SM.primaries)
     prim = [sp for sp in sub_species if symbol(sp) in comp_names]
-    return ChemicalSystem(sub_species, isempty(prim) ? sub_species : prim)
+
+    # Carry the solid solutions over. Dropping them — as this did until 0.8.2 —
+    # is silent and total: the parent may declare CSHQ, AFm or Hydrogarnet, and
+    # the partition the equilibrium is actually solved on knows nothing of them,
+    # so their end-members are treated as separate pure phases and the mixing
+    # entropy never enters the Gibbs energy. Measured on alite and belite with
+    # the four CSHQ end-members, the run was bit-identical with and without the
+    # declaration, and produced no C-S-H at all: the silicon stayed in solution
+    # and the portlandite came out at 4.52 mol against 2.93 with a Jennite
+    # end-member.
+    #
+    # A solution survives only if ALL its end-members are in the partition. One
+    # whose members are split between the kinetic and equilibrium sides is not a
+    # phase the equilibrium can mix, and passing it truncated would be worse than
+    # dropping it.
+    sub_names = Set(symbol(sp) for sp in sub_species)
+    ss = system.solid_solutions
+    sub_ss = if ss === nothing
+        nothing
+    else
+        kept = [
+            phase for phase in ss
+                if all(em -> symbol(em) in sub_names, phase.end_members)
+        ]
+        isempty(kept) ? nothing : kept
+    end
+
+    return ChemicalSystem(
+        sub_species, isempty(prim) ? sub_species : prim;
+        solid_solutions = sub_ss,
+    )
 end
 
 """
@@ -453,6 +486,34 @@ that still counts as a converged speciation. Above it the point is not handed
 on as a warm start and the solve is retried from a budget-clipped guess.
 """
 const EQ_RESIDUAL_TOL = 1.0e-8
+
+"""
+    _RETRY_ABS_TOL
+
+Element-balance violation in moles above which a replayed speciation is solved a
+second time from a guess carrying no active set. Chosen well above machine
+precision and well below anything chemically meaningful.
+"""
+const _RETRY_ABS_TOL = 1.0e-6
+
+"""
+    _CONTINUATION_STEPS
+
+How many bisection steps a replay may take between the last certified instant and
+one it cannot certify directly. Each step halves the jump in the component
+totals, so eight of them reduce it by a factor 256.
+"""
+const _CONTINUATION_STEPS = 8
+
+"""
+    RESTORE_MAXIT
+
+Alternating-projection sweeps allowed when restoring the feasibility of an
+in-run guess. Exposed because the right value is a trade: the projection
+converges linearly and a cement can need tens of thousands of sweeps, while this
+runs at every right-hand-side evaluation.
+"""
+const RESTORE_MAXIT = Ref(200)
 
 # ── respeciate! ──────────────────────────────────────────────────────────────
 
@@ -520,7 +581,7 @@ function respeciate!(p, u)
         # starts outside the feasible set. Clipping costs nothing when the guess
         # is already feasible, which is the ordinary case.
         _budget_clip!(n_eq, p.Ae, be)
-        _restore_feasibility!(n_eq, p.Ae, be)
+        _restore_feasibility!(n_eq, p.Ae, be; maxit = RESTORE_MAXIT[])
         _respeciate_solve!(p, n_eq, be) && return true
         # Infeasible or stalled: fall through to the cold reconstruction rather
         # than carry the bad point into the next step.
@@ -552,7 +613,7 @@ function respeciate!(p, u)
         n_eq[j] = max(p.n_eq_init[j], _EQ_GUESS_FLOOR)
     end
     _budget_clip!(n_eq, p.Ae, be)
-    _restore_feasibility!(n_eq, p.Ae, be)
+    _restore_feasibility!(n_eq, p.Ae, be; maxit = RESTORE_MAXIT[])
 
     return _respeciate_solve!(p, n_eq, be)
 end
@@ -564,7 +625,66 @@ Solve `φ(bₑ)` from the guess `n_eq`, write the result into `p.n_full`, and re
 the element-balance residual. Returns `false` if the solve threw.
 """
 function _respeciate_solve!(p, n_eq, be)
-    state_eq = ChemicalState(p.eq_system, n_eq .* u"mol"; T = p.T_q[], P = p.P_q[])
+    ok, n_e, abs_res = _one_speciation(p, n_eq, be)
+    ok || return false
+
+    # RETRY FROM AN INDEPENDENT GUESS. The warm start carries the previous
+    # active set, and where the assemblage switches it is the wrong one — an
+    # interior-point method started inside it does not cross over. A guess built
+    # from the cast composition carries no active set at all, so it can land in a
+    # different basin; keeping whichever conserves matter better costs one extra
+    # solve, and only at the steps that need it.
+    #
+    # This is decided on the ABSOLUTE balance, in moles, because that is the
+    # quantity with a meaning: it is the matter the composition fails to account
+    # for. The relative measure is for reporting.
+    if abs_res > _RETRY_ABS_TOL
+        cold = p.n_eq_buf2
+        @inbounds for j in eachindex(cold)
+            cold[j] = max(p.n_eq_init[j], _EQ_GUESS_FLOOR)
+        end
+        _budget_clip!(cold, p.Ae, be)
+        _restore_feasibility!(cold, p.Ae, be; maxit = RESTORE_MAXIT[])
+        ok2, n2, abs2 = _one_speciation(p, cold, be)
+        if ok2 && abs2 < abs_res
+            n_e, abs_res = n2, abs2
+        end
+    end
+
+    for (j, idx) in enumerate(p.idx_equilibrium)
+        p.n_full[idx] = n_e[j]
+    end
+
+    res = _row_residual(p.Ae, n_e, be)
+    abs_res > p.eq_worst_abs[] && (p.eq_worst_abs[] = abs_res)
+
+    # Separate the trajectory from the probes. The right-hand side is evaluated
+    # far more often than the solution advances — Jacobian finite differences and
+    # rejected steps included — and a poor speciation on a PERTURBED `bₑ` never
+    # enters the result. Reporting the worst over all evaluations alarmed about
+    # something that does not affect the answer: on a full OPC that figure was
+    # 1.13 mol while the worst over the 201 accepted steps was 4.3e-4, with a
+    # median of 4.8e-9.
+    p.on_accepted[] && abs_res > p.eq_worst_abs_acc[] && (p.eq_worst_abs_acc[] = abs_res)
+
+    # Warm-starting from an INFEASIBLE point locks the error in: the next step
+    # starts where this one ended, so a single bad solve poisons every solve
+    # after it. Only hand over a speciation that actually satisfies the element
+    # balance; otherwise leave `eq_warm` as it was and let the caller retry.
+    res <= EQ_RESIDUAL_TOL && (p.eq_warm[] = true)
+    res > p.eq_worst_residual[] && (p.eq_worst_residual[] = res)
+    return res <= EQ_RESIDUAL_TOL
+end
+
+"""
+    _one_speciation(p, guess, be) -> (ok, n_e, abs_res)
+
+One equilibrium solve of `φ(bₑ)` from `guess`. Returns `ok = false` only if the
+solve threw; a solve that returns a poor composition still returns `true`, with
+its element-balance violation in moles, so the caller can compare attempts.
+"""
+function _one_speciation(p, guess, be)
+    state_eq = ChemicalState(p.eq_system, guess .* u"mol"; T = p.T_q[], P = p.P_q[])
 
     # `p.eq_solver` is a prebuilt `EquilibriumSolver` over the partition — a
     # solver *object*, not a SciML algorithm — so `solve`, not `equilibrate`.
@@ -577,34 +697,13 @@ function _respeciate_solve!(p, n_eq, be)
             @warn """re-speciation failed; the composition is left frozen for \
             this step. Later failures are counted, not reported.""" exception = err
         end
-        return false
+        return false, Float64[], Inf
     end
 
-    for (j, idx) in enumerate(p.idx_equilibrium)
-        p.n_full[idx] = ustrip(us"mol", eq_result.n[j])
-    end
-
-    # Element-balance residual of what was actually accepted, ROW BY ROW.
-    #
-    # Normalizing by `maximum(abs, be)` — as this did until 0.7.0 — divides every
-    # row by the water budget, which in a cement paste is 34 mol against 0.27 mol
-    # of sulfur. A full OPC run reported 1.4e-2 while ettringite exceeded the
-    # available sulfate by 0.465 mol, i.e. by a factor 2.7: the offending row was
-    # diluted a hundredfold and read as harmless. Scale each row by its own
-    # budget so a violated element shows up at its true relative size.
     n_e = [ustrip(us"mol", x) for x in eq_result.n]
-    res = _row_residual(p.Ae, n_e, be)
-    abs_res = _abs_residual(p.Ae, n_e, be)
-    abs_res > p.eq_worst_abs[] && (p.eq_worst_abs[] = abs_res)
-
-    # Warm-starting from an INFEASIBLE point locks the error in: the next step
-    # starts where this one ended, so a single bad solve poisons every solve
-    # after it. Only hand over a speciation that actually satisfies the element
-    # balance; otherwise leave `eq_warm` as it was and let the caller retry.
-    res <= EQ_RESIDUAL_TOL && (p.eq_warm[] = true)
-    res > p.eq_worst_residual[] && (p.eq_worst_residual[] = res)
-    return res <= EQ_RESIDUAL_TOL
+    return true, n_e, _abs_residual(p.Ae, n_e, be)
 end
+
 
 """
     _row_residual(Ae, n_e, be) -> Float64
@@ -683,6 +782,22 @@ set is non-empty (residual 3·10⁻¹²); this is the cheap way to land in it.
 
 Ending on the box clamp rather than the affine step matters: the affine
 projection alone leaves small negative amounts, which the barrier cannot accept.
+
+`maxit` deserves attention. Alternating projection converges linearly, at a rate
+set by the angle between the box and the affine set, and on a cement that angle
+can be small: at the six-hour instant of an ordinary Portland cement — where the
+iron row carries 0.013 mol across thirteen species — 200 sweeps left a residual
+of 8.4e-1, 2000 left 6.7e-2, and 20 000 were needed to reach 6.7e-9.
+
+The default is small on purpose, and measured: inside the ODE right-hand side
+this runs at every evaluation, and on a full OPC the worst in-run balance is
+1.1 mol at 200 sweeps against 8.5 at 2000 and 41 at 100 000. A better guess
+producing a worse answer is the back-end's own unpredictability; until that is
+understood the in-run budget stays where it measures best. Note that the ranking
+depends on the back-end and should be re-measured if it changes.
+
+A replay ([`speciated_states`](@ref)) runs a handful of times and buys accuracy
+instead, asking for a much larger budget.
 """
 function _restore_feasibility!(n_eq, Ae, be; maxit::Int = 200, tol::Float64 = 1.0e-12)
     G = cholesky(Symmetric(Ae * Ae' + 1.0e-14I))

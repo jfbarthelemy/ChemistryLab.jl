@@ -28,10 +28,20 @@ const RK_SPREAD = 7.12e-4
 
 # ── Trace species ─────────────────────────────────────────────────────────────
 #
-# Everything now agrees with Reaktoro to 5 % or better except `CaOH+`, which
-# comes out 2.5× high at 4e-9 mol. Ipopt lands on the same point (×2.46), so
-# that residual is not attributable to one back-end, and at 4e-9 mol it is
-# chemically inconsequential. `pKw` on this system is 13.979.
+# Everything here agrees with Reaktoro to 5 % or better except `CaOH+`, which
+# comes out 2.5× high at 4e-9 mol. Ipopt lands on the same point (×2.46), so that
+# residual is not attributable to one back-end.
+#
+# It is not attributable to the tolerances either, and this is the point:
+# `DualEquilibriumSolver` — Newton on the KKT system, see `test_dual_solver.jl` —
+# solves the SAME problem to `CaOH+` within 1 % of Reaktoro, along with every
+# other species, and returns a certificate proving global optimality. So the
+# discrepancy below is a property of the interior-point iteration, which stops
+# before stationarity and gives up first on exactly the species that weigh least
+# in the Gibbs energy. The `@test_broken` stays because it records what THIS
+# solver does; it is not a limit of the package.
+#
+# `pKw` on this system is 13.979.
 #
 # It was much worse. Two defects in the back-end, both fixed:
 #

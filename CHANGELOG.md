@@ -1,10 +1,162 @@
 # Changelog
 
-## v0.8.1 — the element-balance residual, in moles
+## v0.9.0 — equilibria that are proved, not hoped for
 
-Diagnostic fix. No API changed, nothing was removed, and no computed trajectory
-is affected — only what a run reports about itself. A downstream
+### Breaking changes
+
+Two new exported names, `DualEquilibriumSolver` and `optimality_certificate`.
+Nothing was removed or renamed and no existing signature changed, but below 1.0
+the resolver treats a minor bump as breaking regardless, so a downstream
+`[compat] ChemistryLab = "0.8"` must be widened.
+
+### The interior-point solver could not say whether its answer was the answer
+
+`EquilibriumSolver` minimises `G` by an interior-point method and, on a cement,
+it stops on `MaxIters` — at any tolerance. That was known. What was not known is
+how much it costs, because nothing in the package could check.
+
+The Gibbs problem is **convex**: an ideal mixing entropy, which is convex, plus
+terms that are LINEAR in the amounts of the pure phases, whose potential does not
+depend on how much of them there is, over the polyhedron `{A n = b, n ≥ 0}`. The
+minimiser is therefore unique and every stationary point is global — so a solver
+returning different answers from different starting points is not finding local
+minima, it is stopping short of stationarity, and the KKT conditions are
+*sufficient*: they can be checked, and checking them is a proof.
+
+**`optimality_certificate`** does that check, on any composition and whatever
+produced it. It reports the stationarity of the interior species, the component
+balance, and the worst supersaturation among absent phases. A species below the
+floor is at its bound, where the condition is the inequality `μ + Aᵀy ≥ 0` and
+not the equality — imposing the equality on an amount held at `1e-16` whose
+mass-action value is `e⁻³⁰⁰` misstates its log-activity by 263 RT units.
+
+### `DualEquilibriumSolver`
+
+Newton on the KKT system in element-potential space — the Brinkley–Karpov
+formulation of the geochemical Gibbs-minimisation codes. Writing `u = −Aᵀy`, an
+aqueous species obeys `aᵢ = exp(uᵢ − gᵢ)` and a pure phase is present exactly
+when `uᵢ = gᵢ` and absent when undersaturated, which is the classical
+phase-stability criterion.
+
+**The algorithm is not in this package.** It is
+`OptimaSolver.dual_newton_solve`, where it belongs: the active set, the
+degeneracy test on the rows of `A`, the two-level Newton and the certificate are
+statements about a convex program, not about chemistry. What this package
+supplies is the four things that *are* chemistry — the conservation matrix and
+the reference potentials `Δ_aG⁰/RT`; the activity model as the callback `h` with
+`∇f = g + h(n)`; which species are strictly positive at any solution and which
+may vanish; and which species is the solvent, whose activity is a mole fraction
+and therefore bounded above, so that its stationarity cannot be inverted. This
+release requires OptimaSolver 0.3.
+
+Two levels. The inner one inverts the **solutes'** mass-action laws at fixed
+potentials and fixed solvent amount; the outer is a Newton on `1 + m + |P|`
+unknowns — the solvent, the `m` element potentials, the amounts of the active
+phases — some fourteen numbers for a cement, against forty-seven species in the
+interior-point route. Parameterising the solutes by `ln n` makes their positivity
+automatic, so the fraction-to-boundary rule that capped the interior-point step
+at *every* iteration has nothing left to act on.
+
+Six things had to be right, and each was found the hard way:
+
+  - **the solvent cannot be inverted through its own mass-action law.** Its
+    activity is a mole fraction, so `ln a_w ≤ 0` always, and an arbitrary `y` can
+    demand `ln a_w > 0`, for which no finite composition exists. It belongs to the
+    outer system, where the balance determines it;
+  - **two phases declared saturated over-determine `y`.** Their stationarity rows
+    are then jointly infeasible. With portlandite wrongly admitted at 1e-6 mol
+    from the starting guess, the residual sat at 29.5 and fell by 1e-3 an
+    iteration; dropping it *during* the Newton rather than after, the same solve
+    reaches 5e-12 in eleven steps;
+  - **an amount must not be clamped to `ϵ` on the way out**, for the reason given
+    above;
+  - **the active set must be updated during the Newton, not after it**, and one
+    phase admitted at a time. Two phases both declared saturated over-determine
+    `y` and their stationarity rows are jointly infeasible; admitting a batch
+    feeds a cycle in which a phase is admitted, driven negative, dropped, and
+    readmitted. On a cement without limestone that produced a solve converged to
+    2e-12 — of the wrong subproblem, with an absent phase supersaturated by 10.9.
+    Visited active sets are recorded, which makes the loop finite in practice as
+    well as in theory;
+  - **a component whose total has vanished must be removed from the unknowns.**
+    Its element potential is determined by nothing, the Jacobian is singular in
+    that direction, and this is the ordinary state early in a hydration run, where
+    the iron, sulfur and aluminium totals are at machine zero. The test is not
+    `bₖ ≈ 0` but `bₖ ≈ 0` **with the non-zero entries of row `k` sharing a sign** —
+    only then does `Σ Aₖᵢnᵢ = 0` with `n ≥ 0` force each term to vanish. The `H⁺`
+    row carries `+1` for `H⁺` and `−1` for `OH⁻`, so its zero total is the
+    ordinary state of pure water; treating it as degenerate kills the entire
+    acid–base system and returns pH 7.000 with the calcite undissolved;
+  - **the replay must be seeded and, if need be, continued.** `speciated_states`
+    tries a ladder of early instants until one certifies, then walks forward; when
+    an instant still resists it bisects the interval in `bₑ` from the last
+    certified one, which is a homotopy in the component totals and terminates.
+    Without the ladder the first requested instant of a cement could not be
+    proved — neither the interior-point answer nor the cast composition puts the
+    Newton close enough.
+
+### Measured
+
+On the package's own Reaktoro reference — calcite, CO₂ and water, ideal
+activities — the certified answer matches **every species to 1 %**, including
+`CaOH+`, which `equilibrium_reference.jl` records as `@test_broken` because the
+interior-point answer is 147 % high. On calcite in pure water the certified pH is
+**9.90**; the interior-point answer is 6.96, which is not an imprecision but a
+wrong answer, and nothing in that solver's output reveals it.
+
+`speciated_states` now certifies each instant it replays, and **names any it
+cannot**: falling back silently would leave the caller unable to tell a certified
+trajectory from an uncertified one, and those are not the same object. On a full
+ordinary Portland cement over 28 days, with and without limestone, **all forty
+replayed instants of both mixes are certified**, with element balances between
+1e-11 and 1e-13 mol — where the six-hour instant, the AFt peak at which the
+assemblage switches, stood at 6.9e-2 mol before this work.
+
+### What is not certifiable yet
+
+**Solid solutions.** `DualEquilibriumSolver` refuses a system that declares one,
+and does so explicitly rather than returning a number. A pure phase has unit
+activity, hence `gᵢ = uᵢ` and a bound-constrained variable with an active set. An
+end-member of a solid solution has `μᵢ = gᵢ + ln aᵢ(n)`, whose activity goes to
+`−∞` as its mole fraction goes to zero: it is never exactly absent while the
+phase exists, so the active set belongs at the level of the PHASE and not of the
+species. That is a different algorithm. Treating an end-member as a pure phase
+would not fail loudly — it would return a composition that looks reasonable and
+is not the minimum — which is why the refusal is explicit and
+[`speciated_states`](@ref) reports such instants as uncertified.
+
+This matters for what comes next: slag and calcined-clay binders form C-A-S-H,
+hydrotalcite and AFm solid solutions, and certifying those needs the phase-level
+active set.
+
+**The in-run speciation.** `respeciate!` still uses the interior-point solver, so
+the compositions *inside* the integration are not certified; only the replay is.
+Measured, that makes no difference here, because `bₑ` is integrated from the
+rates alone and a Parrot–Killoh or Waller law reads only its own degree of
+reaction. A rate law reading log-activities — a saturation ratio, or a
+pH-dependent dissolution law — would feed the speciation back into the
+trajectory, and would need this closed first.
+
+### Still true
+
+The interior-point solver is unchanged and still does not report convergence on a
+cement. It is what gets the certifying Newton into the neighbourhood — on 74 of
+80 measured cement equilibria the certified answer is reached from its guess —
+and that division of labour is deliberate.
+
+## v0.8.2 — a replay that conserves matter, solid solutions that reach the solve
+
+Bug fixes. No API changed and nothing was removed, so a downstream
 `[compat] ChemistryLab = "0.8"` accepts this release unchanged.
+
+The `docs/src/examples/coupled_hydration.md` page is rewritten on the real API:
+it described four calls that never existed and had no executed block, so nothing
+had ever checked it. Every block now runs when the documentation is built.
+
+The `OptimaSolver` bound is relaxed from `"0.2.7"` to `"0.2"`. The patch-level
+lower bound guarded against 0.2.6, where `OptimaOptimizer` discarded the
+caller's `u0`; a fresh resolution always takes the newest patch, so the bound
+only ever mattered when reviving an old manifest.
 
 ### The relative residual saturated on near-empty rows
 
@@ -16,6 +168,71 @@ Portland cement balanced to **1.4e-10 mol** at 28 days was reported at `3.2e-2`,
 and the near-empty rows of the first steps saturated the measure at `1.0`, which
 read as a 100 % violation and was nothing of the sort. Every row is now floored
 at a millionth of the system scale, and the same run reports `3.9e-6`.
+
+### A replayed speciation could stop on a broken balance
+
+Two guards were added to [`speciated_states`](@ref), both judged on conservation
+of matter rather than on a retcode:
+
+- **A retry from a guess carrying no active set.** The warm start is the previous
+  speciation, and it brings the previous *active set* with it. Where the
+  assemblage switches — an ordinary Portland cement around six hours, when the
+  ettringite peaks and the sulfate starts moving into AFm — that set is the wrong
+  one and an interior-point method started inside it does not cross over. When
+  the balance exceeds `1e-6 mol` the instant is solved again from the cast
+  composition, and whichever result closes better is kept.
+
+- **A feasibility restoration that actually converges.** Alternating projection
+  converges linearly, at a rate set by the angle between the box and the affine
+  set, and on a cement that angle can be small: at that same six-hour instant,
+  where the iron row carries 0.013 mol across thirteen species, 200 sweeps left
+  a residual of 8.4e-1 and 20 000 were needed to reach 6.7e-9. A replay runs a
+  handful of times and now asks for the budget it needs.
+
+  Inside the ODE right-hand side the budget stays where it was: raising it there
+  made the run *worse* — the worst in-run balance went from 1.1 mol to 8.5 at
+  2000 sweeps and to 41 at 100 000 — which is the same unpredictability the
+  back-end shows elsewhere and is not understood.
+
+Measured on a full OPC replay, with OptimaSolver 0.3: the six-hour instant —
+the AFt peak, where the assemblage switches — goes from **6.9e-2 mol to
+7.1e-15**, and every other instant lands between 1.8e-15 and 3.6e-9. Over the
+201 accepted steps of the coupled run the worst balance is 6.0e-6 mol and the
+median 2.7e-9. On the 40-instant grid the chapters use, the porosity and the
+elastic modulus are both monotone across every interval and the pore solution
+holds at pH 12.52–12.59.
+
+### Solid solutions were dropped from the equilibrium partition
+
+`_equilibrium_subsystem` rebuilds a `ChemicalSystem` for the partition the
+equilibrium is actually solved on, and it did not carry `solid_solutions` over.
+The loss was silent and total: a coupled run could declare CSHQ, AFm or
+Hydrogarnet and the solve would treat their end-members as separate pure phases,
+the mixing entropy never entering the Gibbs energy. Measured on alite and belite
+with the four CSHQ end-members, the run was bit-identical with and without the
+declaration. With the fix the two differ — the element balance goes from 1.5e-12
+to 3.6e-15 and the pore solution from pH 12.48 to 12.37.
+
+A solution survives into the partition only if **all** its end-members are in it;
+one split across the kinetic and equilibrium sides is not a phase the equilibrium
+can mix, and is dropped rather than passed truncated.
+
+This makes the code path work. Whether a given solid solution is *stable* in a
+given system is a separate, thermodynamic question: with these Cemdata18
+end-members the small silicate system above still precipitates no C-S-H.
+
+### The warning could not tell the trajectory from a probe
+
+The right-hand side is evaluated far more often than the solution advances —
+Jacobian finite differences and rejected steps included — and a poor speciation
+on a *perturbed* `bₑ` never enters the result. Reporting the worst over all
+evaluations alarmed about something that does not affect the answer.
+
+`integrate` now reports the worst on the **accepted steps** first, and the
+all-evaluations figure second. It also states when the distinction matters:
+`bₑ` is integrated from the rates alone, so a rate law reading only its own
+degree of reaction (Parrot–Killoh, Waller) gives a trajectory independent of the
+speciation, while a law reading log-activities feeds it back in.
 
 ### The warning now gives moles
 

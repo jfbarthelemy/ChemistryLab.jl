@@ -25,157 +25,197 @@ Here the clinker dissolution rate is prescribed — that is genuinely kinetic �
 and everything downstream follows from thermodynamics: which hydrates appear, in
 what amounts, and what the pore solution looks like.
 
+Every block below is executed when this page is built, so the numbers are
+whatever the code actually produced.
+
 ## 1. Species and system
 
-Take the clinker phases, the hydrates Cemdata18 offers, and enough aqueous
-species to carry the chemistry:
+Take the two silicate clinker phases, the hydrates Cemdata18 offers for them,
+and the aqueous species `speciation` pulls in from the primaries.
 
-```julia
-using ChemistryLab, DynamicQuantities, OptimaSolver, OrdinaryDiffEq
+```@example coupled
+using ChemistryLab, DynamicQuantities, OptimaSolver, OrdinaryDiffEq, SciMLBase, Printf
 
 data = joinpath(pkgdir(ChemistryLab), "data", "cemdata18-thermofun.json")
-dict = Dict(symbol(s) => s for s in build_species(data))
+substances = build_species(data)
 
-kinetic  = ["C3S", "C2S"]                       # dissolve over days
-hydrates = ["Portlandite", "Jennite", "Tobermorite-14"]
-aqueous  = ["H2O@", "H+", "OH-", "Ca+2", "CaOH+", "SiO2@", "HSiO3-", "Ca(HSiO3)+"]
+anhydrous = ["C3S", "C2S"]
+hydrates = ["Portlandite", "Jennite"]
 
-cs = ChemicalSystem(
-    [dict[s] for s in vcat(aqueous, hydrates, kinetic)],
-    ["H2O@", "SiO2@", "Ca+2", "H+"],            # primaries
-)
+sp = speciation(substances, vcat(anhydrous, hydrates); aggregate_state = [AS_AQUEOUS])
+cs = ChemicalSystem(sp, CEMDATA_PRIMARIES)
+
+@printf "%d species: %d aqueous, %d crystalline\n" length(cs.species) count(
+    s -> aggregate_state(s) == AS_AQUEOUS, cs.species
+) count(s -> aggregate_state(s) == AS_CRYSTAL, cs.species)
 ```
 
-The primaries matter: the equilibrium sub-system inherits them, so `Aₑ` and the
-minimization are posed on the same basis (see the warning on the theory page).
+## 2. The initial state
 
-## 2. Initial state — a paste at w/c = 0.40
+A paste at w/c = 0.40: one kilogram of clinker, 65 % alite and 11 % belite by
+mass, and 400 g of water.
 
-```julia
-n = Any[fill(0.0u"mol", length(cs.species))...]
-idx(s) = findfirst(sp -> symbol(sp) == s, cs.species)
+```@example coupled
+state0 = ChemicalState(cs)
+set_quantity!(state0, "C3S", 0.65u"kg")
+set_quantity!(state0, "C2S", 0.11u"kg")
+set_quantity!(state0, "H2O@", 0.40u"kg")
 
-n[idx("H2O@")] = 22.20u"mol"     # 400 g water
-n[idx("C3S")]  = 3.29u"mol"      # 750 g alite
-n[idx("C2S")]  = 0.87u"mol"      # 150 g belite
-
-state = ChemicalState(cs, n; T = 298.15u"K", P = 1u"bar")
+for s in anhydrous
+    @printf "%-5s %8.4f mol\n" s ustrip(us"mol", moles(state0, s))
+end
 ```
 
-## 3. Rate laws
+## 3. Dissolution reactions
 
-`parrot_killoh` returns a `KineticFunc` with the standard `(T, P, t, n, lna,
-n₀)` signature, so it drops straight into a `KineticReaction`:
+The clinker does not react *into hydrates* here — it **dissolves into ions**,
+and ChemistryLab balances each reaction from the phase and the primaries. The
+acid-driven form is what drives the pore solution alkaline.
 
-```julia
-α_max = 1.0 - 3.33 * (0.40 - 0.40)          # Powers limit at this w/c
-
-reactions = [
-    kinetic_species(cs, "C3S", parrot_killoh(PK_PARAMS_C3S, "C3S"; α_max = α_max)),
-    kinetic_species(cs, "C2S", parrot_killoh(PK_PARAMS_C2S, "C2S"; α_max = α_max)),
-]
+```@example coupled
+primaries = ["Ca+2", "SiO2@", "H2O@", "H+"]
+reactions = ChemistryLab.Reaction[]
+for (phase, pk) in (("C3S", PK84_PARAMS_C3S), ("C2S", PK84_PARAMS_C2S))
+    rxn = Reaction([cs[phase]], [cs[p] for p in primaries]; symbol = "$phase dissolution")
+    rxn[:rate] = parrot_killoh_avrami(pk, phase; α_max = 1.0, blaine = 380.0u"m^2/kg")
+    push!(reactions, rxn)
+    println("  ", rxn)
+end
 ```
 
-!!! note "`kinetic_species` normalizes the stoichiometry for you"
-    The reaction it builds from the nullspace can come out with either sign on
-    the controlling mineral. It is normalized to `ν = −1` there, so the ODE
-    dissolves the clinker rather than growing it, and the `1/|νₖ|` scaling the
-    rate law expects is applied.
+The negative H⁺ coefficient is the whole point: dissolving one mole of alite
+consumes six moles of protons, which is what a pore solution at pH 12.5 and
+above records.
 
-## 4. Declare the partition and solve
-
-Everything not declared kinetic is equilibrium. Attaching an equilibrium solver
-is what turns a plain kinetics run into the coupled problem:
-
-```julia
-kp = KineticsProblem(
-    cs, reactions, state, (0.0u"s", 7.0u"d");
-    equilibrium_solver = EquilibriumSolver(cs, DiluteSolutionModel(), OptimaOptimizer()),
-)
-
-ks = KineticsSolver(; ode_solver = Rodas5P(),               # stiff: rates span decades
-                    reltol = 1e-6, abstol = 1e-10)
-
-sol = integrate(kp, ks)
-```
+## 4. The coupled problem
 
 The reaction list is a **positional** argument, and `equilibrium_solver` belongs
-on the problem (a `KineticsSolver` accepts it too, and the problem wins if both
-are given).
-
-Without `equilibrium_solver` the run is a pure kinetics integration and the
-aqueous phase never re-speciates. With it, `respeciate!` solves ``\varphi(b_e)``
+on the problem. Without it the run is a pure kinetics integration and the
+aqueous phase never re-speciates; with it, `respeciate!` solves ``\varphi(b_e)``
 once per accepted step.
+
+The activity model matters. A cement pore solution sits at an ionic strength of
+0.1–0.7 mol/kg, where the dilute model is not defensible, so pass
+`HKFActivityModel` — to the problem *and* to the solver, which must agree.
+
+```@example coupled
+model = HKFActivityModel()
+kp = KineticsProblem(
+    cs, reactions, state0, (0.0, 7 * 86400.0);
+    activity_model = model,
+    equilibrium_solver = EquilibriumSolver(cs, model, OptimaOptimizer()),
+)
+sol = integrate(kp, KineticsSolver(; ode_solver = Rodas5P(), reltol = 1.0e-7, abstol = 1.0e-10))
+@printf "%d accepted steps, retcode = %s\n" length(sol.t) sol.retcode
+```
 
 ## 5. Reading the result
 
-`integrate` reports failed re-speciations at the end — **check that it says
-nothing**, and check the partition constraint:
+The composition at a given time is **not** `state_at`: that returns the purely
+kinetic reconstruction ``n(0) + \nu^{\mathsf T}\xi``, and the redistribution
+performed by the equilibrium solve cannot be recovered from the stoichiometry.
+Use [`speciated_states`](@ref), which re-solves ``\varphi(b_e)`` from the element
+totals the run carried, walking the instants in order.
 
-```julia
-using LinearAlgebra
-be, ne = sol.u[end][1:kp.n_be], final_speciation(sol, kp)
-@show maximum(abs, kp.Ae * ne - be)          # → 8.7e-8 mol
+```@example coupled
+times = [1.0, 3.0, 7.0] .* 86400
+states = speciated_states(sol, kp; times = times)
+
+@printf "%6s %8s %10s %12s %10s\n" "t [d]" "pH" "Jennite" "Portlandite" "H2O"
+for (t, st) in zip(times, states)
+    @printf "%6.1f %8.2f %10.4f %12.4f %10.3f\n" t / 86400 something(pH(st), NaN) (
+        ustrip(us"mol", moles(st, "Jennite"))
+    ) ustrip(us"mol", moles(st, "Portlandite")) ustrip(us"mol", moles(st, "H2O@"))
+end
+```
+
+Check the partition constraint — conservation of matter is one of the three
+conditions a certificate rests on, and the one with an immediate meaning:
+
+```@example coupled
+p = sol.prob.p
+be = collect(sol(times[end])[1:(p.n_be)])
+ne = Float64[ustrip(us"mol", moles(states[end], symbol(cs.species[j]))) for j in kp.idx_equilibrium]
+@printf "‖Aₑnₑ − bₑ‖∞ = %.2e mol\n" maximum(abs, p.Ae * ne .- be)
 ```
 
 Degrees of hydration come from the kinetic amounts against their initial values:
 
-```julia
-α(s) = 1 - amount(sol, s, 7.0u"d") / amount(sol, s, 0.0u"s")
-α("C3S"), α("C2S")                            # → 0.277, 0.279
-```
-
-### Measured output, seven days at w/c = 0.40
-
-| quantity | value |
-|:--|--:|
-| α(C₃S), α(C₂S) | 0.277, 0.279 |
-| Jennite | 1.019 mol |
-| Portlandite | 1.086 mol |
-| H₂O remaining | 18.97 mol (from 22.20) |
-| Ca²⁺ | 3.5 mmol |
-| OH⁻ | 8.5 mmol |
-| `‖Aₑnₑ − bₑ‖∞` | 8.7×10⁻⁸ mol |
-| failed re-speciations | 0 of 89 steps |
-
-C-S-H and portlandite in comparable amounts, water consumed, an alkaline pore
-solution at millimolar calcium. None of it was imposed: change the water content
-or add a species and the assemblage rearranges itself.
-
-!!! note "How far to trust the pore-solution figures"
-    The speciation now agrees with Reaktoro to 5 % or better on every species
-    except `CaOH⁺`, which is 2.5× high at `4×10⁻⁹` mol, and `pKw` comes out at
-    13.979. The `OH⁻` figure above and any pH derived from this run are usable;
-    see [Validation against Reaktoro](@ref) for what was checked and how.
-
-## 6. Differentiating the whole thing
-
-Because the sensitivities come from the optimality conditions rather than from
-solver iterations, `ForwardDiff` crosses the equilibrium solve. So the
-composition — and quantities derived from it — can be differentiated with
-respect to a formulation parameter:
-
-```julia
-using ForwardDiff
-
-function portlandite_at_7d(wc)
-    n = Any[fill(0.0u"mol", length(cs.species))...]
-    n[idx("H2O@")] = (wc / 0.40 * 22.20)u"mol"
-    n[idx("C3S")]  = 3.29u"mol"
-    n[idx("C2S")]  = 0.87u"mol"
-    sol = integrate(KineticsProblem(cs, reactions, ChemicalState(cs, n),
-                                    (0.0u"s", 7.0u"d")), ks)
-    return amount(sol, "Portlandite", 7.0u"d")
+```@example coupled
+α = degrees_of_hydration(sol, kp; times = times)
+for s in anhydrous
+    @printf "α(%s) = %.3f\n" s α[s][end]
 end
-
-ForwardDiff.derivative(portlandite_at_7d, 0.40)
 ```
 
-This is what makes the package usable inside an optimization or an
-identification loop, rather than only as a forward simulator.
+## 6. What the thermodynamics decided
 
-## See also
+Nothing above states that portlandite forms, or in what proportion to the
+C-S-H. The dissolution reactions produce only Ca²⁺, SiO₂ and H⁺; the assemblage
+is the minimizer of the Gibbs energy under the element totals the kinetics
+delivered.
 
-- [Coupling kinetics and equilibrium](@ref) — the theory behind this example
-- [Validation against Reaktoro](@ref) — what is verified and what is not
-- [Chemical Kinetics](@ref) — the rate-law catalog
+```@example coupled
+st = states[end]
+solids = [(symbol(s), ustrip(us"mol", moles(st, symbol(s)))) for s in cs.species
+    if aggregate_state(s) == AS_CRYSTAL]
+filter!(x -> last(x) > 1.0e-6, solids)
+sort!(solids; by = last, rev = true)
+for (name, amount) in solids
+    @printf "  %-14s %8.4f mol\n" name amount
+end
+```
+
+The pore solution comes with it:
+
+```@example coupled
+aq = [(symbol(s), ustrip(us"mol", moles(st, symbol(s)))) for s in cs.species
+    if aggregate_state(s) == AS_AQUEOUS && symbol(s) != "H2O@"]
+sort!(aq; by = last, rev = true)
+for (name, amount) in aq[1:min(5, end)]
+    @printf "  %-14s %.3e mol\n" name amount
+end
+```
+
+## Caveats worth carrying
+
+  - **The C-S-H is `Jennite`**, the Cemdata18 end-member normalised per silicon.
+    A real C-S-H is a solid solution of varying Ca/Si; using the CSHQ solid
+    solution inside a coupled run is not exercised by this package's tests.
+  - **The interior-point optimizer rarely reports convergence** on a cement
+    equilibrium, and its return code is not the thing to read. `integrate` reports
+    the worst element balance instead, separating the accepted steps — the
+    trajectory — from the Jacobian probes that never enter it. The compositions
+    above do not rest on that solver: [`speciated_states`](@ref) passes each
+    instant to [`DualEquilibriumSolver`](@ref), which solves the KKT system and
+    **certifies** the result. The problem is convex, so stationarity of the
+    interior species, the component balance, and undersaturation of every absent
+    phase together prove global optimality.
+  - **A Parrot–Killoh rate reads only its own degree of reaction**, so the
+    trajectory here does not depend on the speciation at all; the speciation is
+    what you read out of it. A rate law reading log-activities would feed the
+    speciation back into the trajectory, and would need the balance above to be
+    tight at every step, not just at the instants you ask for.
+
+## 7. The certificate
+
+Nothing above asks you to take the composition on trust. `G` is convex — an ideal
+mixing entropy plus terms linear in the amounts of the pure phases, over a
+polyhedron — so its minimiser is unique and the KKT conditions are sufficient.
+[`optimality_certificate`](@ref) checks them.
+
+```@example coupled
+sub = ChemistryLab._equilibrium_subsystem(kp.system, kp.idx_equilibrium)
+des = DualEquilibriumSolver(sub, model)
+snames = symbol.(sub.species)
+be = collect(sol(times[end])[1:(sol.prob.p.n_be)])
+sub_state = ChemicalState(
+    sub, [ustrip(us"mol", moles(states[end], s)) for s in snames] .* u"mol";
+    T = sol.prob.p.T_q[], P = sol.prob.p.P_q[],
+)
+cert = optimality_certificate(des, sub_state; b = be)
+@printf "optimal          %s\n" cert.optimal
+@printf "stationarity     %.2e  (RT, over %d interior species)\n" cert.stationarity cert.n_interior
+@printf "component balance %.2e mol\n" cert.balance
+@printf "worst supersaturation %+.2e  (negative: every absent phase undersaturated)\n" cert.worst_supersaturation
+```

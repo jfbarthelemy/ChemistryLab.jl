@@ -64,6 +64,106 @@ targets, scored on two quantities neither solver defines — the element balance
 both back-ends reach a balance of the order of `1e-14`, and OptimaSolver is 3 to
 26 times faster. Pass a solver explicitly to override the choice.
 
+## Proving that an answer is the answer
+
+An interior-point method minimises `G` by walking the interior of the feasible
+set, and on a cement equilibrium it stops on `MaxIters` — at any tolerance.
+Whether the point it returns is the minimum is then an open question, and the
+package can now settle it rather than assume it.
+
+### Why the question has an answer
+
+Write the Gibbs energy in `RT` units as `G(n) = Σᵢ nᵢ μᵢ(n)`. Its ideal part
+
+```math
+\varphi(n) = \sum_i n_i \ln\frac{n_i}{N}, \qquad N = \sum_j n_j
+```
+
+has Hessian ``\operatorname{diag}(1/n_i) - \tfrac1N \mathbf{1}\mathbf{1}^\top``,
+and for any ``v``
+
+```math
+v^\top \nabla^2\varphi\, v = \sum_i \frac{v_i^2}{n_i} - \frac{1}{N}\Bigl(\sum_i v_i\Bigr)^2 \;\ge\; 0
+```
+
+by Cauchy–Schwarz applied to ``v_i = (v_i/\sqrt{n_i})\sqrt{n_i}``. A pure phase
+has unit activity, so it contributes a term **linear** in its amount. Hence `G`
+is convex, the feasible set ``\{An=b,\ n\ge 0\}`` is a polyhedron, and — the
+constraints being affine, so that the linearity constraint qualification holds
+everywhere — the KKT conditions are **necessary and sufficient**.
+
+Two consequences follow. The minimiser is unique, so a solver returning different
+answers from different starting points is not finding local minima but stopping
+short of stationarity. And optimality can be *checked*: a composition satisfying
+the KKT conditions is proved globally optimal.
+
+### The certificate
+
+[`optimality_certificate`](@ref) checks the three conditions, on any composition
+and whatever produced it. Writing ``u = -A^\top y`` for the element potentials:
+
+| condition | on which species | meaning |
+|:--|:--|:--|
+| ``\mu_i + (A^\top y)_i = 0`` | interior (`n > floor`) | stationarity |
+| ``An = b`` | — | conservation of matter |
+| ``u_i \le g_i`` | at the bound | every absent phase undersaturated |
+
+Two subtleties decide whether the check is meaningful.
+
+A species **at its bound** obeys the inequality, not the equality. Imposing the
+equality on an amount held at `1e-16` whose mass-action value is `e⁻³⁰⁰`
+misstates its log-activity by 263 `RT` units, and the check then reports a
+residual of 74 for a composition solved to `5e-12`.
+
+A species carrying a **vanished component** is absent by the *constraint*, not by
+thermodynamics, and its saturation index is meaningless — the element potential
+of a component nobody supplies is determined by nothing. The test for that is not
+`bₖ ≈ 0` but `bₖ ≈ 0` **with the non-zero entries of row `k` sharing a sign**:
+only then does ``\sum_i A_{ki} n_i = 0`` with ``n \ge 0`` force each term to
+vanish. The `H⁺` row carries `+1` for `H⁺` and `−1` for `OH⁻`, so its zero total
+is the ordinary state of pure water; treating it as degenerate kills the entire
+acid–base system and returns pH 7.000 with the calcite undissolved.
+
+### The certifying solver
+
+[`DualEquilibriumSolver`](@ref) solves the KKT system directly, in element
+potentials. From ``\mu_i + (A^\top y)_i = 0`` an aqueous species obeys the
+mass-action law ``a_i = \exp(u_i - g_i)``, and a pure phase is present exactly
+when ``u_i = g_i``, absent when undersaturated — the classical phase-stability
+criterion.
+
+Two levels. The inner one inverts the **solutes'** mass-action laws at fixed
+potentials and fixed solvent amount; the outer is a Newton on ``1 + m + |P|``
+unknowns — the solvent, the `m` element potentials, and the amounts of the
+active phases. Parameterising the solutes by ``\ln n`` makes their positivity
+automatic, which is what removes the fraction-to-boundary limit that caps the
+interior-point step at every iteration.
+
+The solvent is deliberately **not** inverted through its own mass-action law: its
+activity is a mole fraction, so ``\ln a_w \le 0`` always, and an arbitrary `y` can
+demand more, for which no finite composition exists. It belongs to the outer
+system, where the balance determines it.
+
+```julia
+des  = DualEquilibriumSolver(cs, HKFActivityModel())
+ipm  = equilibrate(state, OptimaOptimizer())      # into the neighbourhood
+dual = solve(des, ipm; b = b)                     # to the KKT conditions
+cert = optimality_certificate(des, dual; b = b)
+cert.optimal    # true: a proof, for a convex problem
+```
+
+!!! note "What it buys, measured"
+    On this package's Reaktoro reference — calcite, CO₂ and water — the certified
+    answer matches **every** species to 1 %, including `CaOH+`, which
+    `test/equilibrium_reference.jl` records as `@test_broken` because the
+    interior-point answer is 147 % high. On calcite in pure water the certified pH
+    is **9.90** against an interior-point 6.96: not an imprecision but a wrong
+    answer, and one nothing in that solver's output reveals.
+
+    [`speciated_states`](@ref) certifies every instant it replays and names any it
+    cannot. On a full ordinary Portland cement over 28 days, all forty replayed
+    instants are certified, with element balances between `1e-11` and `1e-13` mol.
+
 ## Differentiating an equilibrium
 
 A `ChemicalState` carries whatever number type its amounts have, so a
