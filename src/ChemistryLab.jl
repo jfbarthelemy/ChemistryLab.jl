@@ -349,6 +349,7 @@ module ChemistryLab
     export reaction_extents,
         extent_residual,
         state_at,
+        speciated_states,
         degrees_of_hydration,
         mean_degree_of_hydration
 

@@ -213,3 +213,124 @@ function mean_degree_of_hydration(
     end
     return out ./ total
 end
+
+# ── speciated_states ─────────────────────────────────────────────────────────
+
+"""
+    speciated_states(sol, kp::KineticsProblem; times = sol.t) -> Vector{ChemicalState}
+
+The **speciated** compositions along a solution: the kinetic species read from
+the ODE state, and the equilibrium partition recovered by re-solving `φ(bₑ)` at
+each instant with the element totals the run carried.
+
+This is what [`state_at`](@ref) deliberately does not do. That function returns
+the purely kinetic reconstruction `n(0) + νᵀξ`, because the redistribution
+performed by the equilibrium solve is not recoverable from the stoichiometry —
+for a cement that reconstruction is meaningless, putting every dissolved element
+in solution with not one hydrate. Nor is the composition left in the solver's
+own buffers usable: that buffer is rewritten at every right-hand-side
+evaluation, Jacobian differences and rejected steps included, so it is not the
+accepted composition at any particular time.
+
+Without an equilibrium solver on `kp` there is nothing to replay, and this
+returns [`state_at`](@ref) for each instant.
+
+# The instants must be ascending
+
+Each solve is warm-started from the previous one, and the guess is first capped
+at the element budget and projected back into `{Aₑn = bₑ, n ≥ 0}`. Both matter,
+and neither is optional:
+
+  - the warm start is the equilibrium of the *previous* `bₑ`, so once an element
+    has been spent — the sulfate of an ordinary Portland cement, after the gypsum
+    is gone — it demands more of it than now exists and the interior-point solve
+    begins outside its own feasible set;
+  - solved instead from a cold guess, `φ(bₑ)` does not converge at all for a
+    cement: the H⁺ component of `bₑ` reaches −14 mol, and a solve started from
+    pure water returns no hydrates and a pore solution at pH 6 while the run
+    itself computed 2.2 mol of C-S-H.
+
+# Examples
+
+```julia
+states = speciated_states(sol, kp; times = [1, 7, 28] .* 86400.0)
+pH(states[end])                      # pore solution at 28 days
+volume_fractions(states[end], groups; reference = state0)
+```
+
+See also: [`state_at`](@ref), [`reaction_extents`](@ref), [`volume_fractions`](@ref).
+"""
+function speciated_states(sol, kp::KineticsProblem; times = sol.t)
+    p = sol.prob.p
+
+    # No equilibrium partition: the kinetic reconstruction IS the composition.
+    p.n_be == 0 && return ChemicalState[state_at(sol, kp, t) for t in times]
+
+    issorted(times) || throw(
+        ArgumentError(
+            "`times` must be ascending: each speciation warm-starts from the previous one."
+        )
+    )
+
+    # NOTE the absent `ϵ`. `build_kinetics_params` defaults it to 1e-30, which as
+    # a lower bound is fourteen orders below the solve's own 1e-16, and an
+    # interior-point method pinned that close to zero does not recover: replayed
+    # with 1e-30 a full OPC came out at pH 14.7 with 0.44 mol of ettringite
+    # against 0.27 mol of sulfate, and with the default at pH 12.6 and the
+    # sulfate budget closing exactly.
+    sub = _equilibrium_subsystem(kp.system, kp.idx_equilibrium)
+    # A solver built fresh on the sub-system, not `p.eq_solver` reused from the
+    # run. They are configured alike, yet replaying a full OPC through the run's
+    # own solver returned pH 14.7 with 0.44 mol of ettringite against 0.27 mol of
+    # sulfate, where a fresh one gives pH 12.6 and closes the sulfate budget
+    # exactly. Until that difference is understood, replay through a clean one.
+    es = EquilibriumSolver(
+        sub, activity_model(p.eq_solver), p.eq_solver.solver;
+        variable_space = p.eq_solver.variable_space,
+    )
+    guess = Float64[max(x, _EQ_GUESS_FLOOR) for x in p.n_eq_init]
+    n_sp = length(kp.system.species)
+
+    # Walk the ACCEPTED STEPS, not the requested instants, and keep only what was
+    # asked for. The warm start makes each solve depend on the previous one, so a
+    # sparse request would otherwise change the answer: asked for 1/3/7/28 days a
+    # full OPC came out at pH 14.7 with 0.44 mol of ettringite against 0.27 mol of
+    # sulfate, and asked for 0.25/1/3/7/28 — the same trajectory, one instant
+    # more — at pH 12.6 with the sulfate budget closing exactly. The first jump
+    # was simply too large and every later solve inherited the bad basin. Walking
+    # the steps the integrator itself accepted removes the dependence.
+    wanted = Set(float.(times))
+    walk = sort!(unique!(vcat(float.(collect(sol.t)), float.(collect(times)))))
+
+    out = ChemicalState[]
+    for t in walk
+        u = sol(t)
+        be = collect(@view u[1:(p.n_be)])
+
+        _budget_clip!(guess, p.Ae, be)
+        _restore_feasibility!(guess, p.Ae, be)
+
+        eq = SciMLBase.solve(
+            es,
+            ChemicalState(sub, guess .* u"mol"; T = p.T_q[], P = p.P_q[]);
+            b = be,
+        )
+        guess = Float64[max(ustrip(us"mol", x), _EQ_GUESS_FLOOR) for x in eq.n]
+
+        n = zeros(Float64, n_sp)
+        for (j, idx) in enumerate(kp.idx_equilibrium)
+            n[idx] = ustrip(us"mol", eq.n[j])
+        end
+        for (j, idx) in enumerate(kp.idx_kinetic)
+            n[idx] = max(u[p.n_be + j], 0.0)
+        end
+
+        t in wanted && push!(
+            out, ChemicalState(
+                kp.system; T = p.T * u"K", P = p.P * u"Pa",
+                n = [nᵢ * u"mol" for nᵢ in n],
+            )
+        )
+    end
+    return out
+end
