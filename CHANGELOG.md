@@ -1,5 +1,31 @@
 # Changelog
 
+## v0.8.1 — the element-balance residual, in moles
+
+Diagnostic fix. No API changed, nothing was removed, and no computed trajectory
+is affected — only what a run reports about itself. A downstream
+`[compat] ChemistryLab = "0.8"` accepts this release unchanged.
+
+### The relative residual saturated on near-empty rows
+
+`_row_residual` scaled each row by the larger of its own element total and the
+matter flowing through it. For a row whose total is a millionth of the largest —
+an element barely present, or the charge row early on — that divisor is
+essentially zero, and a rounding error came out as an alarm. A full ordinary
+Portland cement balanced to **1.4e-10 mol** at 28 days was reported at `3.2e-2`,
+and the near-empty rows of the first steps saturated the measure at `1.0`, which
+read as a 100 % violation and was nothing of the sort. Every row is now floored
+at a millionth of the system scale, and the same run reports `3.9e-6`.
+
+### The warning now gives moles
+
+`integrate` reported only the relative figure, which cannot be judged without
+knowing what it was divided by. It now leads with the absolute worst in moles —
+`1e-10 mol` is machine precision whatever the system, `1e-2 mol` against a
+0.3 mol sulfate budget is not — and says where such cases come from: the first
+steps, where the paste has barely reacted. On the OPC above the honest reading
+is 1.05 mol at the worst early step and machine precision from three days on.
+
 ## v0.8.0 — a public replay of the equilibrium partition
 
 ### Breaking changes

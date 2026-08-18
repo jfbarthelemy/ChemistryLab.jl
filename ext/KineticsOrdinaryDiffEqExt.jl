@@ -115,13 +115,19 @@ function integrate(kp::KineticsProblem, ks::KineticsSolver; kwargs...)
         nonconv = ChemistryLab.NONCONVERGED[] - nonconv0
         if nonconv > 0
             res = p.eq_worst_residual[]
+            abs_res = p.eq_worst_abs[]
             @warn """$nonconv equilibrium solve(s) stopped short of the optimizer's \
-            tolerance and were used anyway. Judge them on the element balance, \
-            not on the retcode: worst |Aₑn − bₑ|∞ over the run was $(round(res; sigdigits = 3)). \
-            A residual at machine precision means the stall was benign; a large \
-            one means the trajectory is not trustworthy. Do NOT simply loosen the \
-            optimizer tolerance — on the calcite reference case that degrades the \
-            speciation from 4 % to 250 % against Reaktoro."""
+            tolerance and were used anyway. Judge them on the element balance, not \
+            on the retcode: worst |Aₑn − bₑ|∞ over the run was \
+            $(round(abs_res; sigdigits = 3)) mol \
+            ($(round(res; sigdigits = 3)) relative to the element totals). \
+            The absolute figure is the one to read: 1e-10 mol is machine precision \
+            whatever the system, while 1e-2 mol against a 0.3 mol sulfate budget is \
+            not. These worst cases are typically the first steps, where the paste \
+            has barely reacted and there is little for a speciation to hold on to; \
+            check a late instant with `speciated_states` before distrusting the run. \
+            Do NOT simply loosen the optimizer tolerance — on the calcite reference \
+            case that degrades the speciation from 4 % to 250 % against Reaktoro."""
         end
     else
         sol = solve(prob, solver; merged...)

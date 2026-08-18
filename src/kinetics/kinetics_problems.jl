@@ -399,6 +399,7 @@ function build_kinetics_params(kp::KineticsProblem; ϵ::Float64 = 1.0e-30)
         # the criterion with physical meaning: a solve can stall short of its
         # tolerance and still satisfy the element balance to machine precision.
         eq_worst_residual = Ref(0.0),
+        eq_worst_abs = Ref(0.0),
         # Set once a speciation exists, so `respeciate!` can warm-start from it.
         eq_warm = Ref(false),
     )
@@ -593,6 +594,8 @@ function _respeciate_solve!(p, n_eq, be)
     # budget so a violated element shows up at its true relative size.
     n_e = [ustrip(us"mol", x) for x in eq_result.n]
     res = _row_residual(p.Ae, n_e, be)
+    abs_res = _abs_residual(p.Ae, n_e, be)
+    abs_res > p.eq_worst_abs[] && (p.eq_worst_abs[] = abs_res)
 
     # Warm-starting from an INFEASIBLE point locks the error in: the next step
     # starts where this one ended, so a single bad solve poisons every solve
@@ -612,20 +615,31 @@ large one, which is what let a 0.465 mol sulfur violation report as 1.4e-2.
 """
 function _row_residual(Ae, n_e, be)
     r = Ae * n_e .- be
+    # An element whose total is a millionth of the largest is not tracked
+    # meaningfully, and judging it against its own vanishing budget turns a
+    # rounding error into an alarm: a full OPC balanced to 1.4e-10 mol at 28 days
+    # was reported at 3.2e-2, and the near-empty rows of the first steps saturated
+    # the measure at 1.0. Floor every row at a fraction of the system scale.
+    scale = 1.0e-6 * maximum(abs, be; init = 0.0)
     worst = 0.0
     for i in eachindex(r)
-        # Scale by the larger of the element total and the matter actually
-        # flowing through the row. The total alone is not enough: the charge row
-        # has `bᵢ = 0` by electroneutrality, and dividing by it turns a rounding
-        # error into a reported residual of 2·10³.
         flux = zero(eltype(r))
         for j in eachindex(n_e)
             flux += abs(Ae[i, j] * n_e[j])
         end
-        worst = max(worst, abs(r[i]) / max(1.0e-10, abs(be[i]), flux))
+        worst = max(worst, abs(r[i]) / max(scale, abs(be[i]), flux, 1.0e-30))
     end
     return worst
 end
+
+"""
+    _abs_residual(Ae, n_e, be) -> Float64
+
+Largest element-balance violation in moles. Reported alongside the relative
+measure because it is the one a chemist can judge: 1e-10 mol is machine
+precision whatever the system, and 7e-2 mol is not.
+"""
+_abs_residual(Ae, n_e, be) = maximum(abs, Ae * n_e .- be; init = 0.0)
 
 """
     _budget_clip!(n_eq, Ae, be)
