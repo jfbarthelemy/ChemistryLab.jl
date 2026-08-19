@@ -1,5 +1,67 @@
 # Changelog
 
+## v0.10.0 — the heat of hydration, and solid solutions the solver can hold
+
+### Breaking changes
+
+Five new exported names — `enthalpy`, `heat_capacity`, `missing_enthalpy`,
+`system_enthalpy` and `heat_release`. Nothing was removed or renamed and no
+existing signature changed, but below 1.0 the resolver treats a minor bump as
+breaking regardless, so a downstream `[compat] ChemistryLab = "0.9"` must be
+widened to `"0.10"`.
+
+`[compat] OptimaSolver` moves to `"0.4"`, which is required: the solid-solution
+work below depends on `SolutionPhase(...; mole_fraction = true)`, introduced
+there.
+
+### Calorimetry that a coupled model can actually use
+
+`enthalpy(state)` and `heat_capacity(state)` sum `nᵢ ΔₐH⁰ᵢ(T,P)` and
+`nᵢ Cp⁰ᵢ(T,P)` over the composition, and `heat_release(sol, kp; times)` returns
+the cumulative heat and the heat rate along a trajectory. This is Eqs. (17)–(21)
+of Lavergne et al. (2018): enthalpy is a state function, so its drop between two
+states at the same temperature is the heat given off, with reactants, ions and
+hydrates each counted once and no reaction stoichiometry to write down.
+
+That last point is what makes it necessary. `heat_rate` sums `rᵢ(−ΔᵣH⁰ᵢ)` over
+the KINETIC reactions, which is right when those reactions produce the hydrates —
+and wrong under partial equilibrium, where they only dissolve the anhydrous
+phases into ions and the hydrates are precipitated by the Gibbs minimisation.
+Driving a semi-adiabatic cell from it put an ordinary Portland cement at a
+temperature rise of 207 K. That combination now warns instead of returning the
+number in silence.
+
+`heat_release` reads the **certified** speciations of `speciated_states`, not the
+composition the integrator carries. The in-run minimisation is warm-started and
+uncertified, and a single hydrate is worth hundreds of kilojoules: read that way
+the curve came out at 12.7, 145, 1174, 936 and 631 J/g at 1 h, 6 h, 12 h, 1 d and
+2 d — heat that rises and then falls. Certified, the same cement gives 185, 288,
+347 and 420 J/g at 1, 3, 7 and 28 days, and the curve is monotone.
+
+`missing_enthalpy(state)` lists the species that carry no `ΔₐH⁰` and are
+therefore absent from the balance, because a heat curve missing one hydrate is
+not visibly wrong.
+
+### `s[:Cp⁰]` returned zero on a species that had one
+
+The thermodynamic functions are built on demand. `getproperty` knew that;
+`getindex` did not, and returned its not-found value `0` — an `Int64` — for any
+of `:Cp⁰`, `:ΔₐH⁰`, `:S⁰`, `:ΔₐG⁰`, `:V⁰` on a species whose functions had not
+been forced yet. Callers found out only when they tried to evaluate it. Returning
+0 is right for a missing ATOM, which is what that fallback is for; it was never
+right for a property the species can produce.
+
+### A solid solution now has a reference worth the name
+
+`DualEquilibriumSolver` took the first end-member of every solid solution as the
+phase reference. The reference is the member whose stationarity the outer system
+carries rather than inverting, so it has to be the one the phase is mostly made
+of — for the aqueous phase that is the solvent, and not by convention. Picking a
+minor end-member sends the outer unknown `ln x_ref` towards −∞ and the Jacobian
+with it. It is now chosen by magnitude from the caller's own composition, and
+solid solutions are declared to `OptimaSolver` as mole-fraction phases, which is
+what lets them be solved at all.
+
 ## v0.9.0 — equilibria that are proved, not hoped for
 
 ### Breaking changes

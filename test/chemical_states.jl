@@ -232,3 +232,55 @@
         @test n0[2] ≈ 1.0e-7
     end
 end
+
+@testset "enthalpy, heat capacity, and the lazy thermodynamic functions" begin
+
+    # `s[:Cp⁰]` used to return the not-found value 0 on any species whose
+    # thermodynamic functions had not been forced yet, because `getindex` did not
+    # do the lazy completion that `getproperty` does. It returned an `Int64`, so
+    # the caller found out only when it tried to evaluate it.
+    sp = build_species(joinpath(pkgdir(ChemistryLab), "data", "cemdata18-thermofun.json"))
+    qtz = first(s for s in sp if symbol(s) == "Qtz")
+    @test !(qtz[:Cp⁰] isa Integer)          # i.e. not the 0 fallback
+    @test qtz[:Cp⁰](T = 293.15, unit = true) isa AbstractQuantity
+    # quartz near 25 °C, ≈ 44 J/(mol·K)
+    @test 40 < ustrip(us"J/K/mol", qtz[:Cp⁰](T = 293.15, unit = true)) < 48
+
+    dict = Dict(symbol(s) => s for s in sp)
+    cs = ChemicalSystem(
+        [dict[s] for s in ("H2O@", "H+", "OH-", "Ca+2", "Portlandite")],
+        ["H2O@", "H+", "Ca+2", "Zz"],
+    )
+    st = ChemicalState(cs)
+    set_quantity!(st, "H2O@", 55.5u"mol")
+    set_quantity!(st, "Portlandite", 1.0u"mol")
+
+    @test isempty(missing_enthalpy(st))
+
+    # Additive by construction, and the pieces are the tabulated values.
+    H = ustrip(us"J", enthalpy(st))
+    H_w = ustrip(us"J", enthalpy(st, "H2O@"))
+    H_p = ustrip(us"J", enthalpy(st, "Portlandite"))
+    # Additive over ALL species: the state also carries trace H⁺, OH⁻ and Ca²⁺,
+    # so the sum is not just the two set by hand.
+    @test H ≈ sum(ustrip(us"J", enthalpy(st, nm)) for nm in symbol.(cs.species)) rtol = 1.0e-12
+    @test H ≈ H_w + H_p rtol = 1.0e-6
+    @test H_w / 55.5 ≈ -285_830 rtol = 5.0e-3      # liquid water
+    @test H_p ≈ -984_675 rtol = 5.0e-3             # portlandite
+
+    C = ustrip(us"J/K", heat_capacity(st))
+    @test C ≈ sum(ustrip(us"J/K", heat_capacity(st, nm)) for nm in symbol.(cs.species)) rtol = 1.0e-12
+    @test 4100 < C < 4400                          # 55.5 × 75.3 + 87.5
+
+    # Doubling the amounts doubles both: they are extensive.
+    st2 = copy(st)
+    st2.n .*= 2
+    @test ustrip(us"J", enthalpy(st2)) ≈ 2H rtol = 1.0e-12
+    @test ustrip(us"J/K", heat_capacity(st2)) ≈ 2C rtol = 1.0e-12
+
+    # A species with no enthalpy of formation is reported rather than silently
+    # dropped from the balance.
+    bare = ChemicalSystem([Species("H2O"; aggregate_state = AS_AQUEOUS, class = SC_AQSOLVENT)])
+    @test "H2O" in missing_enthalpy(ChemicalState(bare, [55.5u"mol"]))
+
+end

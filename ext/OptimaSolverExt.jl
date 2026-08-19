@@ -13,7 +13,7 @@ import ChemistryLab:
     _solution_transform,
     _update_derived!
 using OptimaSolver: OptimaOptimizer, DualNewtonProblem, DualNewtonOptions,
-    dual_newton_solve, kkt_certificate
+    SolutionPhase, dual_newton_solve, kkt_certificate
 using SciMLBase
 using LinearAlgebra: dot, mul!
 using DynamicQuantities
@@ -161,10 +161,16 @@ _default_optima_solver() = OptimaOptimizer(;
 # strictly positive, which may vanish, and which is the solvent. The algorithm
 # is `OptimaSolver`'s, and these three methods are the join.
 
-function ChemistryLab._optima_dual_problem(A, g, lna, idx_log, idx_bounded, j_ref, params)
+function ChemistryLab._optima_dual_problem(A, g, lna, phases, idx_bounded, params)
     return DualNewtonProblem(
         A, g, lna;
-        idx_log = idx_log, idx_bounded = idx_bounded, j_ref = j_ref, params = params,
+        phases = [
+            SolutionPhase(
+                    ph.members, ph.j_ref;
+                    always_present = ph.always_present, mole_fraction = ph.mole_fraction,
+                ) for ph in phases
+        ],
+        idx_bounded = idx_bounded, params = params,
     )
 end
 

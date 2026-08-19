@@ -399,11 +399,23 @@ function speciated_states(sol, kp::KineticsProblem; times = sol.t)
             # homotopy in the component totals, and it terminates — either an
             # intermediate certifies, moving `t_prev` strictly toward `t`, or the
             # budget runs out and the instant is reported.
+            # CONTINUATION. If no start works, the jump in `bₑ` from the last
+            # certified instant is too large for the Newton. Bisect it: a homotopy
+            # in the component totals.
+            #
+            # Both ends must move, and that is the part this first got wrong. On
+            # success the LOWER end advances, carrying the certified composition
+            # forward; on failure the UPPER end comes down, shortening the jump.
+            # Recomputing the midpoint from a fixed upper end instead retries the
+            # very same instant every round and the budget is spent on one point —
+            # which is exactly what left four instants of a cement uncertified.
             if !proved && t_prev !== nothing
                 lo = t_prev
+                hi = float(t)
                 for _ in 1:(_CONTINUATION_STEPS)
-                    tm = 0.5 * (lo + float(t))
-                    tm <= lo && break
+                    tm = 0.5 * (lo + hi)
+                    (tm <= lo || tm >= hi) && break
+                    stepped = false
                     try
                         be_m = collect(@view sol(tm)[1:(p.n_be)])
                         gm = copy(certified)
@@ -416,6 +428,9 @@ function speciated_states(sol, kp::KineticsProblem; times = sol.t)
                         if optimality_certificate(des, st_m; b = be_m).optimal
                             certified = Float64[ustrip(us"mol", x) for x in st_m.n]
                             lo = tm
+                            hi = float(t)          # the target is reachable again
+                            stepped = true
+
                             st_t = SciMLBase.solve(
                                 des,
                                 ChemicalState(sub, certified .* u"mol"; T = p.T_q[], P = p.P_q[]);
@@ -430,8 +445,9 @@ function speciated_states(sol, kp::KineticsProblem; times = sol.t)
                             end
                         end
                     catch
-                        break
+                        # A failed intermediate is not an error: shorten the jump.
                     end
+                    stepped || (hi = tm)
                 end
             end
 
@@ -469,4 +485,70 @@ function speciated_states(sol, kp::KineticsProblem; times = sol.t)
     end
 
     return out
+end
+
+# ── calorimetry from certified states ────────────────────────────────────────
+
+"""
+    heat_release(sol, kp; times = sol.t, reference = nothing, states = nothing)
+        -> (times, Q, q̇)
+
+Cumulative heat `Q` [J] and heat rate `q̇` [W] released along the trajectory, from
+the **certified** speciations at `times`.
+
+`Q(t) = H(t₀) − H(t)` with `H = Σᵢ nᵢ ΔₐH⁰ᵢ(T)`, which is Eq. (17)–(21) of
+Lavergne et al. (2018): enthalpy is a state function, so its drop between two
+states at the same temperature is the heat given off, with reactants, ions and
+hydrates each counted once and no reaction stoichiometry to write down. Pass
+`reference` to measure from a state other than the first. Pass `states` when the
+certified replay at those instants is already in hand — it is the expensive part,
+and a caller that needs the compositions anyway should not pay for it twice.
+
+# Why this does not read the running composition
+
+The obvious implementation — accumulate the enthalpy the integrator already has
+in hand at each accepted step — is wrong here, and not subtly. Under partial
+equilibrium the assemblage at each step comes from an in-run Gibbs minimization
+that is warm-started and **not certified**; the enthalpy is worth hundreds of
+kilojoules per hydrate, so an assemblage off by one phase moves the curve by more
+than the entire heat of hydration. Measured on an ordinary Portland cement, the
+in-run figures ran 12.7, 145, 1174, 936 and 631 J/g at 1 h, 6 h, 12 h, 1 d and
+2 d — heat that increases, then decreases, which no calorimeter has ever seen.
+
+[`speciated_states`](@ref) re-solves each instant and checks it against the KKT
+conditions, and that is what this reads.
+
+# Why the heat rate cannot come from the kinetic reactions either
+
+[`heat_rate`](@ref) sums `rᵢ(−ΔᵣH⁰ᵢ)` over the kinetic reactions, which is right
+when those reactions produce the hydrates. Under partial equilibrium they only
+dissolve the anhydrous phases into ions; the hydrates are precipitated by the
+minimization, whose heat that sum cannot see. On the same cement it put a
+semi-adiabatic temperature rise at 207 K.
+"""
+function heat_release(
+        sol, kp::KineticsProblem;
+        times = sol.t, reference = nothing, states = nothing,
+    )
+    states = something(states, speciated_states(sol, kp; times = times))
+    length(states) == length(times) || throw(
+        ArgumentError(
+            "`states` holds $(length(states)) compositions for $(length(times)) instants.",
+        ),
+    )
+    H = [ustrip(us"J", enthalpy(st)) for st in states]
+    H0 = reference === nothing ? H[1] : ustrip(us"J", enthalpy(reference))
+    Q = H0 .- H
+    q̇ = similar(Q)
+    if length(Q) < 2
+        fill!(q̇, zero(eltype(Q)))
+    else
+        # centered differences inside, one-sided at the ends
+        q̇[1] = (Q[2] - Q[1]) / (times[2] - times[1])
+        q̇[end] = (Q[end] - Q[end - 1]) / (times[end] - times[end - 1])
+        for i in 2:(length(Q) - 1)
+            q̇[i] = (Q[i + 1] - Q[i - 1]) / (times[i + 1] - times[i - 1])
+        end
+    end
+    return collect(times), Q, q̇
 end

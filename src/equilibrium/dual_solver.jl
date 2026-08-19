@@ -52,6 +52,7 @@ struct DualEquilibriumSolver{L, M <: AbstractActivityModel}
     idx_aq::Vector{Int}
     idx_pure::Vector{Int}
     j_solvent::Int
+    ss_groups::Vector{Vector{Int}}   # end-members of each declared solid solution
     A::Matrix{Float64}
     opts::NamedTuple
 end
@@ -73,32 +74,6 @@ function DualEquilibriumSolver(
                 "determined by the mass-action laws of the aqueous species."
         )
     )
-    # SOLID SOLUTIONS ARE NOT SUPPORTED, and the right response is to say so
-    # rather than to return a number.
-    #
-    # A pure phase has unit activity, so its stationarity reads `gᵢ = uᵢ` and it is
-    # either present or exactly zero: a bound-constrained variable with an active
-    # set. An end-member of a solid solution has `μᵢ = gᵢ + ln aᵢ(n)`, and its
-    # activity goes to `−∞` as its mole fraction goes to zero, so it is never
-    # exactly absent while the phase exists. The active set is then over the
-    # PHASE, decided by a tangent-plane test, and that is a different algorithm.
-    #
-    # Treating an end-member as a pure phase would not fail loudly — it would
-    # return a composition that looks reasonable and is not the minimum. Since a
-    # caller cannot see that, this refuses, and `speciated_states` falls back to
-    # the interior-point composition and reports the instant as uncertified.
-    if system.solid_solutions !== nothing && !isempty(system.solid_solutions)
-        throw(
-            ArgumentError(
-                "DualEquilibriumSolver does not support solid solutions " *
-                    "($(join([ss.name for ss in system.solid_solutions], ", "))). " *
-                    "Their end-members are not pure phases: the activity of an " *
-                    "end-member depends on the composition of the solution, so the " *
-                    "active set is over the phase rather than over the species."
-            )
-        )
-    end
-
     jw = something(findfirst(i -> symbol(system.species[i]) == "H2O@", idx_aq), 0)
     jw == 0 && throw(
         ArgumentError(
@@ -107,9 +82,26 @@ function DualEquilibriumSolver(
                 "cannot be inverted and is carried by the outer system instead."
         )
     )
+    # A solid solution is a MIXING phase, exactly like the aqueous one: its
+    # end-members have composition-dependent activities, so none of them is ever
+    # exactly absent while the phase exists, and the active set belongs at the
+    # level of the phase. They are therefore removed from the bound-constrained
+    # set, where they would have been treated as pure phases.
+    ss = system.solid_solutions
+    ss_groups = Vector{Int}[]
+    if ss !== nothing
+        byname = Dict(symbol(sp) => i for (i, sp) in enumerate(system.species))
+        for phase in ss
+            idx = [byname[symbol(em)] for em in phase.end_members if haskey(byname, symbol(em))]
+            length(idx) == length(phase.end_members) && push!(ss_groups, idx)
+        end
+    end
+    in_ss = Set(vcat(ss_groups...))
+    idx_pure = [i for i in idx_pure if !(i in in_ss)]
+
     return DualEquilibriumSolver(
         system, activity_model(system, model), model,
-        idx_aq, idx_pure, jw, Float64.(system.SM.A),
+        idx_aq, idx_pure, jw, ss_groups, Float64.(system.SM.A),
         (; tol, maxit, max_active_updates, si_tol, verbose),
     )
 end
@@ -117,16 +109,42 @@ end
 activity_model(des::DualEquilibriumSolver) = des.model
 
 """
-    _dual_problem(des, p) -> DualNewtonProblem
+    _dual_problem(des, p, n0) -> DualNewtonProblem
 
 Package the chemistry as the convex program `OptimaSolver` solves. Built per
 solve because the reference potentials `Δ_a G⁰/RT` depend on temperature and
 pressure.
 """
-function _dual_problem(des::DualEquilibriumSolver, p)
+function _dual_problem(des::DualEquilibriumSolver, p, n0)
+    # One mixing phase for the aqueous solution — always present, the solvent as
+    # its reference — and one more per declared solid solution, whose presence
+    # the tangent-plane test decides.
+    #
+    # The reference is the member whose stationarity the OUTER system carries
+    # instead of inverting, so it has to be the one the phase is mostly made of.
+    # For the aqueous phase that is the solvent, and not by convention: water is
+    # the only species there whose activity is a mole fraction, bounded above, so
+    # its law cannot be inverted at all. Inside a solid solution every member is
+    # a mole fraction and any of them could serve — but the choice is not
+    # indifferent. The outer unknown is `ln x_ref`, and picking a member that
+    # happens to be minor sends that unknown towards −∞ and the Jacobian with it.
+    # So the reference is chosen by magnitude, from the composition the caller
+    # supplied, which is what the solvent already is for the aqueous phase.
+    phases = [
+        (
+            members = des.idx_aq, j_ref = des.j_solvent,
+            always_present = true, mole_fraction = false,
+        ),
+    ]
+    for grp in des.ss_groups
+        j_ref = argmax(@view n0[grp])
+        push!(
+            phases,
+            (members = grp, j_ref = j_ref, always_present = false, mole_fraction = true),
+        )
+    end
     return _optima_dual_problem(
-        des.A, Float64.(p.ΔₐG⁰overT), des.lna,
-        des.idx_aq, des.idx_pure, des.j_solvent, p,
+        des.A, Float64.(p.ΔₐG⁰overT), des.lna, phases, des.idx_pure, p,
     )
 end
 
@@ -153,7 +171,7 @@ function SciMLBase.solve(
     n0 = Float64[ustrip(us"mol", x) for x in state.n]
     bv = b === nothing ? des.A * n0 : Float64.(collect(b))
 
-    res = _optima_dual_solve(_dual_problem(des, p), bv, n0, des.opts)
+    res = _optima_dual_solve(_dual_problem(des, p, n0), bv, n0, des.opts)
 
     res.converged || begin
         NONCONVERGED[] += 1
@@ -192,7 +210,7 @@ function optimality_certificate(
     bv = b === nothing ? des.A * n : Float64.(collect(b))
 
     c = _optima_kkt_certificate(
-        _dual_problem(des, p), n, bv, floor, des.opts.tol, des.opts.si_tol,
+        _dual_problem(des, p, n), n, bv, floor, des.opts.tol, des.opts.si_tol,
     )
     return (;
         stationarity = c.stationarity, balance = c.feasibility,

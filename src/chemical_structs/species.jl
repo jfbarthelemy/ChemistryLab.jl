@@ -241,6 +241,17 @@ julia> s[:N]
 function Base.getindex(s::AbstractSpecies, i::Symbol)
     coef = get(components(s), i, get(atoms(s), i, get(properties(s), i, nothing)))
     if isnothing(coef)
+        # The thermodynamic functions are built on demand, and `getproperty`
+        # already knows that. `getindex` did not, so `s[:Cp⁰]` returned the
+        # not-found value 0 on any species whose functions had not been forced
+        # yet — silently, and as an `Int64` that blows up only when the caller
+        # tries to evaluate it. Returning 0 is right for a missing ATOM, which is
+        # what that fallback is for; it is never right for a property that the
+        # species can produce.
+        if i in [:Cp⁰, :ΔₐH⁰, :S⁰, :ΔₐG⁰, :V⁰]
+            complete_thermo_functions!(s)
+            haskey(properties(s), i) && return properties(s)[i]
+        end
         # println("$(i) not found in $(root_type(typeof(s))) $(colored(s))")
         return 0
     end

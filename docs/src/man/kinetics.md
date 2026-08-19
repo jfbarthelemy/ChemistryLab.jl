@@ -251,6 +251,48 @@ t, Q    = cumulative_heat(sol, cal)   # Q(t) [J]
 t, qdot = heat_flow(sol, cal)         # q̇(t) [W]
 ```
 
+## Calorimetry under partial equilibrium
+
+The two calorimeters above take their heat from [`heat_rate`](@ref), which sums
+`rᵢ(−ΔᵣH⁰ᵢ)` over the **kinetic** reactions. That is exact when those reactions
+produce the hydrates. It is not, and cannot be, when a `equilibrium_solver` is
+attached: the kinetic reactions then only dissolve the anhydrous phases into
+ions, and the hydrates are precipitated by the Gibbs minimization, whose heat
+that sum does not see. On an ordinary Portland cement, driving a semi-adiabatic
+cell from it gave a temperature rise of 207 K against the few tens of kelvin a
+Langavant test measures — so that combination now warns rather than returning the
+number in silence.
+
+Use [`heat_release`](@ref) instead. Enthalpy is a state function, so the heat
+released between two states at the same temperature is simply their difference,
+with reactants, ions and hydrates each counted once and no reaction stoichiometry
+to write down — Eqs. (17)–(21) of [Lavergne2018](@cite):
+
+```math
+-\delta Q \;=\; \mathrm{d}H
+\;=\; \Bigl(\sum_i n_i C^\circ_{p,i}(T)\Bigr)\mathrm{d}T
+\;+\; \sum_i \Delta_f H_i(P,T)\,\mathrm{d}n_i .
+```
+
+```julia
+kp  = KineticsProblem(cs, reactions, state0, tspan;
+                      equilibrium_solver = EquilibriumSolver(cs, model, OptimaOptimizer()))
+sol = integrate(kp, ks)
+
+t, Q, q̇ = heat_release(sol, kp; times = my_times)   # J and W
+```
+
+It reads the **certified** speciations of [`speciated_states`](@ref), not the
+composition the integrator carries. The in-run minimization is warm-started and
+uncertified, and one hydrate is worth hundreds of kilojoules: read that way the
+curve came out at 12.7, 145, 1174, 936 and 631 J/g at 1 h, 6 h, 12 h, 1 d and
+2 d — heat that rises and then falls, which no calorimeter has ever measured.
+
+[`enthalpy`](@ref) and [`heat_capacity`](@ref) give the same sums for a single
+state, and [`missing_enthalpy`](@ref) lists the species that carry no `ΔₐH⁰` and
+are therefore absent from the balance — worth checking, because a heat curve
+missing one hydrate is not visibly wrong.
+
 ## Semi-adiabatic calorimetry [Lavergne2018](@cite)
 
 The semi-adiabatic calorimeter solves:

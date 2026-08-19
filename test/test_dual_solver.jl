@@ -187,15 +187,20 @@ end
 
 end
 
-@testset "solid solutions are refused, not silently mishandled" begin
+@testset "a solid solution is solved as a mixing phase" begin
 
-    # A pure phase has unit activity, hence `gᵢ = uᵢ` and a bound-constrained
-    # variable that can be EXACTLY zero. An end-member of a solid solution
-    # cannot: its activity goes to −∞ as its mole fraction goes to zero, so it is
-    # never exactly absent while the phase exists, and the active set belongs at
-    # the level of the PHASE, decided by a tangent-plane test. Treating an
-    # end-member as a pure phase returns a composition that looks reasonable and
-    # is not the minimum — which a caller cannot see, hence the explicit refusal.
+    # A pure phase has unit activity: `gᵢ = uᵢ` when present, and it can be
+    # exactly zero — a bound-constrained variable with an active set. An
+    # end-member of a solid solution cannot: its activity goes to −∞ as its mole
+    # fraction goes to zero, so it is never exactly absent while the phase
+    # exists. The active set belongs at the level of the PHASE, admitted by
+    # Michelsen's tangent-plane measure rather than by the sign of a saturation
+    # index.
+    #
+    # The difference is not presentational. Declared as separate pure phases, the
+    # four CSHQ end-members give a composition that is not certifiable and that
+    # puts everything in ONE of them; declared as a solution, the same system is
+    # certified and distributes over all four, which is what a solid solution is.
     substances = build_species(DUAL_DATA)
     toml = joinpath(pkgdir(ChemistryLab), "data", "solid_solutions.toml")
     members = ["CSHQ-TobD", "CSHQ-TobH", "CSHQ-JenH", "CSHQ-JenD"]
@@ -203,12 +208,46 @@ end
     ss = [x for x in build_solid_solutions(toml, Dict(symbol(s) => s for s in sp)) if x.name == "CSHQ"]
     @test length(ss) == 1
 
-    cs = ChemicalSystem(sp, CEMDATA_PRIMARIES; solid_solutions = ss)
-    @test_throws ArgumentError DualEquilibriumSolver(cs, DiluteSolutionModel())
+    # Portlandite plus silica at C/S = 1.7, electrically neutral by construction.
+    function solve_cs(cs)
+        st = ChemicalState(cs)
+        set_quantity!(st, "Portlandite", 1.7u"mol")
+        set_quantity!(st, "SiO2@", 1.0u"mol")
+        set_quantity!(st, "H2O@", 40.0u"mol")
+        b = Float64.(cs.SM.A) * [ustrip(us"mol", x) for x in st.n]
+        des = DualEquilibriumSolver(cs, DiluteSolutionModel())
+        d = SciMLBase.solve(des, equilibrate(st, OptimaOptimizer()); b = b)
+        return d, optimality_certificate(des, d; b = b), des
+    end
 
-    # Without the declaration the same species are ordinary pure phases and the
-    # solver accepts them: the refusal is about the solution, not the species.
-    cs_plain = ChemicalSystem(sp, CEMDATA_PRIMARIES)
-    @test DualEquilibriumSolver(cs_plain, DiluteSolutionModel()) isa DualEquilibriumSolver
+    cs_ss = ChemicalSystem(sp, CEMDATA_PRIMARIES; solid_solutions = ss)
+    d_ss, cert_ss, des_ss = solve_cs(cs_ss)
+
+    @test cert_ss.optimal
+    @test cert_ss.stationarity < 1.0e-9
+    @test cert_ss.balance < 1.0e-9
+
+    names = symbol.(cs_ss.species)
+    amounts = [ustrip(us"mol", d_ss.n[findfirst(==(nm), names)]) for nm in members]
+    @test all(>(0), amounts)                       # a solution mixes
+    @test count(>(1.0e-3), amounts) >= 3           # and not into a single corner
+    @test 12.0 < pH(d_ss) < 12.8                   # a C-S-H pore solution
+
+    # The end-members are carried as a mixing phase, so none is left among the
+    # bound-constrained variables where it would be a pure phase.
+    ss_idx = Set(findfirst(==(nm), names) for nm in members)
+    @test length(des_ss.ss_groups) == 1
+    @test Set(des_ss.ss_groups[1]) == ss_idx
+    @test isempty(intersect(Set(des_ss.idx_pure), ss_idx))
+    @test findfirst(==("Portlandite"), names) in des_ss.idx_pure
+
+    # The same species WITHOUT the declaration are ordinary pure phases, and that
+    # is a different — and worse — problem: not certifiable, and everything in one
+    # end-member.
+    cs_pure = ChemicalSystem(sp, CEMDATA_PRIMARIES)
+    d_pure, cert_pure, _ = solve_cs(cs_pure)
+    npure = [ustrip(us"mol", d_pure.n[findfirst(==(nm), symbol.(cs_pure.species))]) for nm in members]
+    @test !cert_pure.optimal
+    @test count(>(1.0e-3), npure) == 1
 
 end

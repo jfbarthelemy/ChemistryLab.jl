@@ -447,3 +447,32 @@ end
     @test all(model(byname[n]) isa IdealSolidSolutionModel for n in ("CSHQ", "Hydrogarnet", "Ettringite_ss", "Hydrotalcite"))
 
 end
+
+@testset "heat_release is a state-function difference, and it only goes up" begin
+
+    _, _, kp, sol = _pp_problem()
+    times = [0.0, 3600.0, 6 * 3600.0, 86400.0, 3 * 86400.0, 7 * 86400.0]
+    t, Q, q̇ = heat_release(sol, kp; times = times)
+
+    @test t == times
+    @test Q[1] == 0.0
+    # Heat released cannot decrease. Reading the running composition instead of a
+    # certified speciation gave a curve that rose to 1174 J/g and fell back to
+    # 631 J/g on an ordinary cement — the regression this guards.
+    @test all(diff(Q) .>= -1.0e-9)
+    @test all(q̇ .>= -1.0e-9)
+    @test Q[end] > 0
+
+    # The magnitude is set by the clinker, not by a fitted constant: 0.65 mol of
+    # C₃S and 0.11 mol of C₂S, at roughly 120 and 47 kJ/mol, bound the total.
+    @test 1.0e4 < Q[end] < 1.2e5
+
+    # And it IS the enthalpy difference of the certified states, by construction.
+    states = speciated_states(sol, kp; times = times)
+    @test Q[end] ≈ ustrip(us"J", enthalpy(states[1])) - ustrip(us"J", enthalpy(states[end])) rtol = 1.0e-10
+
+    # Measuring from an explicit reference shifts the whole curve by a constant.
+    _, Q2, _ = heat_release(sol, kp; times = times, reference = states[2])
+    @test all(isapprox.(Q2 .- Q, Q2[1] - Q[1]; rtol = 1.0e-8, atol = 1.0e-6))
+
+end

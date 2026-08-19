@@ -305,6 +305,7 @@ function build_kinetics_params(kp::KineticsProblem; ϵ::Float64 = 1.0e-30)
     n_full = copy(n_initial_full)
 
     cp_fns = [haskey(sp, :Cp⁰) ? sp[:Cp⁰] : nothing for sp in kp.system.species]
+    h_fns = [haskey(sp, :ΔₐH⁰) ? sp[:ΔₐH⁰] : nothing for sp in kp.system.species]
 
     kin_rxns = kp.kinetic_reactions
     rates_buf = zeros(Float64, length(kin_rxns))
@@ -361,6 +362,7 @@ function build_kinetics_params(kp::KineticsProblem; ϵ::Float64 = 1.0e-30)
         n_initial_full = n_initial_full,
         n_full = n_full,
         cp_fns = cp_fns,
+        h_fns = h_fns,
         rates_buf = rates_buf,
         # Index layout
         n_be = n_be,
@@ -514,6 +516,49 @@ converges linearly and a cement can need tens of thousands of sweeps, while this
 runs at every right-hand-side evaluation.
 """
 const RESTORE_MAXIT = Ref(200)
+
+# ── enthalpy tracking ────────────────────────────────────────────────────────
+
+"""
+    system_enthalpy(p, u, T) -> Float64
+
+`Σᵢ nᵢ ΔₐH⁰ᵢ(T)` [J] over the composition of the ODE state `u`: the kinetic
+minerals read from `u` itself, the equilibrium partition from `p.n_full`.
+
+# Why the heat cannot come from the kinetic reactions here
+
+`heat_rate` sums `rᵢ (−ΔᵣH⁰ᵢ)` over the KINETIC reactions, which is right when
+those reactions produce the hydrates. Under partial equilibrium they do not: they
+dissolve the anhydrous phases into ions, and the hydrates are precipitated by the
+Gibbs minimization, whose heat that sum cannot see. Measured on an ordinary
+Portland cement, counting only the dissolution put the semi-adiabatic temperature
+rise at 207 K where the test gives some tens of kelvin.
+
+The enthalpy of the whole system has no such blind spot. It is a state function,
+so the heat released between two states at the same temperature is their
+difference — reactants, ions and hydrates all counted once, with no reaction
+stoichiometry to write down. This is Eq. (17)–(21) of Lavergne et al. (2018).
+"""
+function system_enthalpy(p, u, T)
+    # The kinetic amounts are read from the ODE state, NOT from `p.n_full`.
+    #
+    # `respeciate!` writes only the equilibrium partition into that buffer; the
+    # anhydrous amounts in it were last written by the right-hand side, which the
+    # stiff solver also evaluates at Jacobian probes and rejected steps. Summing
+    # the buffer as it stands therefore pairs an accepted equilibrium with some
+    # neighboring point's clinker, and the resulting enthalpy is not a state of
+    # the trajectory at all: the recorded heat came out NON-MONOTONE, 936 J/g at
+    # one day and 631 J/g at two, which no calorimeter has ever measured.
+    kin = p.idx_kinetic
+    H = 0.0
+    @inbounds for (i, h_fn) in enumerate(p.h_fns)
+        isnothing(h_fn) && continue
+        j = findfirst(==(i), kin)
+        nᵢ = j === nothing ? p.n_full[i] : max(u[p.n_be + j], p.ϵ)
+        H += nᵢ * h_fn(; T = T, unit = false)
+    end
+    return H
+end
 
 # ── respeciate! ──────────────────────────────────────────────────────────────
 

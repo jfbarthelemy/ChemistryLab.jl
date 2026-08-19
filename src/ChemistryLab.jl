@@ -269,6 +269,9 @@ module ChemistryLab
         rescale!,
         mass,
         volume,
+        enthalpy,
+        heat_capacity,
+        missing_enthalpy,
         pH,
         pOH,
         porosity,
@@ -363,6 +366,8 @@ module ChemistryLab
         extend_u0,
         extend_ode!,
         heat_rate,
+        heat_release,
+        system_enthalpy,
         heat_flow,
         cumulative_heat,
         temperature_profile

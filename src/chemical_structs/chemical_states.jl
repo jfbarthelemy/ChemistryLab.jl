@@ -630,6 +630,119 @@ true
 """
 volume(state::ChemicalState, sym::AbstractString) = volume(state, state.system[sym])
 
+# ── Enthalpy and heat capacity ────────────────────────────────────────────────
+
+# `haskey(s, …)`, not `haskey(properties(s), …)`: the thermodynamic functions are
+# built on demand, so asking the property dictionary directly reports a species as
+# lacking an enthalpy when it merely has not been asked for one yet.
+_std_property(s, sym) = haskey(s, sym) ? s[sym] : nothing
+
+"""
+    enthalpy(state::ChemicalState) -> AbstractQuantity
+
+Sum of `nᵢ ΔₐH⁰ᵢ(T, P)` over the species that carry an enthalpy of formation.
+
+**Only differences of this quantity are physical.** `ΔₐH⁰` is referred to the
+elements, so the absolute number has no meaning on its own; but two states built
+on the same element budget share that reference exactly, and it cancels in the
+difference. `enthalpy(state₀) - enthalpy(state)` is therefore the heat released
+in going from one to the other at fixed `T` and `P` — which is what a calorimeter
+measures, and what makes a hydration curve computable from the database alone,
+with no calibrated heat of reaction anywhere.
+
+Species without `ΔₐH⁰` contribute nothing; [`missing_enthalpy`](@ref) lists them,
+and a run where that list is non-empty is not a closed heat balance.
+
+# Examples
+```jldoctest
+julia> cs = ChemicalSystem([Species("H2O"; aggregate_state=AS_AQUEOUS, class=SC_AQSOLVENT)]);
+
+julia> state = ChemicalState(cs, [55.5u"mol"]);
+
+julia> enthalpy(state) isa AbstractQuantity
+true
+```
+"""
+function enthalpy(state::ChemicalState)
+    T = temperature(state)
+    P = pressure(state)
+    tot = 0.0u"J"
+    for (i, s) in enumerate(state.system.species)
+        f = _std_property(s, :ΔₐH⁰)
+        f === nothing && continue
+        tot += state.n[i] * f(T = T, P = P; unit = true)
+    end
+    return tot
+end
+
+"""
+    enthalpy(state::ChemicalState, s) -> Union{AbstractQuantity, Nothing}
+
+The contribution `n × ΔₐH⁰(T, P)` of one species, or `nothing` when it carries no
+enthalpy of formation. `s` may be a species or its symbol.
+"""
+function enthalpy(state::ChemicalState, s::AbstractSpecies)
+    i = findfirst(x -> x == s, state.system.species)
+    isnothing(i) && error("Species $(symbol(s)) not found in ChemicalSystem")
+    f = _std_property(s, :ΔₐH⁰)
+    f === nothing && return nothing
+    return state.n[i] * f(T = temperature(state), P = pressure(state); unit = true)
+end
+
+enthalpy(state::ChemicalState, sym::AbstractString) = enthalpy(state, state.system[sym])
+
+"""
+    heat_capacity(state::ChemicalState) -> AbstractQuantity
+
+Sum of `nᵢ Cp⁰ᵢ(T, P)` over the species that carry a heat capacity.
+
+This is the standard-state sum: it ignores excess contributions from mixing,
+which for a cement pore solution are small against the solids. It is what an
+adiabatic temperature rise `ΔT = Q / C` needs.
+"""
+function heat_capacity(state::ChemicalState)
+    T = temperature(state)
+    P = pressure(state)
+    tot = 0.0u"J/K"
+    for (i, s) in enumerate(state.system.species)
+        f = _std_property(s, :Cp⁰)
+        f === nothing && continue
+        tot += state.n[i] * f(T = T, P = P; unit = true)
+    end
+    return tot
+end
+
+"""
+    heat_capacity(state::ChemicalState, s) -> Union{AbstractQuantity, Nothing}
+
+The contribution `n × Cp⁰(T, P)` of one species, or `nothing` when it carries no
+heat capacity. `s` may be a species or its symbol.
+"""
+function heat_capacity(state::ChemicalState, s::AbstractSpecies)
+    i = findfirst(x -> x == s, state.system.species)
+    isnothing(i) && error("Species $(symbol(s)) not found in ChemicalSystem")
+    f = _std_property(s, :Cp⁰)
+    f === nothing && return nothing
+    return state.n[i] * f(T = temperature(state), P = pressure(state); unit = true)
+end
+
+heat_capacity(state::ChemicalState, sym::AbstractString) =
+    heat_capacity(state, state.system[sym])
+
+"""
+    missing_enthalpy(state::ChemicalState) -> Vector{String}
+
+Symbols of the species that carry no `ΔₐH⁰`, and whose amounts are therefore
+absent from [`enthalpy`](@ref).
+
+A heat balance is only closed when this is empty, and it is worth checking rather
+than assuming: a single missing hydrate silently removes its entire heat of
+formation from the curve.
+"""
+missing_enthalpy(state::ChemicalState) =
+    [symbol(s) for s in state.system.species if _std_property(s, :ΔₐH⁰) === nothing]
+
+
 # ── pH, pOH, porosity, saturation accessors ───────────────────────────────────
 
 """

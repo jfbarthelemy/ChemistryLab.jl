@@ -22,4 +22,4 @@ SymbolicNumericIntegration = "78aadeae-fbc0-11eb-17b6-c7ec0477ba9e"
 # nor `nullspace_step`, so every equilibrium `@example` block failed with a
 # MethodError while the package's own tests passed. Keep this in step with the
 # bound in the root `Project.toml`.
-OptimaSolver = "0.3"
+OptimaSolver = "0.4"
