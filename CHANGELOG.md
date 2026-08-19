@@ -42,6 +42,15 @@ the curve came out at 12.7, 145, 1174, 936 and 631 J/g at 1 h, 6 h, 12 h, 1 d an
 therefore absent from the balance, because a heat curve missing one hydrate is
 not visibly wrong.
 
+### Every species now matches Reaktoro, `CaOH+` included
+
+`equilibrium_reference.jl` recorded `CaOH+` as `@test_broken`: out by a factor 2.5
+at 4e-9 mol, and left alone because Ipopt landed on the same point, which made it
+look like a property of the problem rather than of one solver. It was neither. The
+interior-point stage was reporting points it had reached without ever satisfying
+the KKT conditions at `μ = 0` — see `OptimaSolver` v0.4.0 — and the trace species
+are exactly where that shows. The assertion is now a plain `@test`.
+
 ### `s[:Cp⁰]` returned zero on a species that had one
 
 The thermodynamic functions are built on demand. `getproperty` knew that;
