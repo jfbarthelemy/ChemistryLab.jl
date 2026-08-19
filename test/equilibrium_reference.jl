@@ -82,17 +82,17 @@ const N_H2O, N_CAL, N_CO2 = 55.5, 0.05, 0.01
     derivs = ForwardDiff.derivative(speciate, N_CO2)
 
     @testset "amounts agree with Reaktoro" begin
-        # Species above ~1e-5 mol match Reaktoro to 1e-3 relative, the rest to
-        # 5 %. See the "Trace species" note at the top of this file for the one
-        # exception and why it is left `@test_broken`.
+        # Species above ~1e-5 mol match Reaktoro to 1e-3 relative, the rest to 5 %.
+        #
+        # `CaOH+` used to be the exception, out by a factor 2.5 at 4e-9 mol, and it
+        # was left `@test_broken` because Ipopt landed on the same point — so it
+        # looked like a property of the problem rather than of one solver. It was
+        # neither: the interior-point stage was reporting a point it had reached
+        # without ever satisfying the KKT conditions at μ = 0, and the trace
+        # species are exactly where that shows. Every species now matches.
         for (k, name) in enumerate(names)
             ref = REAKTORO[name].n
-            if name == "CaOH+"
-                # The one species still out, by a factor 2.5 at 4e-9 mol. Ipopt
-                # lands on the same point (×2.46), so this is not a defect of
-                # one solver — and it is chemically inconsequential.
-                @test_broken amounts[k] ≈ ref rtol = 0.05
-            elseif ref > TRACE_CUTOFF
+            if ref > TRACE_CUTOFF
                 @test amounts[k] ≈ ref rtol = 1.0e-3
             else
                 @test amounts[k] ≈ ref rtol = 0.05

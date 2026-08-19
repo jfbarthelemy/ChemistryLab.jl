@@ -121,8 +121,11 @@ end
         ne = Float64[ustrip(us"mol", moles(states[i], symbol(cs.species[j]))) for j in kp.idx_equilibrium]
         ChemistryLab._row_residual(p.Ae, ne, be)
     end
+    # Reported as a number, not as an `all`: when this fails, what matters is by
+    # how much, and a bare `all` hides it.
     @test res[1] < 1.0e-2
-    @test all(<(1.0e-10), res[2:end])
+    worst_replay = maximum(res[2:end])
+    @test worst_replay < 1.0e-10
 
     # The kinetic species come from the ODE state, not from the equilibrium solve
     for (i, t) in enumerate(times)
