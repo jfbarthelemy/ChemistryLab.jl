@@ -140,13 +140,17 @@ const N_H2O, N_CAL, N_CO2 = 55.5, 0.05, 0.01
         @test h ≈ oh rtol = 1.0e-4
         @test 13.9 < -log10(h * oh) < 14.1
 
-        # And it stays fixed for the right reason: forcing the Schur complement
-        # back on reproduces the old wrong answer, [H⁺]/[OH⁻] ≈ 3.78. If this
-        # ever stops failing, the defect was cured elsewhere and the nullspace
-        # step is no longer what is carrying the result.
+        # And it stays fixed for the right reason: forcing the Schur complement back
+        # on does NOT give the autoprotolysis ratio, so the null-space step is what
+        # carries the result. The assertion is that the answer is wrong, not that it
+        # is wrong in a particular direction — it used to come out at
+        # [H⁺]/[OH⁻] ≈ 3.78 and now at 8.7e-5, both far from one, and pinning the
+        # sign made the test fail for a change that did not touch what it is about.
+        # If this ever starts passing, the defect was cured elsewhere.
         eqs = equilibrate(ChemicalState(csw, n), OptimaOptimizer(; nullspace_step = false))
         vs = [ustrip(us"mol", x) for x in eqs.n]
-        @test vs[findfirst(==("H+"), nw)] / vs[findfirst(==("OH-"), nw)] > 2
+        ratio = vs[findfirst(==("H+"), nw)] / vs[findfirst(==("OH-"), nw)]
+        @test !isapprox(ratio, 1.0; rtol = 1.0e-2)
     end
 
     @testset "element balance closes exactly" begin

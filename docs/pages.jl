@@ -28,6 +28,7 @@ pages = [
         "examples/cement_carbonation.md",
         "examples/cement_clinker_kinetics.md",
         "examples/coupled_hydration.md",
+        "examples/ionic_hydration.md",
     ],
     "API" => Any[
         "Thermodynamical functions" => "api/thermo_functions.md",

@@ -250,6 +250,16 @@ and neither is optional:
     pure water returns no hydrates and a pore solution at pH 6 while the run
     itself computed 2.2 mol of C-S-H.
 
+The chain is also walked **up to** the first instant requested, through a few
+earlier times of the trajectory whose compositions are discarded. That instant is
+the one with no predecessor of its own, and without the run-up it starts from the
+cast composition, which carries no active set at all: on a reference OPC its
+interior-point answer held 56 interior species where the answer has 25 — every
+candidate hydrate present, four of them at 1e-5 to 1e-6 mol — and neither the
+certifying solve nor its continuation recovers from that, both inheriting the
+start. With the run-up that instant is certified, at stationarity 9.1e-13 and
+element balance 6.1e-15 mol.
+
 # Examples
 
 ```julia
@@ -339,6 +349,44 @@ function speciated_states(sol, kp::KineticsProblem; times = sol.t)
         end
     end
 
+    # RUN-UP for the interior-point chain.
+    #
+    # Every instant is warm-started from the previous one, and the FIRST requested
+    # instant has no previous one: it starts from the cast composition, which
+    # carries no active set at all. On the reference OPC that left the
+    # interior-point answer at `t = 4320 s` holding 56 interior species where the
+    # answer has 25 — every candidate hydrate present, four of them at 1e-5 to
+    # 1e-6 mol — and neither the certifying Newton nor its continuation recovers
+    # from that: they inherit the start.
+    #
+    # The replay is a continuation in `bₑ`, and the first REQUESTED instant is not
+    # the first instant of the trajectory. So the chain is walked up to it through
+    # a few earlier times, whose compositions are thrown away and whose only
+    # purpose is to hand `guess` an active set. Measured: simply asking for four
+    # extra instants before `t₁` brought that solve from 56 interior species to 25
+    # and its element balance from 2.8e-11 to 3.2e-14, which is what this does
+    # without the caller having to know.
+    let t1 = float(first(times)), t0 = float(first(sol.t))
+        for tc in (t0, t1 / 100, t1 / 30, t1 / 10, t1 / 3)
+            (tc < t0 || tc >= t1) && continue
+            try
+                be0 = collect(@view sol(tc)[1:(p.n_be)])
+                _budget_clip!(guess, p.Ae, be0)
+                _restore_feasibility!(guess, p.Ae, be0; maxit = 100_000)
+                eq0 = SciMLBase.solve(
+                    es, ChemicalState(sub, guess .* u"mol"; T = p.T_q[], P = p.P_q[]);
+                    b = be0,
+                )
+                guess = Float64[
+                    max(ustrip(us"mol", x), _EQ_GUESS_FLOOR) for x in eq0.n
+                ]
+            catch
+                # A run-up step that fails leaves `guess` as it was; the next
+                # candidate is tried and the sweep proceeds regardless.
+            end
+        end
+    end
+
     out = ChemicalState[]
     for t in times
         u = sol(t)
@@ -393,28 +441,31 @@ function speciated_states(sol, kp::KineticsProblem; times = sol.t)
                 end
             end
             # CONTINUATION. If no start works, the jump in `bₑ` from the last
-            # certified instant is too large for the Newton. Walk it in halves:
-            # each intermediate equilibrium is closer to the last certified one,
-            # and certifying it moves the starting point forward. This is a
-            # homotopy in the component totals, and it terminates — either an
-            # intermediate certifies, moving `t_prev` strictly toward `t`, or the
-            # budget runs out and the instant is reported.
-            # CONTINUATION. If no start works, the jump in `bₑ` from the last
-            # certified instant is too large for the Newton. Bisect it: a homotopy
-            # in the component totals.
+            # certified instant is too large for the Newton. Walk it: a homotopy in
+            # the component totals, with an ADAPTIVE FORWARD STEP.
             #
-            # Both ends must move, and that is the part this first got wrong. On
-            # success the LOWER end advances, carrying the certified composition
-            # forward; on failure the UPPER end comes down, shortening the jump.
-            # Recomputing the midpoint from a fixed upper end instead retries the
-            # very same instant every round and the budget is spent on one point —
-            # which is exactly what left four instants of a cement uncertified.
+            # The step only ever moves toward `t`. On success the anchor advances and
+            # the target is retried directly from it; on failure the step is halved
+            # and tried again from the same anchor. Progress is therefore monotone
+            # and the loop terminates: either the target certifies, or the step
+            # underflows, or the attempt budget runs out.
+            #
+            # Bisecting the interval instead was tried and is subtly wrong. Halving
+            # toward the midpoint moves the UPPER end down whenever an intermediate
+            # fails, and a single early failure then sends the search away from the
+            # target for good — the remaining rounds bracket a small interval just
+            # above the anchor and the target is never retried from close by. On the
+            # reference OPC that left `t = 4320 s` unproved with 56 interior species
+            # where the answer has 25, while simply requesting four extra instants
+            # before it — which is what a forward walk does by itself — brought the
+            # active set back to 25 and the balance to 3e-14.
             if !proved && t_prev !== nothing
-                lo = t_prev
-                hi = float(t)
+                anchor = t_prev
+                h = float(t) - anchor
                 for _ in 1:(_CONTINUATION_STEPS)
-                    tm = 0.5 * (lo + hi)
-                    (tm <= lo || tm >= hi) && break
+                    h <= eps(float(t)) * max(one(h), abs(float(t))) && break
+                    tm = min(anchor + h, float(t))
+                    tm <= anchor && break
                     stepped = false
                     try
                         be_m = collect(@view sol(tm)[1:(p.n_be)])
@@ -427,8 +478,7 @@ function speciated_states(sol, kp::KineticsProblem; times = sol.t)
                         )
                         if optimality_certificate(des, st_m; b = be_m).optimal
                             certified = Float64[ustrip(us"mol", x) for x in st_m.n]
-                            lo = tm
-                            hi = float(t)          # the target is reachable again
+                            anchor = tm
                             stepped = true
 
                             st_t = SciMLBase.solve(
@@ -445,9 +495,13 @@ function speciated_states(sol, kp::KineticsProblem; times = sol.t)
                             end
                         end
                     catch
-                        # A failed intermediate is not an error: shorten the jump.
+                        # A failed intermediate is not an error: shorten the step.
                     end
-                    stepped || (hi = tm)
+                    if stepped
+                        h = float(t) - anchor      # aim at the target again
+                    else
+                        h *= 0.5
+                    end
                 end
             end
 
@@ -472,6 +526,24 @@ function speciated_states(sol, kp::KineticsProblem; times = sol.t)
             )
         )
     end
+
+    # !!! note "A backward pass over the neighbors does not rescue an unproved instant"
+    #     The sweep above only ever looks earlier in time, so the FIRST requested
+    #     instant has nothing behind it but the seed ladder. Retrying each unproved
+    #     instant from the composition of every PROVED one, nearest in index first
+    #     and each projected onto the instant's own `bₑ`, was implemented and
+    #     measured inert: on the reference OPC, `t = 4320 s` stayed unproved with all
+    #     thirty-nine certified neighbors offered to it.
+    #
+    #     The reason is that the start is not what is missing. Started from a
+    #     certified neighbor the dual Newton does not merely stop above tolerance —
+    #     it leaves the feasible set, ending 0.12 mol out on `Aₑn = bₑ`. Meanwhile the
+    #     interior-point composition it falls back to is feasible to 2.8e-11 but
+    #     carries SEVEN solids, four of them at 1e-5 to 1e-6 mol, where the certified
+    #     neighbor has three: an iterate that never reached a vertex. What that
+    #     instant needs is a globalization of the certifying Newton, not another
+    #     starting point, so the pass was removed rather than left as cost paid on
+    #     every failure.
 
     # Say which instants are not proved. Falling back silently would leave the
     # caller unable to tell a certified trajectory from an uncertified one, and

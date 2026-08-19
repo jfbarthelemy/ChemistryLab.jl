@@ -268,3 +268,60 @@ end
     @test pH(d_pure) ≈ pH(d_ss) rtol = 1.0e-2      # the pore solution is still right
 
 end
+
+@testset "solve_certified returns a proved answer, whichever start produced it" begin
+
+    # The certificate is an oracle, so offering several starting compositions and
+    # keeping a PROVED answer is rigorous rather than opportunistic: the proof does
+    # not depend on having predicted which start would win. It is also necessary —
+    # measured on an LC³ equilibrium, the interior-point back ends each certify a
+    # degree of reaction the other misses.
+    cs = _dual_calcite_system()
+    names = symbol.(cs.species)
+    n = Any[fill(0.0u"mol", length(cs.species))...]
+    n[findfirst(==("H2O@"), names)] = 55.5u"mol"
+    n[findfirst(==("Cal"), names)] = 0.05u"mol"
+    n[findfirst(==("CO2@"), names)] = 0.01u"mol"
+    good = ChemicalState(cs, n)
+    b = Float64.(cs.SM.A) * [ustrip(us"mol", x) for x in good.n]
+
+    des = DualEquilibriumSolver(cs, DiluteSolutionModel())
+
+    # A start with the carbonate budget in the wrong species entirely: everything
+    # dissolved, nothing precipitated.
+    bad_n = Any[fill(1.0e-12u"mol", length(cs.species))...]
+    bad_n[findfirst(==("H2O@"), names)] = 55.5u"mol"
+    bad = ChemicalState(cs, bad_n)
+
+    # Bad start FIRST, so the function has to move on rather than report it.
+    eq, cert = solve_certified(des, [bad, good]; b = b)
+    @test cert.optimal
+    @test cert.stationarity < 1.0e-9
+    @test cert.balance < 1.0e-9
+    # pH 6.43, not the 9.9 of calcite in PURE water: this system carries 0.01 mol
+    # of CO₂, which acidifies it, and 6.43 is Reaktoro's own answer for it
+    # (`H⁺ = 3.69e-7` in `DUAL_REAKTORO` above).
+    @test 6.3 < pH(eq) < 6.6
+
+    # Both starts land on the same point, which is what convexity says must happen
+    # — and a solver returning different answers from different starts would be
+    # stopping short of stationarity, not finding different minima.
+    eq_from_good, _ = solve_certified(des, [good]; b = b)
+    for k in eachindex(names)
+        @test ustrip(us"mol", eq.n[k]) ≈ ustrip(us"mol", eq_from_good.n[k]) rtol = 1.0e-5
+    end
+
+    # With only the bad start it must still return something, with the certificate
+    # that says what it is — never a silent claim.
+    eq_b, cert_b = solve_certified(des, [bad]; b = b)
+    @test eq_b isa ChemicalState
+    @test cert_b isa NamedTuple
+    @test haskey(cert_b, :optimal)
+
+    # A single good start behaves exactly like `solve` followed by the certificate.
+    eq_g, cert_g = solve_certified(des, [good]; b = b)
+    @test cert_g.optimal
+    @test ustrip(us"mol", eq_g.n[findfirst(==("Cal"), names)]) ≈
+        ustrip(us"mol", eq.n[findfirst(==("Cal"), names)]) rtol = 1.0e-6
+
+end

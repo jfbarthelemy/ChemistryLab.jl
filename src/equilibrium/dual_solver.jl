@@ -219,6 +219,75 @@ function optimality_certificate(
     )
 end
 
+"""
+    solve_certified(des, starts; b = nothing, ϵ = 1e-16, floor = 1e-25)
+        -> (state, certificate)
+
+Solve from each starting composition in `starts` and return the first answer
+[`optimality_certificate`](@ref) **proves** optimal. If none is proved, return the
+one with the smallest KKT error, together with its certificate, so the caller sees
+what it is getting.
+
+# Why trying more than one start is the rigorous thing to do, not a fudge
+
+The certificate is an **oracle**: for a convex problem it does not rank answers, it
+decides them. Given an oracle, running several routes and keeping a proved answer
+is not guesswork — the proof is the same proof whichever route produced the point,
+and nothing about it depends on having predicted the winner. What would be a fudge
+is picking a route by taste and reporting its output unproved.
+
+It is also necessary, because no single route dominates. Measured on an LC³
+equilibrium at three degrees of reaction, with the dual Newton started from each
+interior-point back end in turn:
+
+| degree of reaction | from `OptimaOptimizer` | from `IpoptOptimizer` |
+|---|---|---|
+| 0.05 | certified, 1.8e-12 | certified, 9.1e-13 |
+| 0.25 | **not certified**, 7.2 | certified, 4.2e-12 |
+| 1.00 | certified, 1.2e-11 | **not certified**, 3.5e-3 |
+
+Each back end solves what the other misses. With both offered, all three are
+proved.
+
+# Example
+
+```julia
+using Optimization, OptimizationIpopt      # for IpoptOptimizer
+
+starts = [
+    SciMLBase.solve(EquilibriumSolver(cs, model, OptimaOptimizer()), st; b = b),
+    SciMLBase.solve(EquilibriumSolver(cs, model, IpoptOptimizer()), st; b = b),
+]
+eq, cert = solve_certified(des, starts; b = b)
+cert.optimal || @warn "no start produced a certifiable answer" cert
+```
+
+The starts are supplied by the caller rather than built here, so this adds no
+dependency: whichever back ends are loaded are the ones available.
+"""
+function solve_certified(
+        des::DualEquilibriumSolver, starts;
+        b = nothing, ϵ::Float64 = 1.0e-16, floor::Float64 = 1.0e-25,
+    )
+    best = nothing
+    best_cert = nothing
+    best_err = Inf
+    for s0 in starts
+        eq = SciMLBase.solve(des, s0; b = b, ϵ = ϵ)
+        cert = optimality_certificate(des, eq; b = b, ϵ = ϵ, floor = floor)
+        cert.optimal && return (eq, cert)
+        err = max(
+            cert.stationarity, cert.balance, max(cert.worst_supersaturation, 0.0),
+        )
+        if err < best_err
+            best_err = err
+            best = eq
+            best_cert = cert
+        end
+    end
+    return (best, best_cert)
+end
+
 # ── hooks filled in by the OptimaSolver extension ────────────────────────────
 #
 # The algorithm is `OptimaSolver`'s, and that package is a weak dependency here,

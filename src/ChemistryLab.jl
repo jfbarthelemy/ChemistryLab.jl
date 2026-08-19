@@ -236,6 +236,7 @@ module ChemistryLab
 
     export DualEquilibriumSolver,
         optimality_certificate,
+        solve_certified,
         AbstractSolidSolutionModel,
         IdealSolidSolutionModel,
         RedlichKisterModel,

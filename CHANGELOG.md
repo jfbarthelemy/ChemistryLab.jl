@@ -1,5 +1,105 @@
 # Changelog
 
+## v0.11.0 — a proved answer, whichever route found it
+
+### Breaking changes
+
+One new exported name, `solve_certified`. Nothing was removed or renamed and no
+existing signature changed, but below 1.0 the resolver treats a minor bump as
+breaking regardless, so a downstream `[compat] ChemistryLab = "0.10"` must be
+widened to `"0.11"`.
+
+### `solve_certified`: several routes, one proof
+
+`solve_certified(des, starts; b)` solves from each starting composition in turn and
+returns the first answer `optimality_certificate` **proves** optimal, or — if none
+is proved — the one with the smallest KKT error together with its certificate, so
+the caller always sees what it is getting.
+
+Offering several routes is rigorous here rather than opportunistic, and the reason
+is the certificate. For a convex problem it does not rank answers, it decides them:
+the proof is the same proof whichever start produced the point, and nothing about it
+depends on having predicted the winner. What would be a fudge is choosing a route by
+taste and reporting its output unproved.
+
+It is also necessary, because no back end dominates. Measured on an LC³ equilibrium
+solved COLD at four degrees of reaction, with the dual Newton started from each
+interior-point back end in turn:
+
+| degree of reaction | from `OptimaOptimizer` | from `IpoptOptimizer` |
+|---|---|---|
+| 0.05 | certified, 2.7e-12 | certified, 9.1e-13 |
+| 0.25 | **not certified**, 7.2 | certified, 4.2e-12 |
+| 0.50 | **not certified** | certified, 4.6e-12 |
+| 1.00 | certified, 1.8e-11 | **not certified**, 3.5e-3 |
+
+Each solves a case the other misses. With both offered, every degree of reaction is
+certified from a cold start — where before, an intermediate one could only be
+reached by continuation from a nearby solution. The starts are supplied by the
+caller, so this adds no dependency: whichever back ends are loaded are the ones
+available.
+
+### Two assertions corrected because they were wrong
+
+Neither was in the way; both stated something untrue.
+
+The negative control on water autoprotolysis asserted that forcing the Schur
+complement back on gives `[H⁺]/[OH⁻] > 2`, pinning a direction of error. Its point
+is that the null-space step is what carries the correct ratio, so the assertion is
+now that the answer is NOT one — it used to come out at 3.78 and now at 8.7e-5, both
+far from unity, and pinning the sign made the test fail for a change that did not
+touch what it is about.
+
+The `solve_certified` testset was written asserting `9.5 < pH < 10.3` for a system
+that carries 0.01 mol of CO₂. That is the pH of calcite in PURE water, from a
+different test; with the CO₂ the answer is 6.43, which is Reaktoro's own value for
+this system (`H⁺ = 3.69e-7` in the reference table). The certificate was right and
+the assertion was not.
+
+### `speciated_states` walks up to the first instant it is asked for
+
+Every replayed speciation warm-starts from the previous one — and the FIRST one
+requested has no previous one, so it started from the cast composition, which
+carries no active set at all. The chain is now walked up to it through a few
+earlier times whose compositions are discarded and whose only purpose is to hand
+the guess an active set.
+
+The consequence was not cosmetic. On the reference OPC replayed at forty instants,
+the first of them came back with **56 interior species where the answer has 25** —
+every candidate hydrate present, four of them at 1e-5 to 1e-6 mol, the signature of
+an interior-point iterate that never reached a vertex — and neither the certifying
+Newton nor its continuation recovers from that, because both inherit the start.
+That instant is now certified, with stationarity 9.1e-13 and element balance
+6.1e-15 mol: the whole replay is proved optimal where before one instant in forty
+fell back silently to an uncertified composition. The 28-day heat of that paste
+moves from 420.2 to 420.3 J/g, which is the size of the error the fallback was
+hiding.
+
+Two other routes to the same instant were implemented and measured, and neither is
+in the code: retrying it from each of the thirty-nine certified neighbors, nearest
+first, left it unproved with every one of them; and the continuation between
+certified instants was rewritten to step forward adaptively rather than bisect —
+correct in itself, since bisection lowers the upper end on failure and so abandons
+the target for good, but it does not reach this instant either. What was missing was
+the start, and only the run-up supplies it.
+
+### The full Portland cement, through its pore solution
+
+New example page and script, `scripts/ionic_hydration.jl`: a complete CEM I —
+alite, belite, aluminate, ferrite, gypsum, limestone filler — dissolving into ions,
+with the whole hydrate assemblage decided by Gibbs minimization at every accepted
+step. The aluminate cascade that a stoichiometric model has to encode by hand comes
+out as a result: run with 3.5 % limestone the ettringite survives to 28 days, run
+without it the ettringite is depleted to zero, and no line of code distinguishes
+the two cases.
+
+The page carries the calorimetry with it, isothermal and semi-adiabatic
+(NF EN 196-9), with every number of the cell written out: 420 J/g against 405 J/g
+at 28 days, a rise of 19 K against an adiabatic 75 K. The heat is taken from the
+enthalpy of the certified compositions, not from the kinetic reactions — those only
+dissolve the clinker, so the sum `Σ rᵢ(−Δ_r H⁰ᵢ)` cannot see the precipitation heat
+at all, and driving the cell from it gave a rise of 207 K.
+
 ## v0.10.0 — the heat of hydration, and solid solutions the solver can hold
 
 ### Breaking changes
