@@ -26,13 +26,13 @@ hydrates each counted once and no reaction stoichiometry to write down.
 That last point is what makes it necessary. `heat_rate` sums `rᵢ(−ΔᵣH⁰ᵢ)` over
 the KINETIC reactions, which is right when those reactions produce the hydrates —
 and wrong under partial equilibrium, where they only dissolve the anhydrous
-phases into ions and the hydrates are precipitated by the Gibbs minimisation.
+phases into ions and the hydrates are precipitated by the Gibbs minimization.
 Driving a semi-adiabatic cell from it put an ordinary Portland cement at a
 temperature rise of 207 K. That combination now warns instead of returning the
 number in silence.
 
 `heat_release` reads the **certified** speciations of `speciated_states`, not the
-composition the integrator carries. The in-run minimisation is warm-started and
+composition the integrator carries. The in-run minimization is warm-started and
 uncertified, and a single hydrate is worth hundreds of kilojoules: read that way
 the curve came out at 12.7, 145, 1174, 936 and 631 J/g at 1 h, 6 h, 12 h, 1 d and
 2 d — heat that rises and then falls. Certified, the same cement gives 185, 288,

@@ -74,7 +74,7 @@ function integrate(kp::KineticsProblem, ks::KineticsSolver; kwargs...)
     # driven by the wrong heat. The temperature equation takes its source from
     # `heat_rate`, i.e. from the KINETIC reactions, and under partial equilibrium
     # those only dissolve the anhydrous phases into ions — the hydrates are
-    # precipitated by the Gibbs minimisation, whose heat that sum cannot see.
+    # precipitated by the Gibbs minimization, whose heat that sum cannot see.
     # On an ordinary Portland cement this put the temperature rise at 207 K
     # against the few tens of kelvin a Langavant test gives, and nothing in the
     # run said so. Until the source accounts for the precipitation, say it here.
