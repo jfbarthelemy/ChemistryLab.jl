@@ -355,5 +355,5 @@ The volume fractions above are exactly what a micromechanical estimate of the
 elastic modulus needs. That extension — the same chemistry, feeding a four-scale
 self-consistent/Mori–Tanaka scheme, and the setting threshold that comes with it —
 is the chapter *Hydration through the pore solution* of
-[MeanFieldHomogenization.jl](https://micropochemomechanics.github.io/MeanFieldHomogenization.jl/stable/),
+[MeanFieldHomogenization.jl](https://microporochemomechanics.github.io/MeanFieldHomogenization.jl/stable/),
 which duplicates the model of this page and adds the homogenization.
