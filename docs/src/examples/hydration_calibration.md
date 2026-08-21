@@ -324,7 +324,7 @@ three-dimensional identifiable space — a defensible reason, and a different on
 from the reason that was expected. Worth the two lines it took to find out.
 
 **Gypsum and calcite dissolution are excluded** because
-[`ionic_reactions`](@ref) deliberately makes them fast, so that sulfate reaches
+`ionic_reactions` deliberately makes them fast, so that sulfate reaches
 the minimization from the start instead of rate-limiting it. A step that does not
 limit cannot be calibrated.
 
@@ -580,7 +580,7 @@ The first explanation was discretization: `heat_release` returns `q̇` as a cent
 finite difference of `Q` over the output grid, which near the 10-hour peak is spaced
 0.91 h apart, so the model's `q̇` is a smeared version of what the instrument
 resolves at 77 s. Matching the operators — differencing the measurement the same
-way, [`grid_slope`](@ref) — changed nothing, because `grid_slope` is a **linear map
+way, `grid_slope` — changed nothing, because `grid_slope` is a **linear map
 on the same numbers**: a residual on the differenced curve is a linear combination
 of the residuals on `Q`, so it re-weights information instead of adding any.
 
@@ -601,7 +601,7 @@ determine the dormancy **timescale**, at the price of the `Q` residual and witho
 decorrelating `τ` from `k₁`. That is the evidence behind the round `τ = 5 h` that
 `ionic_hydration.jl` uses as its uncalibrated default.
 
-**Pinning `τ_ind` from the measured peak.** [`peak_time`](@ref) puts the main
+**Pinning `τ_ind` from the measured peak.** `peak_time` puts the main
 heat-flow peak at 10.6 h. Fixing `τ = 0.55 × t_peak` = 5.8 h and fitting the other
 four gave 28.9 J/g against 24.4, with `m_ind` at its floor, `k₃_C3S` at its ceiling
 and a condition number of 10¹⁸ — numerically singular. And the factor 0.55 was
@@ -613,14 +613,14 @@ as a function of `τ` rather than use a factor at all.
 ### The one that should work, and exactly how to launch it
 
 Fit **one** parameter set to **many** records. The deposit holds fourteen plain
-CEM I records — [`CEM_I_DEPOSIT_RECORDS`](@ref) lists them with their w/b, fineness
+CEM I records — `CEM_I_DEPOSIT_RECORDS` lists them with their w/b, fineness
 and duration — across five plants and four strength classes. The parameter count
 stays at five while the data multiplies fourteen-fold, so the `τ`–`k₁` degeneracy
 is constrained by fourteen peak positions instead of one, and transferability
 becomes what is being *optimized* rather than what is *tested afterwards*.
 
-[`multirecord_loss`](@ref) and [`calibrate_multirecord`](@ref) implement it.
-[`multirecord_recipe`](@ref) prints the cost and the launch sequence:
+`multirecord_loss` and `calibrate_multirecord` implement it.
+`multirecord_recipe` prints the cost and the launch sequence:
 
 ```@example calib
 multirecord_recipe()
@@ -692,7 +692,7 @@ Three steps, and no part of the machinery is specific to these two records.
    comment lines carrying at least `blaine`, `wb` and `temperature`, then a table
    headed `time_h,heat_flow_W_per_g,heat_J_per_g`. A fourth column, if present, is
    read as somebody else's fitted curve and never as data.
-2. **Point [`read_calorimetry`](@ref) at it.** That is the whole seam. Everything
+2. **Point `read_calorimetry` at it.** That is the whole seam. Everything
    downstream reads `data.meta`.
 3. **Edit `CALIB_SPEC`.** Each entry names a phase, a Parrott–Killoh field, a
    prior and a box. Add or remove rows; nothing else needs to change.
@@ -716,7 +716,7 @@ report_fit(r_mine, my_target; label = "two rate constants, surrogate, shape only
 That runs on the surrogate and on shape alone, because it is a page and has to
 finish. A real study replaces `mode = :surrogate, shape = true` with
 `mode = :coupled` and waits — and, before doing so, runs
-[`local_identifiability`](@ref) on the candidate set, because the number of
+`local_identifiability` on the candidate set, because the number of
 parameters a heat curve supports is a property of the curve and will not be three
 for everybody.
 
