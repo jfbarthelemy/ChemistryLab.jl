@@ -1,0 +1,34 @@
+The two CSV files in this directory are NOT covered by the LGPL-2.1-or-later
+license of ChemistryLab.jl. They are subsets of a separately licensed dataset,
+redistributed here under its own terms.
+
+--------------------------------------------------------------------------------
+  smilauer2025-122-cemI-52.5R-cizkovice.csv
+  smilauer2025-116-cemI-52.5R-ladce.csv
+--------------------------------------------------------------------------------
+
+Derived from:
+
+    Šmilauer, Vít; Reiterman, Pavel (2025)
+    Isothermal calorimetry database of 65 cements and approximations
+    Zenodo
+    https://doi.org/10.5281/zenodo.15212785
+
+License: Creative Commons Attribution 4.0 International (CC BY 4.0)
+         https://creativecommons.org/licenses/by/4.0/
+
+Changes made: each file here is a subset of one file of that deposit, holding the
+rows nearest to 500 log-spaced hydration times, with a provenance header
+prepended. No value was interpolated, smoothed, rescaled or otherwise altered.
+`regenerate.jl` in this directory rebuilds both files from the deposit.
+
+The depositors ask that the companion article be cited:
+
+    Šmilauer, V.; Edelmannová, J.; Reiterman, P.
+    Isothermal calorimetry database of 65 cements with analytical approximations
+    Ceramics-Silikáty 70 (1), 25-33 (2026)
+    https://doi.org/10.13168/cs.2025.0048
+
+That article is published under CC BY-NC-ND 3.0. It is cited here and nothing is
+reproduced from it: no figure, table or passage of the article appears in this
+repository or in its documentation. Only the CC-BY-4.0 data deposit is reused.

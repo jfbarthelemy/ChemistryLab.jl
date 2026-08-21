@@ -62,8 +62,20 @@ const IONIC_SYSTEMS = Dict(
 gypsum and calcite dissolving to ions, with the assemblage left to the
 thermodynamics.
 
-Measured over 28 days: 202 accepted steps, `retcode = Success`, pore solution
-holding at pH 12.58. The aluminate sequence comes out of the free-energy
+Measured over 28 days with the dormant period of
+[`IONIC_INDUCTION_TAU`](@ref) on, which is the default: 216 accepted steps,
+`retcode = Success`, pore solution holding at pH 12.75.
+
+What the dormant period changes is the **early** heat, and little else worth
+reporting: `Q(6 h)` falls from 74.1 to 40.2 J/g, which is the point of it, while
+the 28-day pore solution (pH 12.754) and porosity (0.3635 against 0.3634) do not
+move and the integrator takes 216 steps instead of 200. Both configurations were
+re-measured when the default changed. An earlier version of this docstring claimed
+202 steps and pH 12.58; the 200 and 12.754 measured **without** any dormant period
+show that figure had already drifted for an unrelated reason, so the difference is
+not an effect of this change.
+
+The aluminate sequence comes out of the free-energy
 minimization with no sequencing rule written anywhere — ettringite forms early,
 peaks around 6 hours and converts to monosulphate once the sulfate is spent, the
 AFm settling at exactly the sulfate budget.
@@ -159,10 +171,91 @@ const IONIC_CALIBRATION = Dict(
 )
 
 """
-    ionic_reactions(cs; wb, blaine, system, calibration) -> Vector{KineticReaction}
+    IONIC_INDUCTION_TAU, IONIC_INDUCTION_M
+
+The dormant period of the silicate phases, as the factor
+`β(t) = 1 - exp(-(t/τ)^m)` on their dissolution rate. **On by default**, because a
+CEM I has a dormant period and Parrot–Killoh does not.
+
+`parrot_killoh_avrami` floors its Avrami argument at `PK_AVRAMI_SEED` so the ODE
+can leave `ξ = 0` at all, which means the clinker starts hydrating the instant the
+water does. Measured against the CEM I isothermal-calorimetry record used by
+`hydration_calibration.jl`, that released 23.8 J/g by 2.7 h where the calorimeter
+saw 4.7 — and having spent the heat early the model then ran some 60 J/g *behind*
+from one day onwards and never recovered. Two errors of opposite sign, which no
+rate constant repairs.
+
+!!! note "Round numbers, on purpose"
+    `τ = 5 h`, `m = 2.5`. The calibration of `hydration_calibration.jl` returns
+    5.6 h and 3.56 on one record, and its own identifiability analysis then shows
+    `τ` correlated with `k₁` at **0.994** — a longer dormancy followed by a faster
+    rate makes very nearly the same curve, so the data barely determine either
+    separately. Carrying 20 228 s here would lend a spurious precision to a number
+    the measurement does not support. These are physical estimates, consistent
+    with the fit, rounded to say so.
+
+Pass `induction = nothing` to [`run_ionic_hydration`](@ref) to recover the
+published Parrot–Killoh behavior with no dormant period.
+"""
+const IONIC_INDUCTION_TAU = 5.0 * 3600.0
+
+"""
+    IONIC_INDUCTION_M
+
+See [`IONIC_INDUCTION_TAU`](@ref).
+"""
+const IONIC_INDUCTION_M = 2.5
+
+"""
+    IONIC_INDUCTION_PHASES
+
+Phases the dormant period applies to: the two silicates, and only those.
+
+The aluminate reacts within minutes of wetting — its first peak falls before a
+calorimeter record even opens — so damping it would invent a delay nobody
+measured. Gypsum and calcite are deliberately fast here so sulfate reaches the
+minimization from the start rather than rate-limiting it.
+"""
+const IONIC_INDUCTION_PHASES = ("C3S", "C2S")
+
+"""
+    ionic_induction(τ = IONIC_INDUCTION_TAU, m = IONIC_INDUCTION_M) -> Function
+
+The default dormant-period factor, `β(t) = 1 - exp(-(t/τ)^m)`.
+"""
+ionic_induction(τ = IONIC_INDUCTION_TAU, m = IONIC_INDUCTION_M) =
+    t -> -expm1(-(max(t, zero(t)) / τ)^m)
+
+"""
+    IONIC_PK84 :: Dict{String, NamedTuple}
+
+The published Parrot–Killoh sets, keyed by phase symbol — the default rate-law
+parameters of every clinker phase here, and the reference a calibration is
+reported against.
+"""
+const IONIC_PK84 = Dict(
+    "C3S" => PK84_PARAMS_C3S, "C2S" => PK84_PARAMS_C2S,
+    "C3A" => PK84_PARAMS_C3A, "C4AF" => PK84_PARAMS_C4AF,
+)
+
+"""
+    ionic_reactions(cs; wb, blaine, system, calibration, pk_params) -> Vector{KineticReaction}
 
 Congruent dissolution of each anhydrous phase into the primary aqueous species,
 with a Parrot–Killoh rate scaled by a per-phase calibration factor.
+
+`pk_params` overrides the published Parrot–Killoh sets, as a
+`Dict{String,NamedTuple}` keyed by phase symbol; `nothing` (default) keeps them.
+It is what `hydration_calibration.jl` varies, and it is deliberately separate
+from `calibration`: scaling a phase uniformly and editing its rate-law fields are
+not independent, so a study should use one or the other.
+
+`induction` is a callable `t -> β(t) ∈ [0, 1]` multiplying the rate of the phases
+named in `induction_phases` — the dormant period, **on by default**; see
+[`IONIC_INDUCTION_TAU`](@ref). Parrot–Killoh has none of its own: its Avrami
+branch is floored so the ODE can leave `ξ = 0` at all, so hydration starts with
+the water, and on a real heat curve that costs the first several hours. Pass
+`induction = nothing` for the published behavior.
 
 The reactions are **balanced by ChemistryLab** from the phase and the primaries,
 and come out in the expected acid-driven form, e.g.
@@ -175,6 +268,9 @@ function ionic_reactions(
         cs; wb, blaine,
         system::Symbol = IONIC_DEFAULT_SYSTEM,
         calibration = IONIC_CALIBRATION,
+        pk_params = nothing,
+        induction = ionic_induction(),
+        induction_phases = IONIC_INDUCTION_PHASES,
     )
     nmv = symbol.(cs.species)
     prim = [
@@ -183,10 +279,7 @@ function ionic_reactions(
     ]
     α_max = powers_alpha_max(wb)
 
-    pk_of = Dict(
-        "C3S" => PK84_PARAMS_C3S, "C2S" => PK84_PARAMS_C2S,
-        "C3A" => PK84_PARAMS_C3A, "C4AF" => PK84_PARAMS_C4AF,
-    )
+    pk_of = something(pk_params, IONIC_PK84)
 
     out = KineticReaction[]
     for a in IONIC_SYSTEMS[system].anhydrous
@@ -206,11 +299,16 @@ function ionic_reactions(
         end
 
         f = get(calibration, a, 1.0)
-        rate = haskey(pk_of, a) ?
+        β = (induction !== nothing && a in induction_phases) ? induction : nothing
+        rate = if haskey(pk_of, a) || β !== nothing
+            g = β === nothing ? (_t -> 1.0) : β
             KineticFunc(
-            (T, P, t, n, lna, n0) -> f * base(T, P, t, n, lna, n0),
-            (T = 293.15u"K", P = 1.0e5u"Pa"), u"mol/s",
-        ) : base
+                (T, P, t, n, lna, n0) -> f * g(t) * base(T, P, t, n, lna, n0),
+                (T = 293.15u"K", P = 1.0e5u"Pa"), u"mol/s",
+            )
+        else
+            base
+        end
 
         rxn[:rate] = rate
         push!(out, KineticReaction(cs, rxn))
@@ -220,7 +318,8 @@ end
 
 """
     run_ionic_hydration(; wb, clinker, gypsum, filler, blaine, tend,
-                          binder_mass, calorimeter, system) -> NamedTuple
+                          binder_mass, calorimeter, system, pk_params,
+                          induction, induction_phases) -> NamedTuple
 
 Integrate the coupled problem: dissolution kinetics on the anhydrous phases,
 Gibbs minimization on everything else, once per accepted step.
@@ -228,6 +327,13 @@ Gibbs minimization on everything else, once per accepted step.
 `binder_mass` is the mass of binder simulated (1 kg by default, so every
 extensive result is per kilogram of binder). `calorimeter`, when given, couples
 the thermal balance into the same ODE.
+
+`pk_params`, `induction` and `induction_phases` are forwarded to
+[`ionic_reactions`](@ref); `nothing` for the first two keeps the published
+behavior. `ode_solver` and `tstops` go to the integrator — the default
+`Rodas5P()` is L-stable and appropriate here, but a 262-hour integration with a
+sharp early feature is exactly the case where an adaptive-order multistep method
+is worth measuring against it.
 
 Returns `(; cs, state0, kp, system, calorimeter, sol)`. The activity model is
 `HKFActivityModel` on both halves — a cement pore solution sits at
@@ -242,6 +348,12 @@ function run_ionic_hydration(;
         system::Symbol = IONIC_DEFAULT_SYSTEM,
         binder_mass = 1.0u"kg",
         calorimeter = nothing,
+        pk_params = nothing,
+        induction = ionic_induction(),
+        induction_phases = IONIC_INDUCTION_PHASES,
+        ode_solver = Rodas5P(),
+        tstops = Float64[],
+        solver_kwargs...,
     )
     cs = build_ionic_system(system)
     nmv = symbol.(cs.species)
@@ -259,7 +371,7 @@ function run_ionic_hydration(;
     set_quantity!(state0, "H2O@", (mb * wb)u"kg")
 
     model = HKFActivityModel()
-    krs = ionic_reactions(cs; wb, blaine, system)
+    krs = ionic_reactions(cs; wb, blaine, system, pk_params, induction, induction_phases)
     kp = if calorimeter === nothing
         KineticsProblem(
             cs, krs, state0, (0.0, tend);
@@ -274,7 +386,9 @@ function run_ionic_hydration(;
             calorimeter = calorimeter,
         )
     end
-    ks = KineticsSolver(; ode_solver = Rodas5P(), reltol = reltol, abstol = abstol)
+    ks = KineticsSolver(;
+        ode_solver, reltol = reltol, abstol = abstol, tstops = tstops, solver_kwargs...,
+    )
     return (; cs, state0, kp, system, calorimeter, sol = integrate(kp, ks))
 end
 
@@ -302,7 +416,7 @@ Calibration of the calorimeter's heat loss, Lavergne et al. (2018) Eq. (23):
 NF EN 196-9 calibration. Converted here to watts.
 """
 const LAVERGNE_LOSS_A = 75.0 / 3600            # W/K
-const LAVERGNE_LOSS_B = 0.260 / 3600           # W/K²
+const LAVERGNE_LOSS_B = 0.26 / 3600           # W/K²
 
 """
     LAVERGNE_VESSEL_CP

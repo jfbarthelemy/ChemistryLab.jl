@@ -1,5 +1,252 @@
 # Changelog
 
+## v0.12.0 — calibrated against a measured heat curve, and an isothermal heat that is a heat
+
+### Breaking changes
+
+**The ODE state layout gained one slot for `IsothermalCalorimeter`.** Code that
+reads `sol.u` directly, or carries its own offset arithmetic into the state
+vector, has to be revisited. `cumulative_heat(sol, ::IsothermalCalorimeter)` and
+`heat_flow(sol, ::IsothermalCalorimeter)` also change what they return — from a
+reaction extent in moles to a heat in joules. See below.
+
+No name was removed or renamed and no signature changed. Below 1.0 the resolver
+treats a minor bump as breaking regardless, so a downstream
+`[compat] ChemistryLab = "0.11"` must be widened to `"0.12"`.
+
+### `cumulative_heat` was returning a number of moles
+
+`IsothermalCalorimeter`'s docstring promised that "cumulative heat
+`Q(t) = ∫₀ᵗ q̇(τ) dτ` [J]" was "tracked as an extra ODE state". It was not.
+`build_u0` appended a trailing slot only for `SemiAdiabaticCalorimeter`, and the
+right-hand side wrote `du[end]` under the same condition, so with an isothermal
+device `u[end]` was the **last reaction extent ξ_M, in moles**. `cumulative_heat`
+returned it as a heat and `heat_flow` finite-differenced it. The function's other
+branch, `Q(t) = H(0) − H(t)` from `p.saved_H`, was unreachable: `saved_H` and
+`saved_t` are read in exactly two places in the package and written in none.
+
+The isothermal calorimeter now contributes a real state integrating `dQ/dt = q̇`,
+so `n_extra_states`, `extend_u0` and `extend_ode!` — until now reachable only from
+the test suite — describe what the integrator actually does. The dead branch is
+gone. Every index keyed on the state's length was audited; the semi-adiabatic path
+already went through `n_extra_states(cal)` and is unaffected, and `p.has_T`
+remains false for an isothermal device, so nothing collides on `u[end]`.
+
+A new test compares both routes to the heat on the stoichiometric formulation,
+where both are valid, and requires them to agree — the assertion that would have
+caught this. The state-layout docstrings were also wrong in a second way, omitting
+the reaction-extent block entirely; both now describe all four segments.
+
+One caveat is stated where it belongs rather than left to be discovered. `q̇` here
+is `heat_rate`, the heat of the **kinetic** reactions. That is the heat of
+hydration when those reactions produce the hydrates. Under partial equilibrium
+they only dissolve the anhydrous phases into ions, the hydrates are precipitated
+by the Gibbs minimization, and this sum cannot see their heat — worth hundreds of
+joules per gram on an ordinary Portland cement. `integrate` now warns on that
+combination, as it already did for the semi-adiabatic device, and points at
+`heat_release`.
+
+### Calibrating hydration kinetics against measured calorimetry
+
+`scripts/ionic_hydration.jl` has always run a complete CEM I forward with the
+*published* Parrott & Killoh parameters, and its `IONIC_CALIBRATION` dictionary
+has always been an explicit, deliberately unused hook. Nothing in the repository
+closed that loop: there was no experimental dataset, no loss function and no
+inverse problem anywhere in `src/`, `scripts/` or `test/`.
+
+`scripts/hydration_calibration.jl` and
+[its documentation page](https://micropochemomechanics.github.io/ChemistryLab.jl/stable/examples/hydration_calibration/)
+close it, on real measurements, fitting **kinetic parameters only** — the CEMDATA18
+thermodynamics are measured quantities, and the Blaine fineness, w/b ratio and
+temperature are reported by the experiment.
+
+**The data.** Two CEM I records now ship under `data/experimental/`, subsets of the
+CC-BY-4.0 Zenodo deposit of Šmilauer & Reiterman
+([10.5281/zenodo.15212785](https://doi.org/10.5281/zenodo.15212785)): a CEM I
+52.5 R at w/b 0.50 and Blaine 397 m²/kg over 262 h, fitted, and a CEM I 52.5 R at
+w/b 0.45 and Blaine 415 m²/kg over 617 h, held out. They are the only source found
+that is at once openly licensed for redistribution, real CEM I measured by
+isothermal calorimetry, and documented well enough to *fix* the non-kinetic inputs
+— every file states the fineness, the w/b ratio, the temperature and the
+normalizing binder mass.
+
+`regenerate.jl` in that directory rebuilds both files **byte for byte** from the
+deposit, so nothing about them is unverifiable, and `--check` is an exact
+comparison. The subset is the rows nearest to 500 log-spaced times, by nearest
+index rather than by interpolation: every number in the vendored files is one the
+calorimeter reported. A fourth column carries the depositors' own fitted curve,
+read from their tabulated data rather than reimplemented from a functional form
+recalled from memory, so a fit can be judged against somebody else's on the same
+record. `data/experimental/LICENSE` states the terms — CC-BY-4.0, separate from
+the package's LGPL — and the companion article, published CC BY-NC-ND 3.0, is
+cited with nothing reproduced from it.
+
+**The published parameters are already close.** With no adjustment at all the
+coupled model gives Q(262 h) = 381.9 J/g against 376.0 J/g measured, +1.6 %. The
+depositors' four-parameter affinity model, fitted to this very record, gives
+388.9 J/g. So parameters fitted in 1984 to other cements, carried through
+CEMDATA18 thermodynamics and a Gibbs minimization, land closer at the endpoint
+than a purpose-fitted empirical curve. What a calibration can earn here is the
+*timing*.
+
+**Three parameters, not six, and the number is measured.** Six candidates were
+written down, one per mechanism with a distinct signature on the curve. The
+singular values of `∂Q/∂log θ` on the coupled model come out
+`[422, 101, 60, 6.3, 1.4, 0.20]` — a factor of nine between the third and the
+fourth — so the measurement determines three *combinations*. The correlation
+matrix says which: `k₁_C3S` with `n₁_C3S` at −0.985, and `k₃_C3S` with `n₃_C3S`
+at −0.977, the latter pair being essentially the whole leading singular direction.
+One per pair is all that can be fitted, and the rate constant is kept in each; the
+third is `k₁_C3A`. Belite's `k₃_C2S` carries a weight of 0.001 in the three
+directions the data see, which is a quantitative way of saying that eleven days of
+heat cannot see belite.
+
+Activation energies are not fitted at all, and the reason is not caution: all these
+records are at 20 °C, an activation energy is a temperature sensitivity, and a fit
+that reported one would be reporting a number the data cannot contain.
+
+**Two failures worth having in the record.** A cheap stand-in for the coupled
+model — same rate laws, hydrate assemblage written down by hand — was tried and
+does not work, in two distinct ways. First, `C₃A + 3 Gp + 26 H₂O → ettringite` is
+stoichiometrically impossible in this mix: 11 % C₃A demands about 1.1 mol of gypsum
+per kilogram of binder and 4.6 % gypsum supplies 0.27, so a rate law reading only
+C₃A drives the gypsum **negative** and the released heat to 1609 J/g against a
+measured 376. Second, with the aluminate sent to hydrogarnet instead, the level is
+right to some 9 % but a fit on the *normalized* curve saturates whatever parameter
+bounds it is given, whichever subset is fitted — the imposed assemblage produces a
+curve shape the Parrott–Killoh family cannot make. Both are now documented sections
+of the page and assertions in the test suite, and together they are the
+quantitative argument for the model `ionic_hydration.jl` already implements.
+
+**A docstring claim that does not survive measurement.** `parrot_killoh_avrami`
+states, after Parrott & Killoh, that "C₃S has no diffusion-controlled stage". The
+sensitivity of the released heat to `k₂` for alite was expected to be exactly zero
+and is not: the Jander term `k₂(1-ξ)^{2/3}/(1-(1-ξ)^{1/3})` falls as ξ grows, so
+past a high degree of hydration it does become the minimum of the three branches,
+and `k₂` moves the heat by up to about an eighth of what `k₁` does — all of it
+after the first day. The published statement describes the 1984 fit's intent; this
+implementation of it has a diffusion-limited tail. Pinned by a test so the claim
+cannot drift back.
+
+**Parameter-space automatic differentiation does not work, and the manual said it
+did.** `docs/src/man/kinetics.md` claimed "the entire chain is
+ForwardDiff-compatible" and showed a derivative through `integrate`. The ODE
+right-hand side is AD-clean in the state and in time — deliberately, because
+`Rodas5P` needs the time gradient — but not in the parameters: `build_u0` returns
+a `Vector{Float64}`; `build_kinetics_params` casts the temperature, the initial
+amounts, the stoichiometry and the calorimeter constants to `Float64`; the
+surface-area constructors cast to `Float64` despite being declared `{T<:Real}`;
+`system_enthalpy` accumulates into a `0.0`; and `respeciate!` is `Float64`-only by
+construction. There was no test through `integrate`. The claim is corrected, the
+blocking lines are named, and the calibration uses `AutoFiniteDiff()` with
+`NelderMead` — still the SciML interface, `Optimization.jl`, and honest about why.
+
+**Reusable, not general.** The helpers live in the script, not in `src/`, on
+purpose: the interface should be settled by use before it is exported. The seam for
+somebody else's data is `read_calorimetry`, which reads a documented CSV and takes
+the experimental conditions from its comment header, and `CALIB_SPEC`, a list of
+(phase, rate-law field, prior, box) rows.
+
+### The dormant period is now on by default in `scripts/ionic_hydration.jl`
+
+`run_ionic_hydration` and `ionic_reactions` take `induction` and
+`induction_phases`, and the default is **on**: `τ = 5 h`, `m = 2.5`, applied to
+the two silicates. A CEM I has a dormant period; Parrot–Killoh does not.
+
+The numbers are round on purpose. The calibration returns 5.6 h and 3.56 on one
+record and then shows `τ` correlated with `k₁_C3S` at 0.994, so the data barely
+determine either separately. Carrying 20 228 s into an uncalibrated example would
+lend a precision the measurement does not support. `induction = nothing` recovers
+the previous behavior exactly.
+
+What it changes is the early heat and little else. Measured over 28 days on the
+example's own formulation, `Q(6 h)` falls from 74.1 to 40.2 J/g — the point of the
+exercise — while the 28-day pore solution (pH 12.754) and porosity (0.3635 against
+0.3634) do not move, and the integrator takes 216 accepted steps instead of 200.
+
+Re-measuring both configurations caught an unrelated drift.
+`IONIC_DEFAULT_SYSTEM`'s docstring claimed 202 steps and pH 12.58, where the model
+*without* any dormant period now gives 200 and 12.754 — that figure had gone stale
+for some earlier reason, and the docstring now says so rather than letting the new
+default take the blame.
+
+### Downstream: MeanFieldHomogenization.jl
+
+Two things follow for MFH, and the second is not optional.
+
+1. **`docs/Project.toml` pins `ChemistryLab = "0.11"` and must be widened to
+   `"0.12"`.** Below 1.0 the resolver treats a minor bump as breaking whatever the
+   API did, so the MFH documentation will not resolve against this release until
+   that bound moves. MFH's own `Project.toml` does not depend on ChemistryLab at
+   all — the coupling lives only in its docs environment.
+2. **MFH keeps its own copy of the ionic setup**, in
+   `scripts/common/ionic_hydration.jl`, with its own `IONIC_CALIBRATION` and its
+   own `parrot_killoh_avrami` call. The dormant period has to be added there, and
+   in `scripts/common/lavergne_hydration.jl` for the stoichiometric route — on the
+   clinker silicates only, since the silica fume there already goes through
+   `waller`, whose sigmoid carries its own onset delay.
+
+   It will move a *reported* number, not just an input.
+   `scripts/common/lavergne_model.jl` returns `E = 0` until the hydrate foam
+   percolates — the setting transition as a genuine zero of the self-consistent
+   fixed point — and `45_ionic_hydration_micromechanics.jl` reports a setting time
+   in hours from the first non-zero modulus. Without a dormant period the model
+   accumulates hydrates from `t = 0`, so percolation, and the setting time with it,
+   arrives too early.
+
+### `heat_release`'s `states` keyword never worked
+
+`heat_release` accepts `states` so a caller who already holds the certified replay
+does not pay for it twice, and its docstring says so: *"it is the expensive part,
+and a caller that needs the compositions anyway should not pay for it twice"*. The
+line that implemented it was
+
+```julia
+states = something(states, speciated_states(sol, kp; times = times))
+```
+
+and `something` is an ordinary function, so Julia evaluated **both** arguments and
+the replay ran whether or not the states were supplied. Measured on the ordinary
+Portland cement of `scripts/ionic_hydration.jl` over 28 days, 60 instants:
+
+| call | before | after |
+|--- |--- |--- |
+| `heat_release(...; states = sts)` | 121 s | **0.017 s** |
+| `heat_release(...)`, replay included | 118 s | 118 s |
+
+`docs/src/examples/ionic_hydration.md` computes its replay once and hands it to
+both `ionic_phase_history` and `heat_release` for exactly this reason; it has been
+doing the replay twice. A timing assertion in `test/kinetics/test_postprocessing.jl`
+now guards it, deliberately — a redundant computation whose result is discarded
+cannot be detected any other way.
+
+Note what this does **not** speed up: a calibration loop calling `heat_release`
+without `states` already paid one replay and still does. The replay is the price of
+correctness, and the same docstring records why — reading the running composition
+instead gave 1174 J/g where the certified answer was a few hundred.
+
+Found by benchmarking, not by reading. The hypothesis under test was that the
+enthalpy sum dominated; it costs 0.029 s. An optimization written for it was
+reverted, because fifty lines and a fallback branch to save 26 ms is not an
+improvement, and the measurement that refuted it is what exposed the real defect.
+
+### Also
+
+  - `ionic_reactions` and `run_ionic_hydration` take a `pk_params` keyword that
+    overrides the published Parrott & Killoh sets, so the calibration varies the
+    rate laws of the existing model instead of restating it. The default sets are
+    now a single `IONIC_PK84` constant rather than a dictionary literal repeated
+    per call.
+  - `scripts/opc_semiadiabatic_calorimetry.jl` cited Lavergne et al. (2018) with
+    the DOI `10.1016/j.cemconres.2017.11.007`, which Crossref resolves to a
+    different paper (Machner et al., *CCR* **105**, 1–17). Corrected to
+    `10.1016/j.cemconres.2017.10.018`. The same defect was found and fixed in
+    `docs/src/refs.bib` in v0.4.0; the script was missed then.
+  - Nine bibliography entries added, every DOI resolved against Crossref and the
+    Šmilauer entries also against the publisher's own landing page. The dataset and
+    the article have different author lists — two creators and three respectively —
+    and each is credited for its own artifact.
+
 ## v0.11.0 — a proved answer, whichever route found it
 
 ### Breaking changes

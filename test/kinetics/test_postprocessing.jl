@@ -475,4 +475,32 @@ end
     _, Q2, _ = heat_release(sol, kp; times = times, reference = states[2])
     @test all(isapprox.(Q2 .- Q, Q2[1] - Q[1]; rtol = 1.0e-8, atol = 1.0e-6))
 
+    # Supplying `states` must actually SKIP the replay, not merely accept it.
+    #
+    # It did not. The line read `something(states, speciated_states(...))`, and
+    # `something` is an ordinary function, so Julia evaluated both arguments and the
+    # replay ran regardless — defeating the one optimization the keyword exists for,
+    # silently, while the docstring promised it. On an ordinary Portland cement over
+    # 28 days that cost 121 s per call against 0.03 s.
+    #
+    # The result is the same either way — that was never the bug. The bug was the
+    # wasted work, and a redundant computation whose output is discarded can only be
+    # caught by timing it.
+    _, Q3, _ = heat_release(sol, kp; times = times, states = states)   # warm up
+    @test Q3 ≈ Q rtol = 1.0e-12
+
+    # ... and timing it is only meaningful where the replay is actually expensive.
+    # This `kp` carries NO equilibrium solver, so `speciated_states` takes its
+    # `p.n_be == 0` path and merely reconstructs from the extents: microseconds,
+    # where the comparison is noise. Under partial equilibrium the same call is a
+    # certified Gibbs solve per instant — 118 s against 0.017 s on an ordinary
+    # Portland cement — which is the case the guard is for.
+    t_replay = @elapsed speciated_states(sol, kp; times = times)
+    if t_replay > 0.5
+        t_supplied = @elapsed heat_release(sol, kp; times = times, states = states)
+        t_recomputed = @elapsed heat_release(sol, kp; times = times)
+        @test t_supplied * 5 < t_recomputed
+    else
+        @test t_replay < 0.5     # the cheap path, as expected here
+    end
 end

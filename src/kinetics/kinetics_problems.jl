@@ -13,11 +13,14 @@ using SciMLBase
 Encapsulates a kinetics simulation following Leal et al. (2017).
 
 The ODE state vector `u` is structured as:
-  - Without re-speciation: `u = [nₖ₁, …, nₖ_K, [T]]`
-  - With re-speciation:    `u = [bₑ₁, …, bₑ_C, nₖ₁, …, nₖ_K, [T]]`
+  - Without re-speciation: `u = [nₖ₁, …, nₖ_K, ξ₁, …, ξ_M, [T | Q]]`
+  - With re-speciation:    `u = [bₑ₁, …, bₑ_C, nₖ₁, …, nₖ_K, ξ₁, …, ξ_M, [T | Q]]`
 
-where `bₑ` are the element amounts in the equilibrium partition, `nₖ` are
-the moles of kinetic species, and `T` is the temperature (semi-adiabatic only).
+where `bₑ` are the element amounts in the equilibrium partition, `nₖ` the moles
+of kinetic species and `ξ` the extents of the kinetic reactions. The trailing
+slot is present only with a calorimeter: the temperature for
+[`SemiAdiabaticCalorimeter`](@ref), the accumulated heat for
+[`IsothermalCalorimeter`](@ref).
 
 # Fields
 
@@ -266,9 +269,13 @@ function build_u0(kp::KineticsProblem)
         vcat(be0, nk0, ξ0)
     end
 
-    # Append temperature for semi-adiabatic calorimeter
+    # One trailing slot per calorimeter, and only one: the temperature for the
+    # semi-adiabatic device, the accumulated heat for the isothermal one. Both are
+    # `u[end]`, and `p.has_T` / `p.has_Q` say which.
     if kp.calorimeter isa SemiAdiabaticCalorimeter
         push!(u0, Float64(safe_ustrip(us"K", kp.calorimeter.T0)))
+    elseif kp.calorimeter isa IsothermalCalorimeter
+        push!(u0, 0.0)
     end
 
     return u0
@@ -345,6 +352,7 @@ function build_kinetics_params(kp::KineticsProblem; ϵ::Float64 = 1.0e-30)
     n_nk = length(kp.idx_kinetic)
     n_rxn_state = length(kp.kinetic_reactions)
     has_T = kp.calorimeter isa SemiAdiabaticCalorimeter
+    has_Q = kp.calorimeter isa IsothermalCalorimeter
 
     # Calorimeter parameters (semi-adiabatic)
     cal = kp.calorimeter
@@ -356,6 +364,7 @@ function build_kinetics_params(kp::KineticsProblem; ϵ::Float64 = 1.0e-30)
         T = T_K,
         P = P_Pa,
         ϵ = ϵ,
+        has_Q = has_Q,
         lna_fn = lna_fn,
         kin_rxns = kin_rxns,
         species_index = species_index,
@@ -865,14 +874,19 @@ end
 Build the ODE right-hand-side `f!(du, u, p, t)` implementing Leal et al. (2017).
 
 State layout:
-  - `u[1:n_be]`         = bₑ (element amounts in equilibrium partition)
-  - `u[n_be+1:n_be+n_nk]` = nₖ (moles of kinetic species)
-  - `u[end]`            = T  (semi-adiabatic only)
+  - `u[1:n_be]`                    = bₑ (element amounts in equilibrium partition)
+  - `u[n_be+1 : n_be+n_nk]`        = nₖ (moles of kinetic species)
+  - `u[n_be+n_nk+1 : n_be+n_nk+M]` = ξ  (extents of the M kinetic reactions)
+  - `u[end]`                       = T with a `SemiAdiabaticCalorimeter`,
+                                     Q with an `IsothermalCalorimeter`,
+                                     absent when there is no calorimeter
 
 ODE equations (Leal 2017, Eq. 66):
   - `dnₖ/dt = νₖᵀ r`
   - `dbₑ/dt = Aₑ νₑᵀ r`
+  - `dξ/dt  = r`
   - `dT/dt  = (q̇ − φ(ΔT)) / Cp_total`  (semi-adiabatic)
+  - `dQ/dt  = q̇`                       (isothermal)
 
 where `nₑ = φ(bₑ)` is the equilibrium re-speciation constraint.
 """
@@ -984,7 +998,18 @@ function build_kinetics_ode(kp::KineticsProblem)
             end
         end
 
-        # ── 8. ODE: dT/dt = (q̇ − φ(ΔT)) / Cp_total (semi-adiabatic) ───
+        # ── 8a. ODE: dQ/dt = q̇ (isothermal) ────────────────────────────
+        #
+        # This is the heat of the KINETIC reactions. When those reactions produce
+        # the hydrates it is the heat of hydration; under partial equilibrium they
+        # only dissolve the anhydrous phases into ions and the precipitation heat
+        # is invisible to it, which is why `cumulative_heat` says so and
+        # `heat_release` exists.
+        if p.has_Q
+            du[end] = heat_rate(p.kin_rxns, rates, T_curr)
+        end
+
+        # ── 8b. ODE: dT/dt = (q̇ − φ(ΔT)) / Cp_total (semi-adiabatic) ───
         if p.has_T
             # Heat generation: q̇ = Σᵢ rᵢ × (−ΔᵣH⁰ᵢ) [W]
             qdot = heat_rate(p.kin_rxns, rates, T_curr)

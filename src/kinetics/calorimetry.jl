@@ -100,7 +100,8 @@ end
     struct IsothermalCalorimeter{T} <: AbstractCalorimeter
 
 Isothermal calorimeter: temperature held constant at `T` [K]; cumulative heat
-`Q(t) = ∫₀ᵗ q̇(τ) dτ` [J] tracked as an extra ODE state.
+`Q(t) = ∫₀ᵗ q̇(τ) dτ` [J] integrated as the trailing ODE state, with `q̇` the heat
+of the **kinetic** reactions — see the caveat on [`cumulative_heat`](@ref).
 
 # Examples
 
@@ -265,10 +266,12 @@ end
 """
     heat_flow(sol, cal::IsothermalCalorimeter) -> (t, qdot)
 
-Extract instantaneous heat-generation rate q̇(t) [W] from an ODE solution.
+Instantaneous heat-generation rate `q̇(t)` [W], by differencing
+[`cumulative_heat`](@ref) — and carrying the same caveat about partial
+equilibrium.
 """
-function heat_flow(sol, ::IsothermalCalorimeter)
-    t, Q = cumulative_heat(sol, IsothermalCalorimeter(0.0))
+function heat_flow(sol, cal::IsothermalCalorimeter)
+    t, Q = cumulative_heat(sol, cal)
     qdot = similar(Q)
     qdot[1] = zero(eltype(Q))
     for i in 2:lastindex(t)
@@ -307,17 +310,21 @@ end
 """
     cumulative_heat(sol, cal::IsothermalCalorimeter) -> (t, Q)
 
-Extract cumulative heat Q(t) = ∫₀ᵗ q̇(τ) dτ [J].
+Cumulative heat `Q(t) = ∫₀ᵗ q̇(τ) dτ` [J], read off the ODE state the isothermal
+calorimeter adds.
 
-When total-enthalpy tracking data are available in `sol.prob.p.saved_H`,
-returns `Q(t) = H(0) − H(t)` (captures both kinetic and equilibrium heat).
+!!! warning "This is the heat of the kinetic reactions only"
+    `q̇` is [`heat_rate`](@ref), i.e. `Σᵢ rᵢ(−ΔᵣH⁰ᵢ)` over the kinetic reactions.
+    That is the heat of hydration when those reactions produce the hydrates — the
+    stoichiometric formulation. Under **partial equilibrium** they only dissolve
+    the anhydrous phases into ions and the hydrates are precipitated by the Gibbs
+    minimization, whose heat this sum cannot see; on an ordinary Portland cement
+    the omission is worth hundreds of joules per gram. Use
+    [`heat_release`](@ref), which differences the enthalpy of certified
+    speciations, whenever `kp.equilibrium_solver !== nothing`.
 """
-function cumulative_heat(sol, ::IsothermalCalorimeter)
-    p = sol.prob.p
-    if hasproperty(p, :saved_H) && !isempty(p.saved_H)
-        return p.saved_t, p.saved_H[1] .- p.saved_H
-    end
-    n_kin = length(sol.u[1]) - 1
+function cumulative_heat(sol, cal::IsothermalCalorimeter)
+    n_kin = length(sol.u[1]) - n_extra_states(cal)
     Q = [u[n_kin + 1] for u in sol.u]
     return sol.t, Q
 end

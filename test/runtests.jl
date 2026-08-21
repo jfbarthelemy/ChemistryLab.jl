@@ -61,6 +61,7 @@ end
     include("kinetics/test_calorimetry.jl")
     include("kinetics/test_postprocessing.jl")
     include("kinetics/test_feasibility.jl")
+    include("kinetics/test_calibration.jl")
     include("coupling_reference.jl")
 end
 

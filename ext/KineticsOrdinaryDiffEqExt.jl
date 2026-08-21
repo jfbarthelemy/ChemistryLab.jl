@@ -34,6 +34,7 @@ import ChemistryLab:
     build_kinetics_params,
     _DEFAULT_KINETICS_SOLVER_FACTORY,
     SemiAdiabaticCalorimeter,
+    IsothermalCalorimeter,
     respeciate!,
     _with_equilibrium_solver,
     symbol
@@ -78,6 +79,14 @@ function integrate(kp::KineticsProblem, ks::KineticsSolver; kwargs...)
     # On an ordinary Portland cement this put the temperature rise at 207 K
     # against the few tens of kelvin a Langavant test gives, and nothing in the
     # run said so. Until the source accounts for the precipitation, say it here.
+    if kp.calorimeter isa IsothermalCalorimeter && !isnothing(kp.equilibrium_solver)
+        @warn """isothermal calorimetry is coupled to an equilibrium solver: the Q state \
+        this integrates accumulates the heat of the KINETIC reactions alone, which under \
+        partial equilibrium is the heat of DISSOLUTION and omits the precipitation of the \
+        hydrates. `cumulative_heat` and `heat_flow` will report that partial figure. Use \
+        `heat_release`, which differences the enthalpy of certified speciations."""
+    end
+
     if kp.calorimeter isa SemiAdiabaticCalorimeter && !isnothing(kp.equilibrium_solver)
         @warn """semi-adiabatic calorimetry is coupled to an equilibrium solver: the \
         temperature is driven by the heat of the KINETIC reactions alone, which under \

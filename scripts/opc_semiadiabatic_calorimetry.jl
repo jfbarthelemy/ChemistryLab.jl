@@ -18,7 +18,7 @@
 #   Estimating the mechanical properties of hydrating blended cementitious
 #   materials: an investigation based on micromechanics.
 #   Cem. Concr. Res. 104, 37-60.
-#   https://doi.org/10.1016/j.cemconres.2017.11.007
+#   https://doi.org/10.1016/j.cemconres.2017.10.018
 #
 #   Parrot L.J. & Killoh D.C. (1984).
 #   Prediction of cement hydration.

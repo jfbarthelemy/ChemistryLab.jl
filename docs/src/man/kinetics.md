@@ -556,22 +556,53 @@ kp = KineticsProblem(
 
 ## Parameter sensitivity and optimization
 
-The entire chain is ForwardDiff-compatible:
+The rate laws themselves are ForwardDiff-clean, and tested to be: no `Float64`
+casts in the evaluation path, branch guards through `_primal`, and
+[`arrhenius_rate_constant`](@ref) differentiable in `k₀`, `Ea` and `T_ref`.
 
 ```julia
 using ForwardDiff
 
-function n_C3S_final(K₁)
-    params = merge(PK_PARAMS_C3S, (K₁ = K₁,))   # override K₁ (plain Real, SI = 1/s)
-    pk  = parrot_killoh(params, "C3S")
-    kr_ = KineticReaction(cs, "C3S", pk)
-    kp_ = KineticsProblem(cs, [kr_], state0, (0.0, 86400.0))
-    sol = integrate(kp_, ks)
-    return sol.u[end][1]
-end
-
-dn_dK₁ = ForwardDiff.derivative(n_C3S_final, safe_ustrip(us"1/s", PK_PARAMS_C3S.K₁))
+pk(Ea) = parrot_killoh_avrami(merge(PK84_PARAMS_C3S, (Ea = Ea,)), "C3S")
+idx = Dict("C3S" => 1)
+f(Ea) = pk(Ea)(300.0, 1.0e5, 3600.0, StateView([0.9], idx), StateView([0.0], idx),
+    StateView([1.0], idx))
+ForwardDiff.derivative(f, 42_000.0)
 ```
+
+!!! warning "Differentiating *through* `integrate` with respect to parameters does not work"
+    The ODE right-hand side is AD-clean in the state `u` and in the time `t` —
+    deliberately, because `Rodas5P` evaluates it with a dual `t` for the time
+    gradient. It is **not** AD-clean in the parameters, and a dual number baked
+    into a rate closure cannot reach the integrator:
+
+      - `build_u0` returns a `Vector{Float64}`, so `∂/∂n₀` and `∂/∂T₀` die at the
+        initial condition;
+      - `build_kinetics_params` casts `T`, `P`, the initial amounts, the
+        stoichiometric matrices and the calorimeter's `Cp` and `T_env` to
+        `Float64`;
+      - the outer constructors of [`FixedSurfaceArea`](@ref) and
+        [`BETSurfaceArea`](@ref) cast to `Float64` although the structs are
+        declared `{T<:Real}`, so `∂/∂A` is blocked;
+      - `_strip_heat_per_mol` casts an explicit `heat_per_mol` to `Float64`, so
+        `∂/∂ΔᵣH` is blocked;
+      - `system_enthalpy` accumulates into a `0.0`;
+      - and under partial equilibrium `respeciate!` writes into a `Float64` buffer
+        by construction, so the coupled branch is `Float64`-only end to end.
+
+    An earlier version of this section claimed the opposite and showed a
+    derivative through `integrate`. There was no test for it, and the lines above
+    are why. Until that changes, a parameter study needs a derivative-free or
+    finite-difference outer loop —
+    [`Optimization.jl`](https://docs.sciml.ai/Optimization/stable/) with
+    `AutoFiniteDiff()` and `NelderMead()`, as
+    [the calibration example](@ref ex-hydration-calibration) does — or finite
+    differences by hand.
+
+    What *does* differentiate is the equilibrium map on its own:
+    `EquilibriumSolver` implements the implicit function theorem on the KKT system
+    for `ForwardDiff.Dual` inputs, so `∂n*/∂θ` through a Gibbs minimization is
+    exact.
 
 ## [Two Parrot–Killoh variants](@id pk-variants)
 

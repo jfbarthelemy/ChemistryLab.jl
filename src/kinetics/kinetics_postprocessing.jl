@@ -602,7 +602,12 @@ function heat_release(
         sol, kp::KineticsProblem;
         times = sol.t, reference = nothing, states = nothing,
     )
-    states = something(states, speciated_states(sol, kp; times = times))
+    # `something(states, speciated_states(...))` would evaluate BOTH arguments —
+    # `something` is a function, not a short circuit — so passing `states` did not
+    # avoid the replay it exists to avoid. Measured on the ordinary Portland cement
+    # of `scripts/ionic_hydration.jl` over 28 days: 121 s with the states already in
+    # hand, against 0.03 s once the redundant replay is gone.
+    states = states === nothing ? speciated_states(sol, kp; times = times) : states
     length(states) == length(times) || throw(
         ArgumentError(
             "`states` holds $(length(states)) compositions for $(length(times)) instants.",
