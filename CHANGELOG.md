@@ -182,12 +182,12 @@ Two things follow for MFH, and the second is not optional.
 2. **MFH keeps its own copy of the ionic setup**, in
    `scripts/common/ionic_hydration.jl`, with its own `IONIC_CALIBRATION` and its
    own `parrot_killoh_avrami` call. The dormant period has to be added there, and
-   in `scripts/common/lavergne_hydration.jl` for the stoichiometric route — on the
+   in `scripts/common/stoichiometric_hydration.jl` for the stoichiometric route — on the
    clinker silicates only, since the silica fume there already goes through
    `waller`, whose sigmoid carries its own onset delay.
 
    It will move a *reported* number, not just an input.
-   `scripts/common/lavergne_model.jl` returns `E = 0` until the hydrate foam
+   `scripts/common/paste_micromechanics.jl` returns `E = 0` until the hydrate foam
    percolates — the setting transition as a genuine zero of the self-consistent
    fixed point — and `45_ionic_hydration_micromechanics.jl` reports a setting time
    in hours from the first non-zero modulus. Without a dormant period the model
@@ -229,6 +229,27 @@ Found by benchmarking, not by reading. The hypothesis under test was that the
 enthalpy sum dominated; it costs 0.029 s. An optimization written for it was
 reverted, because fifty lines and a fallback branch to save 26 ms is not an
 improvement, and the measurement that refuted it is what exposed the real defect.
+
+### Proper names out of the identifiers
+
+Author names belong in the bibliography, not in constants. In the two example
+scripts and the page that includes one of them:
+
+| was | is |
+|--- |--- |
+| `LAVERGNE_MIX_C100`, `_VESSEL_CP`, `_LOSS_A`, `_LOSS_B` | `CALORIMETRY_MIX_C100`, `_VESSEL_CP`, `_LOSS_A`, `_LOSS_B` |
+| `lavergne_semiadiabatic` | `semiadiabatic_cell` |
+| `PK_L2018_C3S` and siblings | `PK_SMOOTHED_C3S` and siblings |
+
+Nothing in `src/` is affected and no exported name changes. `Lavergne2018` and
+every citation in prose stay: that is where the attribution belongs.
+
+The names of *models* stay too, and the distinction is deliberate.
+`parrot_killoh`, `parrot_killoh_avrami` and `waller` are how the literature
+designates those rate laws, in the same way it says Arrhenius, Avrami, Jander,
+Powers, Langavant or Blaine — they are technical terms, not credits, and they are
+part of the public API. What has been removed is the name attached to a *source of
+parameter values*, which is a citation wearing an identifier's clothes.
 
 ### Also
 

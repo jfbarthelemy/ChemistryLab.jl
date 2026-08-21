@@ -398,7 +398,7 @@ _calorimeter_T0(cal::SemiAdiabaticCalorimeter) = cal.T0
 # ── calorimetry, after Lavergne et al. (2018) §4.1 ────────────────────────────
 
 """
-    LAVERGNE_MIX_C100
+    CALORIMETRY_MIX_C100
 
 Mix proportions of the plain-cement semi-adiabatic test of Lavergne et al.
 (2018), Table 11, at w/b = 0.5: 371 g of binder, 1113 g of dry sand, 196 g of
@@ -406,20 +406,20 @@ water. The sand is there to keep the temperature rise moderate, as NF EN 196-9
 prescribes; it takes no part in the chemistry and enters only through its heat
 capacity.
 """
-const LAVERGNE_MIX_C100 = (binder = 0.371u"kg", sand = 1.113u"kg", water = 0.196u"kg")
+const CALORIMETRY_MIX_C100 = (binder = 0.371u"kg", sand = 1.113u"kg", water = 0.196u"kg")
 
 """
-    LAVERGNE_LOSS_A, LAVERGNE_LOSS_B
+    CALORIMETRY_LOSS_A, CALORIMETRY_LOSS_B
 
 Calibration of the calorimeter's heat loss, Lavergne et al. (2018) Eq. (23):
 `φ(ΔT) = a ΔT + b ΔT²`, with `a = 75 J/(h·K)` and `b = 0.260 J/(h·K²)` from the
 NF EN 196-9 calibration. Converted here to watts.
 """
-const LAVERGNE_LOSS_A = 75.0 / 3600            # W/K
-const LAVERGNE_LOSS_B = 0.26 / 3600           # W/K²
+const CALORIMETRY_LOSS_A = 75.0 / 3600            # W/K
+const CALORIMETRY_LOSS_B = 0.26 / 3600           # W/K²
 
 """
-    LAVERGNE_VESSEL_CP
+    CALORIMETRY_VESSEL_CP
 
 Heat capacity of the calorimeter vessel, **380 J/K**.
 
@@ -432,7 +432,7 @@ with joules: sand and water alone contribute roughly 1.6 kJ/K, so a vessel of
 the order the measurements show. It is read as 380 J/K here, and this note is
 deliberate: the alternative is to change a published number in silence.
 """
-const LAVERGNE_VESSEL_CP = 380.0               # J/K
+const CALORIMETRY_VESSEL_CP = 380.0               # J/K
 
 const _SAND_CP_PER_KG = Ref{Float64}(NaN)
 
@@ -452,7 +452,7 @@ function sand_heat_capacity(mass)
 end
 
 """
-    lavergne_semiadiabatic(; mix = LAVERGNE_MIX_C100, T0 = 293.15u"K", T_env = T0)
+    semiadiabatic_cell(; mix = CALORIMETRY_MIX_C100, T0 = 293.15u"K", T_env = T0)
 
 The NF EN 196-9 device of Lavergne et al. (2018), as a `SemiAdiabaticCalorimeter`.
 
@@ -460,20 +460,20 @@ The NF EN 196-9 device of Lavergne et al. (2018), as a `SemiAdiabaticCalorimeter
 sand. The paste's own heat capacity is `Σᵢ nᵢ Cp⁰ᵢ(T)`, which `ChemistryLab` adds
 at every step from the database, so it must not be counted twice.
 """
-function lavergne_semiadiabatic(;
-        mix = LAVERGNE_MIX_C100, T0 = 293.15u"K", T_env = T0,
+function semiadiabatic_cell(;
+        mix = CALORIMETRY_MIX_C100, T0 = 293.15u"K", T_env = T0,
     )
-    Cp_fixed = LAVERGNE_VESSEL_CP + sand_heat_capacity(mix.sand)
+    Cp_fixed = CALORIMETRY_VESSEL_CP + sand_heat_capacity(mix.sand)
     return SemiAdiabaticCalorimeter(;
         Cp = Cp_fixed * u"J/K",
-        heat_loss = ΔT -> LAVERGNE_LOSS_A * ΔT + LAVERGNE_LOSS_B * ΔT^2,
+        heat_loss = ΔT -> CALORIMETRY_LOSS_A * ΔT + CALORIMETRY_LOSS_B * ΔT^2,
         T_env = T_env,
         T0 = T0,
     )
 end
 
 """
-    langavant_temperature(t, qdot_per_g, states; mix = LAVERGNE_MIX_C100, T_env = 293.15)
+    langavant_temperature(t, qdot_per_g, states; mix = CALORIMETRY_MIX_C100, T_env = 293.15)
 
 Temperature history of the NF EN 196-9 cell, integrated from a heat rate measured
 at `T_env`.
@@ -494,11 +494,11 @@ mass of binder in `mix`.
 """
 function langavant_temperature(
         t, qdot_per_g, states;
-        mix = LAVERGNE_MIX_C100, T_env = 293.15,
+        mix = CALORIMETRY_MIX_C100, T_env = 293.15,
     )
     m_binder_g = ustrip(us"kg", mix.binder) * 1000
-    C_fixed = LAVERGNE_VESSEL_CP + sand_heat_capacity(mix.sand)
-    φ(ΔT) = LAVERGNE_LOSS_A * ΔT + LAVERGNE_LOSS_B * ΔT^2
+    C_fixed = CALORIMETRY_VESSEL_CP + sand_heat_capacity(mix.sand)
+    φ(ΔT) = CALORIMETRY_LOSS_A * ΔT + CALORIMETRY_LOSS_B * ΔT^2
 
     T = fill(T_env, length(t))
     for i in 2:length(t)
@@ -624,11 +624,11 @@ function main()
     end
 
     println("\n── semi-adiabatic cell, NF EN 196-9 ──")
-    m_binder_g = ustrip(us"kg", LAVERGNE_MIX_C100.binder) * 1000
+    m_binder_g = ustrip(us"kg", CALORIMETRY_MIX_C100.binder) * 1000
     for (lbl, qd, Q, st) in (("with limestone", qd_c, Q_c, st_c), ("no limestone", qd_n, Q_n, st_n))
         T = langavant_temperature(t_cal, qd ./ g, st)
         j = argmax(T)
-        C_tot = LAVERGNE_VESSEL_CP + sand_heat_capacity(LAVERGNE_MIX_C100.sand) +
+        C_tot = CALORIMETRY_VESSEL_CP + sand_heat_capacity(CALORIMETRY_MIX_C100.sand) +
             ustrip(us"J/K", heat_capacity(st[end])) * m_binder_g / 1000
         @printf "%-15s  ΔT max %.1f K at %.1f h    adiabatic ΔT(28 d) %.1f K\n" lbl (
             T[j] - 293.15

@@ -79,31 +79,31 @@ set_quantity!(state0, "H2O@", WC * u"kg")
 # Parameters K₁, N₁, K₂, N₂, K₃, N₃, B, Ea — Parrot & Killoh (1984)
 # Ea — Schindler & Folliard (2005) / van Breugel (1991) [J/mol]
 
-const PK_L2018_C3S = (
+const PK_SMOOTHED_C3S = (
     K₁ = 1.5u"1/d", N₁ = 3.3, K₂ = 0.018u"1/d", N₂ = 2.5,
     K₃ = 0.0024u"1/d", N₃ = 4.0, B = 0.5,
     Ea = 41_570.0u"J/mol", T_ref = 293.15u"K",
 )
-const PK_L2018_C2S = (
+const PK_SMOOTHED_C2S = (
     K₁ = 0.95u"1/d", N₁ = 0.5, K₂ = 0.0005u"1/d", N₂ = 2.5,
     K₃ = 0.0024u"1/d", N₃ = 4.0, B = 0.2,
     Ea = 43_670.0u"J/mol", T_ref = 293.15u"K",
 )
-const PK_L2018_C3A = (
+const PK_SMOOTHED_C3A = (
     K₁ = 0.082u"1/d", N₁ = 0.87, K₂ = 0.00024u"1/d", N₂ = 2.0,
     K₃ = 0.0024u"1/d", N₃ = 4.0, B = 0.04,
     Ea = 54_040.0u"J/mol", T_ref = 293.15u"K",
 )
-const PK_L2018_C4AF = (
+const PK_SMOOTHED_C4AF = (
     K₁ = 0.165u"1/d", N₁ = 3.7, K₂ = 0.0015u"1/d", N₂ = 2.5,
     K₃ = 0.0024u"1/d", N₃ = 4.0, B = 0.5,
     Ea = 34_420.0u"J/mol", T_ref = 293.15u"K",
 )
 
-pk_C3S = parrot_killoh(PK_L2018_C3S, "C3S"; α_max = ALPHA_MAX)
-pk_C2S = parrot_killoh(PK_L2018_C2S, "C2S"; α_max = ALPHA_MAX)
-pk_C3A = parrot_killoh(PK_L2018_C3A, "C3A"; α_max = ALPHA_MAX)
-pk_C4AF = parrot_killoh(PK_L2018_C4AF, "C4AF"; α_max = ALPHA_MAX)
+pk_C3S = parrot_killoh(PK_SMOOTHED_C3S, "C3S"; α_max = ALPHA_MAX)
+pk_C2S = parrot_killoh(PK_SMOOTHED_C2S, "C2S"; α_max = ALPHA_MAX)
+pk_C3A = parrot_killoh(PK_SMOOTHED_C3A, "C3A"; α_max = ALPHA_MAX)
+pk_C4AF = parrot_killoh(PK_SMOOTHED_C4AF, "C4AF"; α_max = ALPHA_MAX)
 
 # ── 4. Kinetic reaction list ─────────────────────────────────────────────────
 #
