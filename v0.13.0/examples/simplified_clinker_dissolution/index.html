@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Simplified Clinker Dissolution · ChemistryLab.jl</title><meta name="title" content="Simplified Clinker Dissolution · ChemistryLab.jl"/><meta property="og:title" content="Simplified Clinker Dissolution · ChemistryLab.jl"/><meta property="twitter:title" content="Simplified Clinker Dissolution · ChemistryLab.jl"/><meta name="description" content="Documentation for ChemistryLab.jl."/><meta property="og:description" content="Documentation for ChemistryLab.jl."/><meta property="twitter:description" content="Documentation for ChemistryLab.jl."/><meta property="og:url" content="https://MicroPoroChemoMechanics.github.io/ChemistryLab.jl/examples/simplified_clinker_dissolution/"/><meta property="twitter:url" content="https://MicroPoroChemoMechanics.github.io/ChemistryLab.jl/examples/simplified_clinker_dissolution/"/><link rel="canonical" href="https://MicroPoroChemoMechanics.github.io/ChemistryLab.jl/examples/simplified_clinker_dissolution/"/><script data-outdated-warner src="../../assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.050/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.8/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="../.."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../../assets/documenter.js"></script><script src="../../search_index.js"></script><script src="../../siteinfo.js"></script><script src="../../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-mocha.css" data-theme-name="catppuccin-mocha"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-macchiato.css" data-theme-name="catppuccin-macchiato"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-frappe.css" data-theme-name="catppuccin-frappe"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-latte.css" data-theme-name="catppuccin-latte"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../../assets/themeswap.js"></script><link href="../../assets/documentercitations/citations-hover.css" rel="stylesheet" type="text/css"/><link href="../../assets/documentercitations/citations.css" rel="stylesheet" type="text/css"/><link href="../../assets/favicon.ico" rel="icon" type="image/x-icon"/><link href="../../assets/custom.css" rel="stylesheet" type="text/css"/><script src="../../assets/documentercitations/citations-data.js"></script><script src="../../assets/documentercitations/citations-hover.js"></script><script src="../../assets/documentercitations/citations-backlinks.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><a class="docs-logo" href="../../"><img src="../../assets/logo.svg" alt="ChemistryLab.jl logo"/></a><div class="docs-package-name"><span class="docs-autofit"><a href="../../">ChemistryLab.jl</a></span></div><button class="docs-search-query input is-rounded is-small is-clickable my-2 mx-auto py-1 px-2" id="documenter-search-query">Search docs (Ctrl + /)</button><ul class="docs-menu"><li><a class="tocitem" href="../../">Home</a></li><li><a class="tocitem" href="../../quickstart/">Getting Started</a></li><li><input class="collapse-toggle" id="menuitem-3" type="checkbox"/><label class="tocitem" for="menuitem-3"><span class="docs-label">Tutorial</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../../man/formula_manipulation/">Chemical Formula Manipulation</a></li><li><a class="tocitem" href="../../man/species/">Species</a></li><li><a class="tocitem" href="../../man/cement_species/">Cement Species</a></li><li><a class="tocitem" href="../../man/databases/">Database Interoperability</a></li><li><a class="tocitem" href="../../man/stoich_matrices/">Stoichiometric Matrix</a></li><li><a class="tocitem" href="../../man/reactions/">Chemical Reactions</a></li><li><a class="tocitem" href="../../man/thermodynamics/">Thermodynamic Functions</a></li><li><a class="tocitem" href="../../man/chemical_system_state/">ChemicalSystem and ChemicalState</a></li><li><a class="tocitem" href="../../man/equilibrium/">Chemical Equilibrium</a></li><li><a class="tocitem" href="../../man/kinetics/">Chemical Kinetics</a></li><li><a class="tocitem" href="../../man/coupling/">Coupling kinetics and equilibrium</a></li><li><a class="tocitem" href="../../man/reaktoro_comparison/">Validation against Reaktoro</a></li><li><a class="tocitem" href="../../man/advanced/">Advanced Topics</a></li></ul></li><li><input class="collapse-toggle" id="menuitem-4" type="checkbox" checked/><label class="tocitem" for="menuitem-4"><span class="docs-label">Examples</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../bogue_calculation/">Bogue Calculation</a></li><li><a class="tocitem" href="../example_stoich_matrix/">Stoichiometric Matrix</a></li><li><a class="tocitem" href="../from_scratch/">Calculation of thermodynamic properties of calcite dissolution</a></li><li><a class="tocitem" href="../titration_acetic_acid/">Titration of Acetic Acid by NaOH</a></li><li><a class="tocitem" href="../titration_maleic_acid/">Titration of Maleic Acid by NaOH</a></li><li><a class="tocitem" href="../co2_carbonate_system/">CO₂ Dissolution and the Carbonate System</a></li><li class="is-active"><a class="tocitem" href>Simplified Clinker Dissolution</a><ul class="internal"><li><a class="tocitem" href="#Minimal-workflow"><span>Minimal workflow</span></a></li><li><a class="tocitem" href="#Inspecting-the-equilibrium-state"><span>Inspecting the equilibrium state</span></a></li><li><a class="tocitem" href="#Controlling-the-solver"><span>Controlling the solver</span></a></li><li><a class="tocitem" href="#Using-EquilibriumSolver-explicitly"><span>Using <code>EquilibriumSolver</code> explicitly</span></a></li><li><a class="tocitem" href="#Activity-models"><span>Activity models</span></a></li></ul></li><li><a class="tocitem" href="../cement_carbonation/">Carbonation of a Cement Paste</a></li><li><a class="tocitem" href="../cement_clinker_kinetics/">Cement clinker hydration kinetics</a></li><li><a class="tocitem" href="../coupled_hydration/">The hydrating paste, end to end</a></li><li><a class="tocitem" href="../ionic_hydration/">The full Portland cement, through its pore solution</a></li><li><a class="tocitem" href="../hydration_calibration/">Calibrating hydration kinetics on measured calorimetry</a></li></ul></li><li><input class="collapse-toggle" id="menuitem-5" type="checkbox"/><label class="tocitem" for="menuitem-5"><span class="docs-label">API</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../../api/thermo_functions/">Thermodynamical functions</a></li><li><a class="tocitem" href="../../api/thermo_models/">Thermodynamical models</a></li><li><a class="tocitem" href="../../api/water_properties/">Water properties</a></li><li><a class="tocitem" href="../../api/element_order/">Element order</a></li><li><a class="tocitem" href="../../api/parsing_tools/">Parsing tools</a></li><li><a class="tocitem" href="../../api/formulas/">Formulas</a></li><li><a class="tocitem" href="../../api/species/">Species</a></li><li><a class="tocitem" href="../../api/stoich_matrices/">Stoichiometric Matrix</a></li><li><a class="tocitem" href="../../api/reactions/">Reactions</a></li><li><a class="tocitem" href="../../api/databases/">Databases</a></li><li><a class="tocitem" href="../../api/chemical_systems/">Chemical systems and states</a></li><li><a class="tocitem" href="../../api/equilibrium/">Equilibrium</a></li><li><a class="tocitem" href="../../api/kinetics/">Kinetics</a></li><li><a class="tocitem" href="../../api/utils/">Utilities</a></li></ul></li><li><a class="tocitem" href="../../references/">References</a></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><a class="docs-sidebar-button docs-navbar-link fa-solid fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a><nav class="breadcrumb"><ul class="is-hidden-mobile"><li><a class="is-disabled">Examples</a></li><li class="is-active"><a href>Simplified Clinker Dissolution</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>Simplified Clinker Dissolution</a></li></ul></nav><div class="docs-right"><a class="docs-navbar-link" href="https://github.com/MicroPoroChemoMechanics/ChemistryLab.jl" title="View the repository on GitHub"><span class="docs-icon fa-brands"></span><span class="docs-label is-hidden-touch">GitHub</span></a><a class="docs-settings-button docs-navbar-link fa-solid fa-gear" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-article-toggle-button fa-solid fa-chevron-up" id="documenter-article-toggle-button" href="javascript:;" title="Collapse all docstrings"></a></div></header><article class="content" id="documenter-page"><h1 id="sec-clinker-dissolution"><a class="docs-heading-anchor" href="#sec-clinker-dissolution">Simplified Clinker Dissolution</a><a id="sec-clinker-dissolution-1"></a><a class="docs-heading-anchor-permalink" href="#sec-clinker-dissolution" title="Permalink"></a></h1><p>This example illustrates ChemistryLab&#39;s equilibrium workflow applied to cement chemistry: computing the hydration state of a simplified Portland clinker at a given water-to-cement ratio. ChemistryLab computes thermodynamic equilibrium by minimizing the Gibbs free energy of the system subject to element-conservation constraints. The workflow always follows the same four steps:</p><ol><li>Build a <a href="../../api/chemical_systems/#ChemicalSystem"><code>ChemicalSystem</code></a> (species + stoichiometric matrix).</li><li>Create an initial <a href="../../api/chemical_systems/#ChemicalState"><code>ChemicalState</code></a> (temperature, pressure, initial amounts).</li><li>Call <a href="../../api/equilibrium/#ChemistryLab.equilibrate-Tuple{ChemicalState, Any}"><code>equilibrate</code></a> (or use <a href="../../api/equilibrium/#ChemistryLab.EquilibriumSolver"><code>EquilibriumSolver</code></a> explicitly).</li><li>Inspect the resulting <a href="../../api/chemical_systems/#ChemicalState"><code>ChemicalState</code></a>.</li></ol><hr/><h2 id="Minimal-workflow"><a class="docs-heading-anchor" href="#Minimal-workflow">Minimal workflow</a><a id="Minimal-workflow-1"></a><a class="docs-heading-anchor-permalink" href="#Minimal-workflow" title="Permalink"></a></h2><p>The convenience function <a href="../../api/equilibrium/#ChemistryLab.equilibrate-Tuple{ChemicalState, Any}"><code>equilibrate</code></a> handles everything with sensible defaults. The example below reproduces a simplified clinker dissolution calculation.</p><pre><code class="language-julia hljs">using ChemistryLab
+using DynamicQuantities
+
+substances = build_species(datapath(&quot;cemdata18-thermofun.json&quot;))
+input_species = split(&quot;C3S C2S C3A C4AF Gp Anh Portlandite Jennite H2O@ ettringite monosulphate12 C3AH6 C3FH6 C4FH13&quot;)
+species = speciation(substances, input_species; aggregate_state=[AS_AQUEOUS])
+
+cs = ChemicalSystem(species, CEMDATA_PRIMARIES)</code></pre><pre><code class="language-julia hljs">state = ChemicalState(cs)
+
+# Clinker + gypsum composition (mass fractions, total = 1)
+compo = [&quot;C3S&quot; =&gt; 0.678, &quot;C2S&quot; =&gt; 0.166, &quot;C3A&quot; =&gt; 0.04, &quot;C4AF&quot; =&gt; 0.072, &quot;Gp&quot; =&gt; 0.028]
+c     = sum(last.(compo))
+wc    = 0.4          # water-to-cement ratio
+w     = wc * c
+mtot  = c + w
+
+for x in compo
+    set_quantity!(state, x.first, x.second / mtot * u&quot;kg&quot;)
+end
+set_quantity!(state, &quot;H2O@&quot;, w / mtot * u&quot;kg&quot;)
+
+# pH-neutral seed for H⁺ and OH⁻
+V = volume(state)
+set_quantity!(state, &quot;H+&quot;,  1e-7u&quot;mol/L&quot; * V.liquid)
+set_quantity!(state, &quot;OH-&quot;, 1e-7u&quot;mol/L&quot; * V.liquid)
+
+state_eq = equilibrate(state)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">ChemicalState{Species, AbstractReaction, DynamicQuantities.Quantity{Float64, DynamicQuantities.SymbolicDimensions{DynamicQuantities.FRInt32}}, Float64}
+┌──────────────────────────────────────────────────────────────────────────────────────────────────┐
+│             T : 298.15 K                                                                         │
+│             P : 1.0 bar                                                                          │
+╞══════════════════════════════════════════════════════════════════════════════════════════════════╡
+│    # liquid #│             n [mol]│               m [g]│             V [cm³]│           c [mol/L]│
+├┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┤
+│   tot. liquid│             4.56715│             82.3083│             82.4393│                    │
+├┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┤
+│          H2O@│              4.5639│             82.2187│             82.4624│             55.3608│
+│           OH-│          0.00203357│            0.034585│         -0.00957373│           0.0246675│
+│          Ca+2│         0.000847258│           0.0339564│          -0.0156224│           0.0102774│
+│         CaOH+│         0.000348345│           0.0198853│          0.00200733│          0.00422548│
+│         AlO2-│           7.9499e-6│         0.000468881│          7.52644e-5│          9.64333e-5│
+│       CaSiO3@│          3.74697e-6│         0.000435248│                 0.0│          4.54512e-5│
+│        HSiO3-│          3.94443e-7│          3.04076e-5│           1.7852e-6│          4.78465e-6│
+│      Ca(SO4)@│          3.06734e-7│          4.17569e-5│          1.44184e-6│          3.72072e-6│
+│         SO4-2│          2.48713e-7│          2.38904e-5│          3.21279e-6│          3.01693e-6│
+│    Ca(HSiO3)+│          2.28591e-7│          2.67835e-5│         -1.53991e-6│          2.77283e-6│
+│         FeO2-│          2.19279e-7│          1.92621e-5│           9.9016e-8│          2.65989e-6│
+│        SiO3-2│          2.06817e-7│          1.57351e-5│                 0.0│          2.50872e-6│
+│         SiO2@│          1.17746e-7│          7.07451e-6│          1.89138e-6│          1.42827e-6│
+│        AlO2H@│          7.22972e-8│          4.33693e-6│          9.40545e-7│          8.76974e-7│
+│      AlSiO5-3│          7.09831e-8│          9.58708e-6│         -2.42277e-6│          8.61034e-7│
+│        FeO2H@│          6.73228e-8│           5.9817e-6│          4.85351e-7│          8.16635e-7│
+│            H+│          4.54402e-8│          4.58037e-8│                 0.0│          5.51195e-7│
+│           O2@│          3.47449e-8│          1.11177e-6│          1.05975e-6│          4.21461e-7│
+│          FeO+│          2.92305e-8│          2.10004e-6│         -1.22829e-6│           3.5457e-7│
+│          AlO+│          2.70981e-8│          1.16469e-6│          8.32821e-9│          3.28703e-7│
+│         HSO4-│          2.55853e-8│          2.48341e-6│           8.9142e-7│          3.10353e-7│
+│      Si4O10-4│          1.82481e-8│          4.96952e-6│                 0.0│          2.21353e-7│
+│        AlOH+2│          1.62304e-8│          7.13949e-7│         -4.42684e-8│          1.96876e-7│
+│         FeOH+│           1.5262e-8│          1.11187e-6│         -2.55071e-7│           1.8513e-7│
+│        FeOH+2│          1.49029e-8│          1.08571e-6│         -3.77648e-7│          1.80775e-7│
+│          Al+3│          1.40643e-8│          3.79477e-7│          -6.3631e-7│          1.70602e-7│
+│          Fe+2│          1.31039e-8│          7.31788e-7│         -2.96678e-7│          1.58952e-7│
+│      Al(SO4)+│          1.25747e-8│          1.54716e-6│         -7.56873e-8│          1.52532e-7│
+│      Fe(SO4)@│          1.07263e-8│          1.62933e-6│           1.7933e-8│          1.30111e-7│
+│     Al(SO4)2-│          1.06831e-8│           2.3406e-6│           3.3237e-7│          1.29587e-7│
+│          Fe+3│          9.48752e-9│          5.29831e-7│         -3.58536e-7│          1.15085e-7│
+│      Fe(SO4)+│          8.64333e-9│          1.31293e-6│          -2.2779e-8│          1.04845e-7│
+│    Fe(HSO4)+2│          7.90791e-9│          1.20919e-6│          1.83453e-8│           9.5924e-8│
+│     Fe(SO4)2-│          7.36009e-9│          1.82499e-6│          2.24375e-7│          8.92789e-8│
+│     Fe(HSO4)+│          7.32601e-9│          1.12021e-6│          1.37776e-7│          8.88655e-8│
+│         SO3-2│          6.87202e-9│          5.50153e-7│         -2.82851e-8│          8.33585e-8│
+│         HSO3-│          6.05469e-9│          4.90823e-7│          1.99543e-7│          7.34442e-8│
+│           HS-│          2.80761e-9│          9.28422e-8│          5.67405e-8│          3.40567e-8│
+│          H2S@│           2.6881e-9│          9.15998e-8│          9.39525e-8│          3.26071e-8│
+│        S2O3-2│           2.5008e-9│          2.80382e-7│          6.90027e-8│           3.0335e-8│
+│           H2@│          1.36799e-9│          2.75787e-9│          3.45614e-8│          1.65939e-8│
+╞══════════════════════════════════════════════════════════════════════════════════════════════════╡
+│     # solid #│             n [mol]│               m [g]│             V [cm³]│                    │
+├┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┤
+│    tot. solid│              6.0689│             917.692│             387.255│                    │
+├┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┤
+│   Portlandite│              2.8911│             214.207│             95.5797│                    │
+│       Jennite│             2.85524│             546.425│             223.851│                    │
+│monosulphate12│            0.118056│             73.4905│             36.6092│                    │
+│         C3FH6│             0.10755│             46.8927│             16.7011│                    │
+│         C3AH6│           0.0969552│             36.6763│             14.5144│                    │
+│        C4FH13│          3.45534e-7│         0.000213606│          9.88021e-5│                    │
+│    ettringite│          1.44606e-7│         0.000181491│          0.00010224│                    │
+│           C3S│          8.64275e-8│          1.97326e-5│          6.32476e-6│                    │
+│           Anh│          7.69403e-8│          1.04742e-5│          3.53464e-6│                    │
+│           C2S│          6.85135e-8│          1.18006e-5│          3.54831e-6│                    │
+│            Gp│          3.19468e-8│          5.50009e-6│          2.38611e-6│                    │
+│          C4AF│          7.40693e-9│          3.59943e-6│          9.64396e-7│                    │
+│           C3A│         1.56138e-13│         4.21872e-11│         1.39302e-11│                    │
+╞══════════════════════════════════════════════════════════════════════════════════════════════════╡
+│     # TOTAL #│             n [mol]│               m [g]│             V [cm³]│                    │
+├┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┤
+│              │              10.636│              1000.0│             469.695│                    │
+╞══════════════════════════════════════════════════════════════════════════════════════════════════╡
+│            pH : 12.3923                                                                          │
+│           pOH : 1.6079                                                                           │
+│      porosity : 0.175517                                                                         │
+│    saturation : 1.0                                                                              │
+└──────────────────────────────────────────────────────────────────────────────────────────────────┘
+</code></pre><div class="admonition is-success" id="Quick-shortcut-73bc007d9060aadb"><header class="admonition-header">Quick shortcut<a class="admonition-anchor" href="#Quick-shortcut-73bc007d9060aadb" title="Permalink"></a></header><div class="admonition-body"><p>If your <code>ChemicalState</code> was constructed from a <code>ChemicalSystem</code> built with <code>CEMDATA_PRIMARIES</code>, calling <code>equilibrate(state)</code> with no other arguments is usually sufficient for cement-chemistry problems.</p></div></div><hr/><h2 id="Inspecting-the-equilibrium-state"><a class="docs-heading-anchor" href="#Inspecting-the-equilibrium-state">Inspecting the equilibrium state</a><a id="Inspecting-the-equilibrium-state-1"></a><a class="docs-heading-anchor-permalink" href="#Inspecting-the-equilibrium-state" title="Permalink"></a></h2><p>The returned <a href="../../api/chemical_systems/#ChemicalState"><code>ChemicalState</code></a> carries all derived thermodynamic quantities:</p><pre><code class="language-julia hljs">println(&quot;pH      = &quot;, pH(state_eq))
+println(&quot;pOH     = &quot;, pOH(state_eq))
+println(&quot;porosity   = &quot;, porosity(state_eq))
+println(&quot;saturation = &quot;, saturation(state_eq))</code></pre><p>Phase volumes and mole amounts are accessible via named tuples:</p><pre><code class="language-julia hljs">v = volume(state_eq)
+println(&quot;V liquid = &quot;, v.liquid)
+println(&quot;V solid  = &quot;, v.solid)
+println(&quot;V total  = &quot;, v.total)
+
+m = moles(state_eq)
+println(&quot;n liquid = &quot;, m.liquid)
+println(&quot;n solid  = &quot;, m.solid)</code></pre><p>Individual species amounts (in mol):</p><pre><code class="language-julia hljs">cs_eq = state_eq.system
+for (i, sp) in enumerate(cs_eq.species)
+    n_i = state_eq.n[i]
+    println(rpad(symbol(sp), 20), ustrip(n_i), &quot; mol&quot;)
+end</code></pre><hr/><h2 id="Controlling-the-solver"><a class="docs-heading-anchor" href="#Controlling-the-solver">Controlling the solver</a><a id="Controlling-the-solver-1"></a><a class="docs-heading-anchor-permalink" href="#Controlling-the-solver" title="Permalink"></a></h2><h3 id="Variable-space:-:linear-vs-:log"><a class="docs-heading-anchor" href="#Variable-space:-:linear-vs-:log">Variable space: <code>:linear</code> vs <code>:log</code></a><a id="Variable-space:-:linear-vs-:log-1"></a><a class="docs-heading-anchor-permalink" href="#Variable-space:-:linear-vs-:log" title="Permalink"></a></h3><p><a href="../../api/equilibrium/#ChemistryLab.equilibrate-Tuple{ChemicalState, Any}"><code>equilibrate</code></a> accepts a <code>variable_space</code> keyword that selects the optimization variable space:</p><table><tr><th style="text-align: right"><code>variable_space</code></th><th style="text-align: right">Variables</th><th style="text-align: right">Recommended when</th></tr><tr><td style="text-align: right"><code>Val(:linear)</code></td><td style="text-align: right">mole amounts <code>nᵢ ≥ 0</code></td><td style="text-align: right">most systems, default</td></tr><tr><td style="text-align: right"><code>Val(:log)</code></td><td style="text-align: right"><code>log nᵢ</code></td><td style="text-align: right">systems spanning many orders of magnitude</td></tr></table><pre><code class="language-julia hljs">state_eq_log = equilibrate(state; variable_space=Val(:log))</code></pre><div class="admonition is-warning" id="Convergence-edb7437c694b177a"><header class="admonition-header">Convergence<a class="admonition-anchor" href="#Convergence-edb7437c694b177a" title="Permalink"></a></header><div class="admonition-body"><p>Solving a system of equations in chemistry can be a difficult undertaking. The orders of magnitude can vary greatly, and convergence is not guaranteed.</p></div></div><hr/><h3 id="Tolerances"><a class="docs-heading-anchor" href="#Tolerances">Tolerances</a><a id="Tolerances-1"></a><a class="docs-heading-anchor-permalink" href="#Tolerances" title="Permalink"></a></h3><p>Tighter tolerances are passed directly as keyword arguments and forwarded to the underlying Ipopt solver:</p><pre><code class="language-julia hljs">state_eq_tight = equilibrate(state; abstol=1e-12, reltol=1e-12)</code></pre><hr/><h2 id="Using-EquilibriumSolver-explicitly"><a class="docs-heading-anchor" href="#Using-EquilibriumSolver-explicitly">Using <code>EquilibriumSolver</code> explicitly</a><a id="Using-EquilibriumSolver-explicitly-1"></a><a class="docs-heading-anchor-permalink" href="#Using-EquilibriumSolver-explicitly" title="Permalink"></a></h2><p>For batch calculations where many different initial states share the same system and activity model, construct an <a href="../../api/equilibrium/#ChemistryLab.EquilibriumSolver"><code>EquilibriumSolver</code></a> once and reuse it:</p><pre><code class="language-julia hljs">using Optimization, OptimizationIpopt
+
+opt = IpoptOptimizer(
+    acceptable_tol        = 1e-12,
+    dual_inf_tol          = 1e-12,
+    acceptable_iter       = 1000,
+    constr_viol_tol       = 1e-12,
+    warm_start_init_point = &quot;no&quot;,
+)
+
+solver = EquilibriumSolver(
+    cs,
+    DiluteSolutionModel(),
+    opt;
+    variable_space = Val(:linear),
+    abstol  = 1e-10,
+    reltol  = 1e-10,
+)</code></pre><p>Once built, <code>solver</code> is called with any compatible <code>ChemicalState</code>:</p><pre><code class="language-julia hljs">using Optimization, OptimizationIpopt #hide
+
+opt = IpoptOptimizer( #hide
+    acceptable_tol        = 1e-12, #hide
+    dual_inf_tol          = 1e-12, #hide
+    acceptable_iter       = 1000, #hide
+    constr_viol_tol       = 1e-12, #hide
+    warm_start_init_point = &quot;no&quot;, #hide
+) #hide
+
+solver = EquilibriumSolver( #hide
+    cs, #hide
+    DiluteSolutionModel(), #hide
+    opt; #hide
+    variable_space = Val(:linear), #hide
+    abstol  = 1e-10, #hide
+    reltol  = 1e-10, #hide
+) #hide
+state_eq2 = solve(solver, state)</code></pre><div class="admonition is-info" id="Performance-98d5721e7f8fc23d"><header class="admonition-header">Performance<a class="admonition-anchor" href="#Performance-98d5721e7f8fc23d" title="Permalink"></a></header><div class="admonition-body"><p>The potential function <code>μ(n, p)</code> is compiled once during <code>EquilibriumSolver</code> construction. Repeated calls to <code>solve(solver, ...)</code> with different states reuse it, avoiding redundant compilation overhead.</p></div></div><hr/><h2 id="Activity-models"><a class="docs-heading-anchor" href="#Activity-models">Activity models</a><a id="Activity-models-1"></a><a class="docs-heading-anchor-permalink" href="#Activity-models" title="Permalink"></a></h2><p>All activity models inherit from <a href="../../api/equilibrium/#ChemistryLab.AbstractActivityModel"><code>AbstractActivityModel</code></a>. The only built-in model is <a href="../../api/equilibrium/#ChemistryLab.DiluteSolutionModel"><code>DiluteSolutionModel</code></a>, which implements:</p><table><tr><th style="text-align: right">Phase</th><th style="text-align: right">Law</th><th style="text-align: right">Expression</th></tr><tr><td style="text-align: right">Solvent (H₂O)</td><td style="text-align: right">Raoult</td><td style="text-align: right"><code>ln a = ln xₛ</code></td></tr><tr><td style="text-align: right">Aqueous solutes</td><td style="text-align: right">Henry</td><td style="text-align: right"><code>ln a = ln(cᵢ / c°)</code>, <code>c° = 1 mol/L</code></td></tr><tr><td style="text-align: right">Crystals</td><td style="text-align: right">Pure solid</td><td style="text-align: right"><code>ln a = 0</code></td></tr><tr><td style="text-align: right">Gas</td><td style="text-align: right">Ideal mixture</td><td style="text-align: right"><code>ln a = ln xᵢ</code></td></tr></table><p>To implement a custom activity model, define a new subtype and extend <code>activity_model</code>:</p><pre><code class="language-julia hljs">struct MyModel &lt;: AbstractActivityModel
+    # model parameters
+end
+
+function ChemistryLab.activity_model(::ChemicalSystem, ::MyModel)
+    # return a closure lna(n, p) -&gt; Vector{Float64}
+    return (_, _) -&gt; begin
+        # compute and return log-activities
+    end
+end</code></pre><p>Pass your model to <code>equilibrate</code> or <code>EquilibriumSolver</code>:</p><pre><code class="language-julia hljs">state_eq = equilibrate(state; model=MyModel(...))</code></pre></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../co2_carbonate_system/">« CO₂ Dissolution and the Carbonate System</a><a class="docs-footer-nextpage" href="../cement_carbonation/">Carbonation of a Cement Paste »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.17.0 on <span class="colophon-date" title="Monday 24 August 2026 15:58">Monday 24 August 2026</span>. Using Julia version 1.12.7.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
