@@ -1,4 +1,3 @@
-using Revise
 using ChemistryLab
 using DynamicQuantities
 import SymPy: symbols, Sym, N, subs, factor, simplify

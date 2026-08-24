@@ -5,7 +5,7 @@ using LinearAlgebra
 # has. These tests check the two things that matter: that the certificate is a
 # real proof, and that the certified answer is the right one.
 
-const DUAL_DATA = joinpath(pkgdir(ChemistryLab), "data", "cemdata18-thermofun.json")
+const DUAL_DATA = datapath("cemdata18-thermofun.json")
 
 # Reaktoro 2.13.0, Cemdata18, ideal activities; 55.5 mol H2O, 0.05 mol calcite,
 # 0.01 mol CO2. The same reference as `equilibrium_reference.jl`.
@@ -202,7 +202,7 @@ end
     # puts everything in ONE of them; declared as a solution, the same system is
     # certified and distributes over all four, which is what a solid solution is.
     substances = build_species(DUAL_DATA)
-    toml = joinpath(pkgdir(ChemistryLab), "data", "solid_solutions.toml")
+    toml = datapath("solid_solutions.toml")
     members = ["CSHQ-TobD", "CSHQ-TobH", "CSHQ-JenH", "CSHQ-JenD"]
     sp = speciation(substances, vcat("Portlandite", members); aggregate_state = [AS_AQUEOUS])
     ss = [x for x in build_solid_solutions(toml, Dict(symbol(s) => s for s in sp)) if x.name == "CSHQ"]

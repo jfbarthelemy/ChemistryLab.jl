@@ -129,7 +129,7 @@ The recommended workflow loads all species from a JSON file with `build_species`
 using ChemistryLab
 
 # 1. Load all species from the database
-all_species = build_species("../../../data/cemdata18-merged.json")
+all_species = build_species(datapath("cemdata18-merged.json"))
 ```
 
 For a given set of seed species (e.g. Portlandite and water), `speciation` selects all species whose atomic composition is a subset of the seed atoms:
@@ -152,7 +152,7 @@ A `ChemicalSystem` then computes both stoichiometric matrices at construction ti
 
 ```@setup example1
     using ChemistryLab #hide
-    all_species = build_species("../../../data/cemdata18-merged.json") #hide
+    all_species = build_species(datapath("cemdata18-merged.json")) #hide
     species = speciation(all_species, split("Portlandite H2O@");
                   aggregate_state=[AS_AQUEOUS], exclude_species=split("H2@ O2@ FeOH+ Fe+2")) #hide
     dict_species = Dict(symbol(s) => s for s in species) #hide

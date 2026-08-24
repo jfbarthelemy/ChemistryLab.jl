@@ -250,6 +250,12 @@ Reads both files, extracts phases from the .dat file, merges them into the JSON
 database structure, and writes the result preserving the original JSON formatting.
 """
 function merge_json(json_path, dat_path, output_path)
+    # The two inputs are resolved against the bundled `data/` directory when the
+    # working directory does not hold them; `output_path` never is, because it
+    # names a file to create.
+    json_path = resolve_data_path(json_path)
+    dat_path = resolve_data_path(dat_path)
+
     # Read the initial JSON file
     initial_content = read(json_path, String)
 

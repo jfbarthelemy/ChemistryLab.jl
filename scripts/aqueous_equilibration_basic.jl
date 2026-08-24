@@ -5,11 +5,13 @@
 # Demonstrates the simplest ChemicalSystem → ChemicalState → equilibrate flow.
 #
 # Usage:
-#   julia --project scripts/aqueous_equilibration_basic.jl
-# =============================================================================
+#   julia --project=scripts scripts/aqueous_equilibration_basic.jl
+#   or from the REPL:  include("scripts/aqueous_equilibration_basic.jl")
+#   or, in VS Code, just run the file: it activates `scripts/` itself, and every
+#   data file it reads is named with `datapath`, so no working directory matters.
 
-using Pkg
-Pkg.activate(@__DIR__)
+import Pkg
+Pkg.activate(@__DIR__; io = devnull)
 
 using ChemistryLab
 using Optimization, OptimizationIpopt
@@ -18,7 +20,7 @@ using DynamicQuantities
 
 # ── Species and chemical system ──────────────────────────────────────────────
 
-substances = build_species("data/slop98-inorganic-thermofun.json")
+substances = build_species(datapath("slop98-inorganic-thermofun.json"))
 dict = Dict(symbol(s) => s for s in substances)
 species = [dict[s] for s in split("H2O@ Na+ NaOH@ H+ OH-")]
 

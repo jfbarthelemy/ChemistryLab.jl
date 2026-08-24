@@ -58,6 +58,48 @@ using TOML
         @test phases["Calcite"]["logKr"]["values"][1] ≈ -8.48
         @test length(phases["Calcite"]["analytical_expression"]) == 3
     end
+    # No path in a script, a documentation block or a test may depend on the
+    # working directory. `resolve_data_path` tries the working directory first,
+    # so a call that already resolves keeps resolving to the very same file: the
+    # fallbacks can only turn a failure into a success.
+    @testset "data path resolution" begin
+        @test isdir(datapath())
+        @test isfile(datapath("solid_solutions.toml"))
+        @test datapath("experimental", "README.md") ==
+            joinpath(datapath(), "experimental", "README.md")
+
+        resolve = ChemistryLab.resolve_data_path
+        bundled = datapath("cemdata18-thermofun.json")
+        calorimetry = "smilauer2025-116-cemI-52.5R-ladce.csv"
+
+        mktempdir() do dir
+            cd(dir) do
+                # Every form a script or a documentation page has used, from a
+                # working directory holding none of them.
+                @test resolve("cemdata18-thermofun.json") == bundled
+                @test resolve("data/cemdata18-thermofun.json") == bundled
+                @test resolve("../../../data/cemdata18-thermofun.json") == bundled
+                @test resolve(joinpath("experimental", calorimetry)) ==
+                    datapath("experimental", calorimetry)
+
+                # A name that is not a bundled data file fails loudly rather
+                # than silently resolving to something else.
+                @test_throws ArgumentError resolve("no-such-database.json")
+
+                # The working directory wins over a bundled file of the same name.
+                mkdir("data")
+                local_copy = joinpath("data", "cemdata18-thermofun.json")
+                write(local_copy, "{}")
+                @test resolve(local_copy) == local_copy
+            end
+        end
+
+        # The banner a reader sees stays machine-independent.
+        @test ChemistryLab.display_data_path(bundled) ==
+            joinpath("data", "cemdata18-thermofun.json")
+        @test ChemistryLab.display_data_path("/elsewhere/foo.json") == "/elsewhere/foo.json"
+    end
+
 end
 
 @testsection "build_solid_solutions" begin
@@ -146,7 +188,7 @@ end
     end
 
     @testset "data/solid_solutions.toml parses without error" begin
-        toml_path = joinpath(@__DIR__, "..", "data", "solid_solutions.toml")
+        toml_path = datapath("solid_solutions.toml")
         # Just check the file is valid TOML and has solid_solution entries
         data = TOML.parsefile(toml_path)
         @test haskey(data, "solid_solution")

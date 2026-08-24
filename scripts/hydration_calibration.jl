@@ -20,6 +20,12 @@
 #      julia --project=scripts scripts/hydration_calibration.jl
 #      or, from the REPL:  include("scripts/hydration_calibration.jl")
 #
+#  This script deliberately does NOT call `Pkg.activate`:
+#  `docs/src/examples/hydration_calibration.md` and
+#  `test/kinetics/test_calibration.jl` include this file, and the active
+#  project is global process state — activating an environment halfway through a
+#  documentation build changes it for every `@example` block that follows.
+#
 #  The coupled stage is expensive — one Gibbs minimization per accepted step,
 #  plus a certified replay per output instant. `main()` reports its own cost.
 # =============================================================================
@@ -30,6 +36,14 @@ using LinearAlgebra
 using OptimaSolver
 using Optimization
 using OptimizationOptimJL
+# `NelderMead` explicitly, not through the `using` above: OptimizationOptimJL
+# 0.4.19 stopped re-exporting Optim's algorithm names. The binding still exists
+# in that module, so an explicit import works on either version — whereas
+# relying on the re-export made this script depend on which version the
+# environment happened to resolve. It failed in the test environment, which
+# resolves fresh from the registry, while a pinned `scripts/Manifest.toml`
+# still carrying 0.4.18 kept working.
+import OptimizationOptimJL: NelderMead
 using OrderedCollections
 using OrdinaryDiffEq
 using Printf
@@ -49,7 +63,7 @@ Directory holding the vendored measured records. Its `README.md` documents the
 format and its `LICENSE` the terms — the data are CC-BY-4.0 and **not** covered
 by the package license.
 """
-const CALORIMETRY_DIR = joinpath(pkgdir(ChemistryLab), "data", "experimental")
+const CALORIMETRY_DIR = datapath("experimental")
 
 """
     CalorimetryData
@@ -665,7 +679,7 @@ rebuilds it per iteration spends most of its time reading JSON.
 """
 function stoichiometric_system()
     if _STOICH_SYSTEM[] === nothing
-        subs = build_species(joinpath(pkgdir(ChemistryLab), "data", "cemdata18-thermofun.json"))
+        subs = build_species(datapath("cemdata18-thermofun.json"))
         sp = speciation(subs, STOICH_SPECIES; aggregate_state = [AS_AQUEOUS])
         _STOICH_SYSTEM[] = ChemicalSystem(sp, CEMDATA_PRIMARIES)
     end

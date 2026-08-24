@@ -12,11 +12,13 @@
 #   5. Post-processing: mole and temperature tracking
 #
 # Usage:
-#   julia --project scripts/demo_kinetic_species.jl
-# =============================================================================
+#   julia --project=scripts scripts/kinetic_species_api_demo.jl
+#   or from the REPL:  include("scripts/kinetic_species_api_demo.jl")
+#   or, in VS Code, just run the file: it activates `scripts/` itself, and every
+#   data file it reads is named with `datapath`, so no working directory matters.
 
-using Pkg
-Pkg.activate(@__DIR__)
+import Pkg
+Pkg.activate(@__DIR__; io = devnull)
 
 using ChemistryLab
 using OrdinaryDiffEq
@@ -25,7 +27,7 @@ using Printf
 
 # ── 1. Load CEMDATA18 and select species ─────────────────────────────────────
 
-const DATA_FILE = joinpath(pkgdir(ChemistryLab), "data", "cemdata18-thermofun.json")
+const DATA_FILE = datapath("cemdata18-thermofun.json")
 
 substances = build_species(DATA_FILE)
 

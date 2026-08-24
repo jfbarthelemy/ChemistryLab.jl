@@ -8,11 +8,13 @@
 # Solver: OptimaSolver (default) or Ipopt — selected via USE_OPTIMA flag.
 #
 # Usage:
-#   julia --project scripts/titration_acetic_acid.jl
-# =============================================================================
+#   julia --project=scripts scripts/titration_acetic_acid.jl
+#   or from the REPL:  include("scripts/titration_acetic_acid.jl")
+#   or, in VS Code, just run the file: it activates `scripts/` itself, and every
+#   data file it reads is named with `datapath`, so no working directory matters.
 
-using Pkg
-Pkg.activate(@__DIR__)
+import Pkg
+Pkg.activate(@__DIR__; io = devnull)
 
 using ChemistryLab
 using Optimization, OptimizationIpopt
@@ -27,8 +29,8 @@ const USE_OPTIMA = true
 
 # ── Species and chemical system ──────────────────────────────────────────────
 
-substances_inorg = build_species("data/slop98-inorganic-thermofun.json")
-substances_org = build_species("data/slop98-organic-thermofun.json")
+substances_inorg = build_species(datapath("slop98-inorganic-thermofun.json"))
+substances_org = build_species(datapath("slop98-organic-thermofun.json"))
 
 dict_all_species = merge(
     Dict(symbol(s) => s for s in substances_inorg),

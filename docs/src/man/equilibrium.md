@@ -19,7 +19,7 @@ using Optimization, OptimizationIpopt
 using ChemistryLab
 using DynamicQuantities
 
-substances = build_species("../../../data/slop98-inorganic-thermofun.json")
+substances = build_species(datapath("slop98-inorganic-thermofun.json"))
 
 # Select the carbonate-system species, calcite and its dissolution product Ca²⁺
 dict = Dict(symbol(s) => s for s in substances)
@@ -643,7 +643,7 @@ already `SC_SSENDMEMBER`, so database species with `SC_COMPONENT` can be passed 
 ```julia
 using ChemistryLab
 
-substances = build_species("data/cemdata18-thermofun.json")
+substances = build_species(datapath("cemdata18-thermofun.json"))
 dict = Dict(symbol(s) => s for s in substances)
 
 # SolidSolutionPhase requalifies SC_COMPONENT → SC_SSENDMEMBER automatically
@@ -654,7 +654,7 @@ ss_afm = SolidSolutionPhase("AFm", [dict["Ms"], dict["Mc"]])
 
 ```julia
 # Load all phases defined in the TOML
-ss_phases = build_solid_solutions("data/solid_solutions.toml", dict)
+ss_phases = build_solid_solutions(datapath("solid_solutions.toml"), dict)
 ```
 
 See the [Databases](@ref sec-databases) tutorial for the TOML format and the

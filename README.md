@@ -73,10 +73,13 @@ In this example, the database is [cemdata](https://www.empa.ch/web/s308/thermody
 using ChemistryLab
 using DynamicQuantities
 
-# From the repository root (or adapt the path for an installed package):
-# all_species = build_species(joinpath(pkgdir(ChemistryLab), "data", "cemdata18-thermofun.json"))
-all_species = build_species("data/cemdata18-thermofun.json")
+# `datapath` names a bundled database independently of the working directory
+all_species = build_species(datapath("cemdata18-thermofun.json"))
 ```
+
+Runnable versions of every example below live in [`scripts/`](scripts/README.md),
+one file per topic; they run from any working directory, including straight from
+an editor.
 
 The chemical species likely to appear during calcite equilibrium in water are obtained in the following way:
 
@@ -231,7 +234,7 @@ state_eq = equilibrate(state0; model = DaviesActivityModel()) # Davies equation
 Mineral solid solutions (e.g. C-S-H, AFm) are modeled by grouping end-member species into a `SolidSolutionPhase`. Database species with `SC_COMPONENT` class can be passed directly — requalification to `SC_SSENDMEMBER` is handled automatically:
 
 ```julia
-substances = build_species("data/cemdata18-thermofun.json")
+substances = build_species(datapath("cemdata18-thermofun.json"))
 dict = Dict(symbol(s) => s for s in substances)
 
 # Ideal solid solution (any number of end-members)
@@ -243,7 +246,7 @@ afm = SolidSolutionPhase("AFm", [dict["Ms"], dict["Mc"]];
           model = RedlichKisterModel(a0 = 3000.0, a1 = 500.0))
 
 # Or load all solid solution phases at once from a TOML file
-ss_phases = build_solid_solutions("data/solid_solutions.toml", dict)
+ss_phases = build_solid_solutions(datapath("solid_solutions.toml"), dict)
 
 cs = ChemicalSystem(species_list, primaries; solid_solutions = ss_phases)
 ```

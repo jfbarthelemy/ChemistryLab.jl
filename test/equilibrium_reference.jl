@@ -59,7 +59,7 @@ const TRACE_CUTOFF = 1.0e-5
 const N_H2O, N_CAL, N_CO2 = 55.5, 0.05, 0.01
 
 @testset "Reaktoro reference: calcite + CO₂ + water" begin
-    data = joinpath(pkgdir(ChemistryLab), "data", "cemdata18-thermofun.json")
+    data = datapath("cemdata18-thermofun.json")
     dict = Dict(symbol(s) => s for s in build_species(data))
     syms = collect(keys(REAKTORO))
     cs = ChemicalSystem([dict[s] for s in syms], ["H2O@", "H+", "Ca+2", "CO3-2", "Zz"])

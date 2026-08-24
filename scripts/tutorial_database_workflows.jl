@@ -1,8 +1,7 @@
-using Revise
 using ChemistryLab
 using OrderedCollections
 
-df_elements, df_substances, df_reactions = read_thermofun_database("data/cemdata18-merged.json")
+df_elements, df_substances, df_reactions = read_thermofun_database(datapath("cemdata18-merged.json"))
 df_union = get_compatible_species(
     df_substances, split("C3S C2S C3A C4AF Portlandite Jennite H2O@");
     aggregate_states = [AS_AQUEOUS], exclude_species = split("H2@ O2@ FeOH+ Fe+2"), union = true

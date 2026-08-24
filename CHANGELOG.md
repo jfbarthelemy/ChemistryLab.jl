@@ -1,5 +1,102 @@
 # Changelog
 
+## v0.13.0 — a data file is named, not located
+
+### Breaking changes
+
+No name was removed or renamed and no signature changed. Below 1.0 the resolver
+treats a minor bump as breaking regardless, so a downstream
+`[compat] ChemistryLab = "0.12"` must be widened to `"0.13"`. In this repository
+group that is `MeanFieldHomogenization.jl`'s `docs/Project.toml`, which pins
+`ChemistryLab = "0.12"` and will otherwise refuse the new version.
+
+One behavior did change, and it can only turn a former failure into a success:
+the database readers now fall back to the bundled `data/` directory when a path
+does not resolve against the working directory. A call that already worked keeps
+resolving to exactly the same file — see below.
+
+### `datapath`, because a script was only runnable from one directory
+
+`build_species("data/slop98-inorganic-thermofun.json")` resolves its argument
+against the working directory. That is the repository root when the script is
+launched from a shell sitting there, and almost never otherwise: running the
+same file from an editor whose REPL started elsewhere failed with
+
+    SystemError: opening file "data/slop98-inorganic-thermofun.json"
+
+Half the scripts in `scripts/` were written that way and half were not; the test
+suite had independently converged on `joinpath(pkgdir(ChemistryLab), "data", …)`
+in eighteen places, and the documentation pages carried
+`"../../../data/…"`, a depth that silently depended on where the page sat in
+`docs/src/`.
+
+The exported [`datapath`](@ref) names a bundled file without reference to any
+working directory:
+
+```julia
+substances = build_species(datapath("cemdata18-thermofun.json"))
+ss_phases  = build_solid_solutions(datapath("solid_solutions.toml"), dict)
+readdir(datapath())                     # what ships with the package
+```
+
+Every script, documentation block and test now uses it, so the code a reader
+copies out of a page is code that runs.
+
+### The readers resolve a bundled name, so older code keeps working
+
+`read_thermofun_database`, `build_solid_solutions`, `extract_primary_species` and
+`merge_json` (for its two inputs, never its output) resolve their path argument
+in this order: as given, then under the bundled `data/` directory, then relative
+to the package root. The working directory comes **first**, which is what makes
+this safe: a call that resolves today resolves to the very same file tomorrow, a
+local database still takes precedence over a bundled one of the same name, and
+only a name that *is* one of the shipped files can reach the fallback — so a
+mistyped path to a file of your own still fails, now with an error listing what
+is available.
+
+The banner these functions print shows the path relative to the package
+(`data/cemdata18-thermofun.json`) rather than the absolute one. Documenter
+captures that banner into the built page, and an absolute path would have baked
+a build machine's directories into the documentation.
+
+### Also
+
+- `scripts/README.md`, which did not exist, records how to run a script and the
+  one rule that keeps the collection working: a script consumed by the
+  documentation or the test suite (`ionic_hydration.jl`,
+  `hydration_calibration.jl`) never calls `Pkg.activate`, because the active
+  project is global process state and switching it mid-build breaks every
+  `@example` block that follows, on every page.
+- The `Usage:` headers of the scripts said `julia --project` while the scripts
+  activated `scripts/`; they now agree, and mention that running the file
+  directly from an editor works.
+- `using Revise` is gone from the three `tutorial_*.jl` scripts — it belongs in
+  a `startup.jl`, and it resolved only through the machine's global environment.
+  `SymPy`, which `tutorial_symbolic_reactions.jl` imports, is now declared in
+  `scripts/Project.toml`, so that script runs in the environment it activates.
+- The `merge_json` snippet in `docs/src/man/advanced.md` named a `.dat` file that
+  does not exist (`cemdata18.dat`, where the shipped one is
+  `CEMDATA18-31-03-2022-phaseVol.dat`) and passed a bundled path as the output
+  argument. Both corrected.
+
+### A red test suite, and the version pin that hid it
+
+`test/kinetics/test_calibration.jl` errored with
+`UndefVarError: NelderMead not defined in Main`, taking the whole suite down
+(496 passed, 1 errored). The cause is upstream: **OptimizationOptimJL 0.4.19
+stopped re-exporting Optim's algorithm names**, and
+`scripts/hydration_calibration.jl` reached `NelderMead` through that re-export.
+
+What made it look like a local mystery is that the script kept working: a
+`scripts/Manifest.toml` is gitignored, and the one on the author's machine still
+pinned 0.4.18, where the re-export was there. The test environment resolves fresh
+from the registry, gets 0.4.19, and fails — so the suite was red on continuous
+integration while every local run of the script was fine.
+
+The script now does `import OptimizationOptimJL: NelderMead`. The binding exists
+in that module either way, exported or not, so the explicit import works on both
+versions and no longer depends on which one an environment happens to resolve.
+
 ## v0.12.0 — calibrated against a measured heat curve, and an isothermal heat that is a heat
 
 ### Breaking changes

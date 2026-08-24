@@ -118,6 +118,7 @@ module ChemistryLab
     include("chemical_structs/chemical_states.jl")
     include("chemical_structs/volume_fractions.jl")
 
+    include("databases/paths.jl")
     include("databases/phreeqc_dat.jl")
     include("databases/thermofun_json.jl")
     include("databases/merge_dat_json.jl")
@@ -283,7 +284,8 @@ module ChemistryLab
 
     export extract_primary_species
 
-    export read_thermofun_database,
+    export datapath,
+        read_thermofun_database,
         build_species,
         build_reactions,
         build_solid_solutions,

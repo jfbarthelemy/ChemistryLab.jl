@@ -8,11 +8,13 @@
 # Solver: OptimaSolver (default) or Ipopt — selected via USE_OPTIMA flag.
 #
 # Usage:
-#   julia --project scripts/clinker_hydrate_equilibration.jl
-# =============================================================================
+#   julia --project=scripts scripts/clinker_hydrate_equilibration.jl
+#   or from the REPL:  include("scripts/clinker_hydrate_equilibration.jl")
+#   or, in VS Code, just run the file: it activates `scripts/` itself, and every
+#   data file it reads is named with `datapath`, so no working directory matters.
 
-using Pkg
-Pkg.activate(@__DIR__)
+import Pkg
+Pkg.activate(@__DIR__; io = devnull)
 
 using ChemistryLab
 using Optimization, OptimizationIpopt
@@ -26,7 +28,7 @@ const USE_OPTIMA = true
 
 # ── Species and chemical system ──────────────────────────────────────────────
 
-substances = build_species("data/cemdata18-thermofun.json")
+substances = build_species(datapath("cemdata18-thermofun.json"))
 input_species = split("C3S C2S C3A C4AF Gp Anh Portlandite Jennite H2O@")
 species = speciation(substances, input_species; aggregate_state = [AS_AQUEOUS])
 

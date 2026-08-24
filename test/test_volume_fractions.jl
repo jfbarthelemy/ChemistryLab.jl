@@ -1,7 +1,7 @@
 using OrderedCollections
 
 # A minimal cement-like system built from CEMDATA18, reused by every testset here.
-const _VF_DATA = joinpath(pkgdir(ChemistryLab), "data", "cemdata18-thermofun.json")
+const _VF_DATA = datapath("cemdata18-thermofun.json")
 
 function _vf_system()
     substances = build_species(_VF_DATA)

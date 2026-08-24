@@ -6,11 +6,13 @@
 # compared to clinker_hydrate_equilibration.jl.
 #
 # Usage:
-#   julia --project scripts/slag_clinker_equilibration.jl
-# =============================================================================
+#   julia --project=scripts scripts/slag_clinker_equilibration.jl
+#   or from the REPL:  include("scripts/slag_clinker_equilibration.jl")
+#   or, in VS Code, just run the file: it activates `scripts/` itself, and every
+#   data file it reads is named with `datapath`, so no working directory matters.
 
-using Pkg
-Pkg.activate(@__DIR__)
+import Pkg
+Pkg.activate(@__DIR__; io = devnull)
 
 using ChemistryLab
 using DynamicQuantities
@@ -20,7 +22,7 @@ using LinearAlgebra
 
 # ── Species and chemical system ──────────────────────────────────────────────
 
-substances = build_species("data/cemdata18-thermofun.json")
+substances = build_species(datapath("cemdata18-thermofun.json"))
 
 clinker = "C3S C2S C3A C4AF Gp Anh"
 hydrates = "Portlandite Jennite H2O@ ettringite monosulphate12 C3AH6 C3FH6 C4FH13"

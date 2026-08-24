@@ -36,7 +36,7 @@ and the aqueous species `speciation` pulls in from the primaries.
 ```@example coupled
 using ChemistryLab, DynamicQuantities, OptimaSolver, OrdinaryDiffEq, Printf
 
-data = joinpath(pkgdir(ChemistryLab), "data", "cemdata18-thermofun.json")
+data = datapath("cemdata18-thermofun.json")
 substances = build_species(data)
 
 anhydrous = ["C3S", "C2S"]

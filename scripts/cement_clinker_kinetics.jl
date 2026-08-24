@@ -15,12 +15,13 @@
 # Semi-adiabatic calorimeter with quadratic heat losses (Lavergne et al. 2018).
 #
 # Usage:
-#   julia --project scripts/cement_clinker_kinetics.jl
-#   or from the REPL: include("scripts/cement_clinker_kinetics.jl")
-# =============================================================================
+#   julia --project=scripts scripts/cement_clinker_kinetics.jl
+#   or from the REPL:  include("scripts/cement_clinker_kinetics.jl")
+#   or, in VS Code, just run the file: it activates `scripts/` itself, and every
+#   data file it reads is named with `datapath`, so no working directory matters.
 
-using Pkg
-Pkg.activate(@__DIR__)
+import Pkg
+Pkg.activate(@__DIR__; io = devnull)
 
 using ChemistryLab
 using OrdinaryDiffEq
@@ -36,7 +37,7 @@ using Printf
 #   - liquid water (solvent)
 # CEMDATA_PRIMARIES provides the independent components of the system.
 
-const DATA_FILE = joinpath(pkgdir(ChemistryLab), "data", "cemdata18-thermofun.json")
+const DATA_FILE = datapath("cemdata18-thermofun.json")
 
 substances = build_species(DATA_FILE)
 

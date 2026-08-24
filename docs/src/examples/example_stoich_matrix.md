@@ -13,7 +13,7 @@ The recommended workflow is:
 using ChemistryLab
 
 # 1. Load all species from the database
-all_species = build_species("../../../data/cemdata18-merged.json")
+all_species = build_species(datapath("cemdata18-merged.json"))
 ```
 
 Identify the secondary species likely to appear during the reactions of interest (here: C₃S, Portlandite, Jennite and water):
@@ -36,7 +36,7 @@ Build the `ChemicalSystem`. Both stoichiometric matrices (`CSM` and `SM`) are co
 
 ```@setup example1
     using ChemistryLab #hide
-    all_species = build_species("../../../data/cemdata18-merged.json") #hide
+    all_species = build_species(datapath("cemdata18-merged.json")) #hide
     species = speciation(all_species, split("C3S Portlandite Jennite H2O@");
                   aggregate_state=[AS_AQUEOUS], exclude_species=split("H2@ O2@")) #hide
     dict_species = Dict(symbol(s) => s for s in species) #hide

@@ -222,7 +222,7 @@ The "Zz" charge placeholder is handled specially. Gamma coefficients for activit
 models are extracted from "-gamma" lines.
 """
 function extract_primary_species(file_path)
-    lines = readlines(file_path)
+    lines = readlines(resolve_data_path(file_path))
 
     start_idx = 0
     end_idx = 0

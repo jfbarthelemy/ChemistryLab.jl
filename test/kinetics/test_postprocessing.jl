@@ -8,7 +8,7 @@ using OrderedCollections
 # non-trivial stoichiometric matrix.
 
 function _pp_problem(; tend = 7 * 86400.0)
-    substances = build_species(joinpath(pkgdir(ChemistryLab), "data", "cemdata18-thermofun.json"))
+    substances = build_species(datapath("cemdata18-thermofun.json"))
     sp = speciation(
         substances, split("C3S C2S Portlandite Jennite ettringite H2O@");
         aggregate_state = [AS_AQUEOUS]
@@ -213,7 +213,7 @@ end
     # then fails with "First call to automatic differentiation for time gradient
     # failed". Rate laws that ignore `t`, like `parrot_killoh`, never exposed it.
 
-    substances = build_species(joinpath(pkgdir(ChemistryLab), "data", "cemdata18-thermofun.json"))
+    substances = build_species(datapath("cemdata18-thermofun.json"))
     sp = speciation(
         substances, split("Amor-Sl Portlandite Jennite H2O@");
         aggregate_state = [AS_AQUEOUS]
@@ -258,7 +258,7 @@ end
     # Here portlandite is consumed by a pozzolanic reaction but is NOT a kinetic
     # species. Gating the rate on it must stop the reaction when it runs out.
 
-    substances = build_species(joinpath(pkgdir(ChemistryLab), "data", "cemdata18-thermofun.json"))
+    substances = build_species(datapath("cemdata18-thermofun.json"))
     sp = speciation(
         substances, split("Amor-Sl Portlandite Jennite H2O@");
         aggregate_state = [AS_AQUEOUS]
@@ -326,7 +326,7 @@ end
     # `kp.activity_model` — `DiluteSolutionModel()` by default. Asking for HKF on
     # a cement pore solution silently gave an infinitely dilute solve.
 
-    data = joinpath(pkgdir(ChemistryLab), "data", "cemdata18-thermofun.json")
+    data = datapath("cemdata18-thermofun.json")
     d = Dict(symbol(s) => s for s in build_species(data))
     aq = ["H2O@", "H+", "OH-", "Ca+2", "CaOH+", "SiO2@", "HSiO3-"]
     cs = ChemicalSystem(
@@ -355,7 +355,7 @@ end
     # A healthy coupled run must leave the counter untouched. This is the
     # regression that matters: it is the assertion that would break if a solve
     # started silently returning MaxIters.
-    data = joinpath(pkgdir(ChemistryLab), "data", "cemdata18-thermofun.json")
+    data = datapath("cemdata18-thermofun.json")
     d = Dict(symbol(s) => s for s in build_species(data))
     aq = ["H2O@", "H+", "OH-", "CO2@", "HCO3-", "CO3-2", "Ca+2", "CaOH+", "Ca(CO3)@", "Ca(HCO3)+"]
     cs = ChemicalSystem([d[s] for s in vcat(aq, "Cal")], ["H2O@", "H+", "Ca+2", "CO3-2", "Zz"])
@@ -401,7 +401,7 @@ end
 
     # `integrate(kp; reltol = …)` forwarded to a concrete method that accepted no
     # keywords at all, so the documented shortcut was a MethodError.
-    data = joinpath(pkgdir(ChemistryLab), "data", "cemdata18-thermofun.json")
+    data = datapath("cemdata18-thermofun.json")
     d = Dict(symbol(s) => s for s in build_species(data))
     cs = ChemicalSystem(
         [d[s] for s in ["H2O@", "Ca+2", "CO3-2", "Cal"]],
@@ -431,10 +431,10 @@ end
     # database — "Ms"/"Mc" and "Ht_OH"/"Ht_CO3" — so `build_solid_solutions`
     # skipped them with a warning. AFm being the only Redlich-Kister entry, the
     # non-ideal path had no live case at all.
-    data = joinpath(pkgdir(ChemistryLab), "data", "cemdata18-thermofun.json")
+    data = datapath("cemdata18-thermofun.json")
     d = Dict(symbol(s) => s for s in build_species(data))
     ss = build_solid_solutions(
-        joinpath(pkgdir(ChemistryLab), "data", "solid_solutions.toml"), d
+        datapath("solid_solutions.toml"), d
     )
 
     names = Set(p.name for p in ss)

@@ -80,7 +80,7 @@ end
 
     # A small carbonate system: enough to exercise the replay without paying for
     # a cement. The point is the contract, not the chemistry.
-    data = joinpath(pkgdir(ChemistryLab), "data", "cemdata18-thermofun.json")
+    data = datapath("cemdata18-thermofun.json")
     subs = build_species(data)
     sp = speciation(subs, ["Cal", "Portlandite"]; aggregate_state = [AS_AQUEOUS])
     cs = ChemicalSystem(sp, CEMDATA_PRIMARIES)
@@ -148,9 +148,9 @@ end
     # Hydrogarnet and the solve would treat their end-members as separate pure
     # phases, the mixing entropy never entering the Gibbs energy.
 
-    data = joinpath(pkgdir(ChemistryLab), "data", "cemdata18-thermofun.json")
+    data = datapath("cemdata18-thermofun.json")
     substances = build_species(data)
-    toml = joinpath(pkgdir(ChemistryLab), "data", "solid_solutions.toml")
+    toml = datapath("solid_solutions.toml")
 
     members = ["CSHQ-TobD", "CSHQ-TobH", "CSHQ-JenH", "CSHQ-JenD"]
     sp = speciation(substances, vcat("C3S", "Portlandite", members); aggregate_state = [AS_AQUEOUS])

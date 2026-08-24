@@ -239,7 +239,7 @@ end
     # thermodynamic functions had not been forced yet, because `getindex` did not
     # do the lazy completion that `getproperty` does. It returned an `Int64`, so
     # the caller found out only when it tried to evaluate it.
-    sp = build_species(joinpath(pkgdir(ChemistryLab), "data", "cemdata18-thermofun.json"))
+    sp = build_species(datapath("cemdata18-thermofun.json"))
     qtz = first(s for s in sp if symbol(s) == "Qtz")
     @test !(qtz[:Cp⁰] isa Integer)          # i.e. not the 0 fallback
     @test qtz[:Cp⁰](T = 293.15, unit = true) isa AbstractQuantity

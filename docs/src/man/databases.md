@@ -4,13 +4,52 @@ So far, we have looked at the possibility of creating and manipulating any speci
 
 This is why ChemistryLab relies on existing databases, in particular [Cemdata18](https://www.empa.ch/web/s308/thermodynamic-data) and [PSI-Nagra-12-07](https://www.psi.ch/en/les/thermodynamic-databases). Cemdata18 is a chemical thermodynamic database for hydrated Portland cements and alkali-activated materials. PSI-Nagra is a Chemical Thermodynamic Database. The formalism adopted for these databases is that of [Thermofun](https://thermohub.org/thermofun/thermofun/) which is a universal open-source client that delivers thermodynamic properties of substances and reactions at the temperature and pressure of interest. The information is stored in json files.
 
+## [Naming a bundled database](@id sec-datapath)
+
+Several databases ship with ChemistryLab, in its `data/` directory. Name them
+with [`datapath`](@ref), which returns an absolute path and therefore does not
+depend on the working directory:
+
+```@example datapath
+using ChemistryLab
+
+path = datapath("cemdata18-thermofun.json")
+isfile(path)
+```
+
+The value is an absolute path, so it is not shown here: it depends on where the
+package is installed, and printing it would put this machine's directories into
+the page. What it points at does not depend on the machine:
+
+```@example datapath
+relpath(path, pkgdir(ChemistryLab))
+```
+
+```@example datapath
+readdir(datapath())
+```
+
+This matters in practice: a script written as `build_species("data/cemdata18-thermofun.json")`
+only runs when the working directory happens to be the repository root, which is
+not the case in an editor whose REPL started elsewhere, nor in a documentation
+build. Written with `datapath`, the same line runs from anywhere.
+
+!!! note "Resolution of a bundled name"
+    The readers are tolerant, so older code keeps working: a path is tried
+    against the working directory **first**, and only then against the bundled
+    `data/` directory. A call that already resolves therefore keeps resolving to
+    exactly the same file, and a local database always takes precedence over a
+    bundled one of the same name. The fallback can only succeed for a name that
+    *is* one of the bundled files, so a mistyped path to a file of your own
+    still fails, with an error listing what is available.
+
 ## Loading species from a database
 
 The simplest way to load species from a ThermoFun-compatible JSON file is `build_species`, which reads the file and directly returns a `Vector{Species}` with compiled thermodynamic functions:
 
 ```julia
 using ChemistryLab
-all_species = build_species("../../../data/cemdata18-merged.json")
+all_species = build_species(datapath("cemdata18-merged.json"))
 ```
 
 Each species already carries its molar mass and temperature-dependent thermodynamic functions (Cp⁰, ΔₐH⁰, ΔₐS⁰, ΔₐG⁰, logK⁰) as `SymbolicFunc`s and `NumericFunc`s.
@@ -18,7 +57,7 @@ Each species already carries its molar mass and temperature-dependent thermodyna
 !!! note "Low-level access"
     If you need the raw DataFrames (e.g. to inspect metadata or filter on database columns), the lower-level function `read_thermofun_database` is still available and returns three DataFrames `(df_elements, df_substances, df_reactions)`:
     ```julia
-    df_elements, df_substances, df_reactions = read_thermofun_database("../../../data/cemdata18-merged.json")
+    df_elements, df_substances, df_reactions = read_thermofun_database(datapath("cemdata18-merged.json"))
     ```
     `build_species(df_substances)` can then be called on the filtered DataFrame.
 
@@ -28,7 +67,7 @@ In practice, only a small subset of the database is relevant to a given problem.
 
 ```@example database
 using ChemistryLab #hide
-all_species = build_species("../../../data/cemdata18-merged.json") #hide
+all_species = build_species(datapath("cemdata18-merged.json")) #hide
 # Keep only species that can form from the calcite / water system
 species_calcite = speciation(all_species, split("Cal H2O@");
                              aggregate_state=[AS_AQUEOUS],
@@ -66,7 +105,7 @@ Common keyword arguments:
 It is also possible to retrieve primary species from the Cemdata18 database. Primary species are a minimal subset such that every other species can be expressed as their linear combination.
 
 ```julia
-df_primaries = extract_primary_species("../../../data/CEMDATA18-31-03-2022-phaseVol.dat")
+df_primaries = extract_primary_species(datapath("CEMDATA18-31-03-2022-phaseVol.dat"))
 show(df_primaries, allcols=true, allrows=true)
 ```
 
@@ -118,11 +157,11 @@ Ettringite_ss, Hydrotalcite).
 ```julia
 using ChemistryLab, DynamicQuantities
 
-substances = build_species("../../../data/cemdata18-thermofun.json")
+substances = build_species(datapath("cemdata18-thermofun.json"))
 dict       = Dict(symbol(s) => s for s in substances)
 
 # Build all solid solution phases defined in the TOML
-ss_phases = build_solid_solutions("../../../data/solid_solutions.toml", dict)
+ss_phases = build_solid_solutions(datapath("solid_solutions.toml"), dict)
 
 # Use them directly in ChemicalSystem
 cs = ChemicalSystem(species, CEMDATA_PRIMARIES; solid_solutions = ss_phases)

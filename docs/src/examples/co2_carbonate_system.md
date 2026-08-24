@@ -35,7 +35,7 @@ using Optimization, OptimizationIpopt
 using ChemistryLab
 using DynamicQuantities
 
-substances = build_species("../../../data/slop98-inorganic-thermofun.json")
+substances = build_species(datapath("slop98-inorganic-thermofun.json"))
 
 # Select only the six carbonate-system species
 dict = Dict(symbol(s) => s for s in substances)

@@ -28,7 +28,7 @@ In this example, the database is [cemdata](https://www.empa.ch/web/s308/thermody
 using ChemistryLab
 using DynamicQuantities # for unit management
 
-all_species = build_species("../../data/cemdata18-thermofun.json")
+all_species = build_species(datapath("cemdata18-thermofun.json"))
 species_calcite = speciation(all_species, split("Cal H2O@ CO2");
                              aggregate_state=[AS_AQUEOUS],
                              exclude_species=split("H2@ O2@ CH4@"))

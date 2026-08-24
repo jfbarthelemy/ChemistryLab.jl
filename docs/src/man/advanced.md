@@ -198,7 +198,7 @@ The recommended entry point is `build_species(filename)`, which reads a ThermoFu
 using ChemistryLab
 
 # Load all species from the database
-all_species = build_species("data/cemdata18-merged.json")
+all_species = build_species(datapath("cemdata18-merged.json"))
 
 # Filter to species compatible with a seed set (Ca–C–H–O system)
 species = speciation(all_species, split("Cal H2O@ CO2");
@@ -210,7 +210,7 @@ To load only a specific subset of species by symbol, pass a list as the second a
 
 ```julia
 # Load only the listed symbols (faster for large databases)
-selected = build_species("data/cemdata18-merged.json", split("Cal H2O@ H+ OH- Ca+2 CO3-2"))
+selected = build_species(datapath("cemdata18-merged.json"), split("Cal H2O@ H+ OH- Ca+2 CO3-2"))
 ```
 
 ### Low-level access: `read_thermofun_database`
@@ -218,7 +218,7 @@ selected = build_species("data/cemdata18-merged.json", split("Cal H2O@ H+ OH- Ca
 For direct DataFrame access (e.g. to inspect raw fields or apply custom filters), use `read_thermofun_database`. Note that `aggregate_state` is stored as a single-entry `Dict` — use `only(values(...))` to extract its string value:
 
 ```julia
-df_elements, df_substances, df_reactions = read_thermofun_database("data/cemdata18-thermofun.json")
+df_elements, df_substances, df_reactions = read_thermofun_database(datapath("cemdata18-thermofun.json"))
 
 # Filter aqueous substances
 aqueous = filter(row -> only(values(row.aggregate_state)) == "AS_AQUEOUS", df_substances)
@@ -235,8 +235,17 @@ species_list = build_species(aqueous)
 `merge_json` combines a ThermoFun JSON file with a Phreeqc `.dat` file (phase definitions) into a single merged JSON:
 
 ```julia
-merge_json("data/cemdata18-thermofun.json", "data/cemdata18.dat", "data/cemdata18-merged.json")
+merge_json(
+    datapath("cemdata18-thermofun.json"),            # bundled ThermoFun database
+    datapath("CEMDATA18-31-03-2022-phaseVol.dat"),   # bundled Phreeqc phase definitions
+    "cemdata18-merged.json",                         # output: an ordinary path of your choosing
+)
 ```
+
+The two inputs are resolved against the bundled `data/` directory, so the call
+works from any working directory. The third argument is a file to be *written*,
+and is never resolved that way: give it the path where you want the merged
+database. A pre-merged `cemdata18-merged.json` already ships with the package.
 
 The merged file can then be loaded with `build_species` as usual.
 

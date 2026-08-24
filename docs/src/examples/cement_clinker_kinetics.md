@@ -19,7 +19,7 @@ using OrdinaryDiffEq
 using DynamicQuantities
 using OrderedCollections
 
-DATA_FILE = joinpath(pkgdir(ChemistryLab), "data", "cemdata18-thermofun.json")
+DATA_FILE = datapath("cemdata18-thermofun.json")
 
 substances = build_species(DATA_FILE)
 

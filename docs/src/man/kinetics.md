@@ -340,7 +340,7 @@ Complete chain — [`ChemicalSystem`](@ref) → [`ChemicalState`](@ref) →
 using ChemistryLab, OrdinaryDiffEq, DynamicQuantities, Printf
 
 # ── 1. ChemicalSystem from CEMDATA18 ────────────────────────────────────────
-DATA_FILE = joinpath(pkgdir(ChemistryLab), "data", "cemdata18-thermofun.json")
+DATA_FILE = datapath("cemdata18-thermofun.json")
 substances = build_species(DATA_FILE)
 
 input_species = split(

@@ -51,13 +51,16 @@ Read a ThermoFun database from a JSON file.
   - `df_reactions`: DataFrame of chemical reactions.
 """
 function read_thermofun_database(filename)
+    path = resolve_data_path(filename)
     print_title(
-        "Loading database: $filename";
+        # `display_data_path`, not `path`: the banner is captured into the
+        # documentation, so it must not carry a build machine's directories.
+        "Loading database: $(display_data_path(path))";
         crayon = Crayon(; foreground = :green),
         style = :box,
         indent = "",
     )
-    data = JSON.parsefile(filename)
+    data = JSON.parsefile(path)
     df_substances = DataFrame(Tables.dictrowtable(data["substances"]))
     df_reactions = DataFrame(Tables.dictrowtable(data["reactions"]))
     df_elements = DataFrame(Tables.dictrowtable(data["elements"]))
@@ -430,9 +433,9 @@ a2          = 0.0              # J/mol
 # Example
 
 ```julia
-substances = build_species("data/cemdata18-thermofun.json")
+substances = build_species(datapath("cemdata18-thermofun.json"))
 dict       = Dict(symbol(s) => s for s in substances)
-ss_phases  = build_solid_solutions("data/solid_solutions.toml", dict)
+ss_phases  = build_solid_solutions(datapath("solid_solutions.toml"), dict)
 cs = ChemicalSystem(species, CEMDATA_PRIMARIES; solid_solutions = ss_phases)
 ```
 """
@@ -441,7 +444,7 @@ function build_solid_solutions(
         dict_species::AbstractDict;
         skip_missing::Bool = true,
     )
-    data = TOML.parsefile(toml_file)
+    data = TOML.parsefile(resolve_data_path(toml_file))
     entries = get(data, "solid_solution", [])
     phases = SolidSolutionPhase[]
     for entry in entries

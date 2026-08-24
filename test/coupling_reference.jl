@@ -18,7 +18,7 @@ const RKC = Dict(
 const K_RATE = 1.0e-6
 
 @testset "Reaktoro reference: kinetics/equilibrium coupling" begin
-    data = joinpath(pkgdir(ChemistryLab), "data", "cemdata18-thermofun.json")
+    data = datapath("cemdata18-thermofun.json")
     dict = Dict(symbol(s) => s for s in build_species(data))
     aq = ["H2O@", "H+", "OH-", "CO2@", "HCO3-", "CO3-2", "Ca+2", "CaOH+", "Ca(CO3)@", "Ca(HCO3)+"]
     cs = ChemicalSystem([dict[s] for s in vcat(aq, "Cal")], ["H2O@", "H+", "Ca+2", "CO3-2", "Zz"])

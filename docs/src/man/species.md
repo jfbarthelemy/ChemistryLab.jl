@@ -205,7 +205,7 @@ println("formula preserved: ", formula(em) == formula(cal))
     directly — no prior call to `with_class` is required:
 
     ```julia
-    substances = build_species("data/cemdata18-thermofun.json")
+    substances = build_species(datapath("cemdata18-thermofun.json"))
     dict = Dict(symbol(s) => s for s in substances)
 
     # Pass database species directly — SolidSolutionPhase requalifies internally

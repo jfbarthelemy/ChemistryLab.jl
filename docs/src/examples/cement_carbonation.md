@@ -28,7 +28,7 @@ hemicarbonate) within a single consistent dataset.
 using ChemistryLab
 using DynamicQuantities
 
-substances = build_species("../../../data/cemdata18-merged.json")
+substances = build_species(datapath("cemdata18-merged.json"))
 ```
 
 The species list covers the full mineralogy of a hydrating and carbonating Portland cement

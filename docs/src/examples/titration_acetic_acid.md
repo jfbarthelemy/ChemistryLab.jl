@@ -30,8 +30,8 @@ Every other species is expressed as a linear combination of these four.
 using ChemistryLab
 using DynamicQuantities
 
-substances_inorg = build_species("../../../data/slop98-inorganic-thermofun.json")
-substances_org   = build_species("../../../data/slop98-organic-thermofun.json")
+substances_inorg = build_species(datapath("slop98-inorganic-thermofun.json"))
+substances_org   = build_species(datapath("slop98-organic-thermofun.json"))
 
 dict_all_species = merge(
     Dict(symbol(s) => s for s in substances_inorg),
@@ -46,8 +46,8 @@ cs = ChemicalSystem(species, ["H2O@", "H+", "Ace-", "Na+"])
 using ChemistryLab
 using DynamicQuantities
 
-substances_inorg = build_species("../../../data/slop98-inorganic-thermofun.json")
-substances_org   = build_species("../../../data/slop98-organic-thermofun.json")
+substances_inorg = build_species(datapath("slop98-inorganic-thermofun.json"))
+substances_org   = build_species(datapath("slop98-organic-thermofun.json"))
 
 dict_all_species = merge(
     Dict(symbol(s) => s for s in substances_inorg),

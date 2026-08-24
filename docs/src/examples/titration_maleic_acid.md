@@ -27,8 +27,8 @@ the organic database provides maleic acid and its conjugate bases.
 using ChemistryLab
 using DynamicQuantities
 
-substances_inorg = build_species("../../../data/slop98-inorganic-thermofun.json")
-substances_org   = build_species("../../../data/slop98-organic-thermofun.json")
+substances_inorg = build_species(datapath("slop98-inorganic-thermofun.json"))
+substances_org   = build_species(datapath("slop98-organic-thermofun.json"))
 
 dict_all_species = merge(Dict(symbol(s) => s for s in substances_inorg), Dict(symbol(s) => s for s in substances_org))
 species = [dict_all_species[s] for s in split("H2O@ Na+ NaOH@ H+ OH- MalH2@ MalH- Mal-2")]
@@ -40,8 +40,8 @@ cs = ChemicalSystem(species, ["H2O@", "H+", "Mal-2", "Na+", "Zz"])
 using ChemistryLab
 using DynamicQuantities
 
-substances_inorg = build_species("../../../data/slop98-inorganic-thermofun.json")
-substances_org   = build_species("../../../data/slop98-organic-thermofun.json")
+substances_inorg = build_species(datapath("slop98-inorganic-thermofun.json"))
+substances_org   = build_species(datapath("slop98-organic-thermofun.json"))
 
 dict_all_species = merge(Dict(symbol(s) => s for s in substances_inorg), Dict(symbol(s) => s for s in substances_org))
 species = [dict_all_species[s] for s in split("H2O@ Na+ NaOH@ H+ OH- MalH2@ MalH- Mal-2")]

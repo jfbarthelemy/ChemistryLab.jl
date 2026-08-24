@@ -19,6 +19,11 @@
 #  Usage:
 #    julia --project=scripts scripts/ionic_hydration.jl
 #    or from the REPL: include("scripts/ionic_hydration.jl")
+#
+#  This script deliberately does NOT call `Pkg.activate`:
+#  `docs/src/examples/ionic_hydration.md` includes this file, and the active
+#  project is global process state — activating an environment halfway through a
+#  documentation build changes it for every `@example` block that follows.
 # =============================================================================
 
 using ChemistryLab
@@ -28,7 +33,7 @@ using OrderedCollections
 using OrdinaryDiffEq
 using Printf
 
-const IONIC_CEMDATA = joinpath(pkgdir(ChemistryLab), "data", "cemdata18-thermofun.json")
+const IONIC_CEMDATA = datapath("cemdata18-thermofun.json")
 
 # Four systems. `:opc` is the model; the three smaller ones are the ladder that
 # was used to isolate what made it hard, and they are kept because reproducing an

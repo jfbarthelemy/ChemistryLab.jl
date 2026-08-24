@@ -25,12 +25,13 @@
 #   Br. Ceram. Proc. 35, 41-53.
 #
 # Usage:
-#   julia --project scripts/opc_semiadiabatic_calorimetry.jl
-#   or from the REPL: include("scripts/opc_semiadiabatic_calorimetry.jl")
-# =============================================================================
+#   julia --project=scripts scripts/opc_semiadiabatic_calorimetry.jl
+#   or from the REPL:  include("scripts/opc_semiadiabatic_calorimetry.jl")
+#   or, in VS Code, just run the file: it activates `scripts/` itself, and every
+#   data file it reads is named with `datapath`, so no working directory matters.
 
-using Pkg
-Pkg.activate(@__DIR__)
+import Pkg
+Pkg.activate(@__DIR__; io = devnull)
 
 using ChemistryLab
 using OrdinaryDiffEq
@@ -40,7 +41,7 @@ using Printf
 
 # ── 1. ChemicalSystem from the CEMDATA18 database ───────────────────────────
 
-const DATA_FILE = joinpath(pkgdir(ChemistryLab), "data", "cemdata18-thermofun.json")
+const DATA_FILE = datapath("cemdata18-thermofun.json")
 
 substances = build_species(DATA_FILE)
 

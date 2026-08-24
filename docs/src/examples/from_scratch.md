@@ -177,7 +177,7 @@ This example demonstrates the **manual** workflow: create species, attach thermo
 In practice, loading species from a built-in database (see [Database Interoperability](@ref sec-databases)) is faster and less error-prone:
 
 ```julia
-all_species = build_species("data/cemdata18-merged.json")
+all_species = build_species(datapath("cemdata18-merged.json"))
 species = speciation(all_species, split("Cal H2O@");
               aggregate_state=[AS_AQUEOUS], exclude_species=split("H2@ O2@ CH4@"))
 ```

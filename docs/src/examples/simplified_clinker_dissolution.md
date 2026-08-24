@@ -19,7 +19,7 @@ using Optimization, OptimizationIpopt
 using ChemistryLab
 using DynamicQuantities
 
-substances = build_species("../../../data/cemdata18-thermofun.json")
+substances = build_species(datapath("cemdata18-thermofun.json"))
 input_species = split("C3S C2S C3A C4AF Gp Anh Portlandite Jennite H2O@ ettringite monosulphate12 C3AH6 C3FH6 C4FH13")
 species = speciation(substances, input_species; aggregate_state=[AS_AQUEOUS])
 
@@ -30,7 +30,7 @@ cs = ChemicalSystem(species, CEMDATA_PRIMARIES)
 using ChemistryLab
 using DynamicQuantities
 
-substances = build_species("../../../data/cemdata18-thermofun.json")
+substances = build_species(datapath("cemdata18-thermofun.json"))
 input_species = split("C3S C2S C3A C4AF Gp Anh Portlandite Jennite H2O@ ettringite monosulphate12 C3AH6 C3FH6 C4FH13")
 species = speciation(substances, input_species; aggregate_state=[AS_AQUEOUS])
 
