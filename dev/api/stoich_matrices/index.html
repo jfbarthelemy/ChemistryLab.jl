@@ -15,24 +15,7 @@ julia&gt; union_atoms([d1, d2], ATOMIC_ORDER)
 3-element Vector{Symbol}:
  :C
  :H
- :O</code></pre></div></section></details></article><article><details class="docstring" open="true"><summary id="ChemistryLab.StoichMatrix"><a class="docstring-binding" href="#ChemistryLab.StoichMatrix"><code>ChemistryLab.StoichMatrix</code></a> — <span class="docstring-category">Type</span></summary><section><div><pre><code class="language-julia hljs">    StoichMatrix{T,P}</code></pre><p>Container holding a stoichiometric matrix <code>A</code> together with the <code>primaries</code> (independent components) and the full <code>species</code> vector.</p><p><strong>Fields</strong></p><pre><code class="language-julia hljs">- `A`: matrix (components × species) of stoichiometric coefficients.
-- `primaries`: vector of independent components (Symbols or `Species`).
-- `species`: vector of `Species` corresponding to the columns of `A`.
-- `N`: nullspace matrix — columns are vectors of the kernel of `A`.
-Built analytically when primaries ⊆ species (trivial case); otherwise computed via
-RREF over ℚ with integer coefficients (cleared denominators, reduced by GCD).</code></pre><p><strong>Examples</strong></p><pre><code class="language-julia hljs">julia&gt; species = [Species(&quot;H₂O&quot;), Species(&quot;OH⁻&quot;), Species(&quot;H⁺&quot;)]
-3-element Vector{Species{Int64}}:
- H₂O {H₂O} [H₂O ◆ H2O]
- OH⁻ {OH⁻} [OH⁻ ◆ OH-]
- H⁺ {H⁺} [H⁺ ◆ H+]
-
-julia&gt; SM = StoichMatrix(species)
-┌─────┬─────┬─────┬────┐
-│     │ H₂O │ OH⁻ │ H⁺ │
-├─────┼─────┼─────┼────┤
-│ H₂O │   1 │     │  1 │
-│ OH⁻ │     │   1 │ -1 │
-└─────┴─────┴─────┴────┘</code></pre></div></section></details></article><article><details class="docstring" open="true"><summary id="ChemistryLab.StoichMatrix"><a class="docstring-binding" href="#ChemistryLab.StoichMatrix"><code>ChemistryLab.StoichMatrix</code></a> — <span class="docstring-category">Type</span></summary><section><div><pre><code class="language-julia hljs">    StoichMatrix(species, candidate_primaries=species; involve_all_atoms=true)</code></pre><p>Construct a StoichMatrix from a list of species and a list of candidate primary species (by default the list of species itself).</p><p><strong>Arguments</strong></p><ul><li><code>species</code>: list of species.</li><li><code>candidate_primaries</code>: list of candidate primary species (default: <code>species</code>).</li><li><code>involve_all_atoms</code>: if true the algorithm is allowed to use species of <code>candidate_primaries</code> containing atoms which are not in <code>species</code> (default: true).</li></ul><p><strong>Examples</strong></p><pre><code class="language-julia hljs">julia&gt; H₂O, H⁺, OH⁻, CO₂, HCO₃⁻, CO₃²⁻ = Species.(split(&quot;H₂O H⁺ OH⁻ CO₂ HCO₃⁻ CO₃²⁻&quot;))
+ :O</code></pre></div></section></details></article><article><details class="docstring" open="true"><summary id="ChemistryLab.StoichMatrix"><a class="docstring-binding" href="#ChemistryLab.StoichMatrix"><code>ChemistryLab.StoichMatrix</code></a> — <span class="docstring-category">Type</span></summary><section><div><pre><code class="language-julia hljs">    StoichMatrix(species, candidate_primaries=species; involve_all_atoms=true)</code></pre><p>Construct a StoichMatrix from a list of species and a list of candidate primary species (by default the list of species itself).</p><p><strong>Arguments</strong></p><ul><li><code>species</code>: list of species.</li><li><code>candidate_primaries</code>: list of candidate primary species (default: <code>species</code>).</li><li><code>involve_all_atoms</code>: if true the algorithm is allowed to use species of <code>candidate_primaries</code> containing atoms which are not in <code>species</code> (default: true).</li></ul><p><strong>Examples</strong></p><pre><code class="language-julia hljs">julia&gt; H₂O, H⁺, OH⁻, CO₂, HCO₃⁻, CO₃²⁻ = Species.(split(&quot;H₂O H⁺ OH⁻ CO₂ HCO₃⁻ CO₃²⁻&quot;))
 6-element Vector{Species{Int64}}:
  H₂O {H₂O} [H₂O ◆ H2O]
  H⁺ {H⁺} [H⁺ ◆ H+]
@@ -63,7 +46,24 @@ julia&gt; SM.A * SM.N
 3×3 Matrix{Int64}:
  0  0  0
  0  0  0
- 0  0  0</code></pre></div></section></details></article><article><details class="docstring" open="true"><summary id="ChemistryLab.CanonicalStoichMatrix-Tuple{AbstractVector{&lt;:AbstractSpecies}}"><a class="docstring-binding" href="#ChemistryLab.CanonicalStoichMatrix-Tuple{AbstractVector{&lt;:AbstractSpecies}}"><code>ChemistryLab.CanonicalStoichMatrix</code></a> — <span class="docstring-category">Method</span></summary><section><div><pre><code class="language-julia hljs">    CanonicalStoichMatrix(species)</code></pre><p>Construct a StoichMatrix from a list of species i.e. the matrix giving the stoichiometric coefficients of the species in columns with respect to the atoms in rows.</p><p><strong>Arguments</strong></p><ul><li><code>species</code>: list of species.</li></ul><p><strong>Examples</strong></p><pre><code class="language-julia hljs">julia&gt; H₂O, H⁺, OH⁻, CO₂, HCO₃⁻, CO₃²⁻ = Species.(split(&quot;H₂O H⁺ OH⁻ CO₂ HCO₃⁻ CO₃²⁻&quot;))
+ 0  0  0</code></pre></div></section></details></article><article><details class="docstring" open="true"><summary id="ChemistryLab.StoichMatrix"><a class="docstring-binding" href="#ChemistryLab.StoichMatrix"><code>ChemistryLab.StoichMatrix</code></a> — <span class="docstring-category">Type</span></summary><section><div><pre><code class="language-julia hljs">    StoichMatrix{T,P}</code></pre><p>Container holding a stoichiometric matrix <code>A</code> together with the <code>primaries</code> (independent components) and the full <code>species</code> vector.</p><p><strong>Fields</strong></p><pre><code class="language-julia hljs">- `A`: matrix (components × species) of stoichiometric coefficients.
+- `primaries`: vector of independent components (Symbols or `Species`).
+- `species`: vector of `Species` corresponding to the columns of `A`.
+- `N`: nullspace matrix — columns are vectors of the kernel of `A`.
+Built analytically when primaries ⊆ species (trivial case); otherwise computed via
+RREF over ℚ with integer coefficients (cleared denominators, reduced by GCD).</code></pre><p><strong>Examples</strong></p><pre><code class="language-julia hljs">julia&gt; species = [Species(&quot;H₂O&quot;), Species(&quot;OH⁻&quot;), Species(&quot;H⁺&quot;)]
+3-element Vector{Species{Int64}}:
+ H₂O {H₂O} [H₂O ◆ H2O]
+ OH⁻ {OH⁻} [OH⁻ ◆ OH-]
+ H⁺ {H⁺} [H⁺ ◆ H+]
+
+julia&gt; SM = StoichMatrix(species)
+┌─────┬─────┬─────┬────┐
+│     │ H₂O │ OH⁻ │ H⁺ │
+├─────┼─────┼─────┼────┤
+│ H₂O │   1 │     │  1 │
+│ OH⁻ │     │   1 │ -1 │
+└─────┴─────┴─────┴────┘</code></pre></div></section></details></article><article><details class="docstring" open="true"><summary id="ChemistryLab.CanonicalStoichMatrix-Tuple{AbstractVector{&lt;:AbstractSpecies}}"><a class="docstring-binding" href="#ChemistryLab.CanonicalStoichMatrix-Tuple{AbstractVector{&lt;:AbstractSpecies}}"><code>ChemistryLab.CanonicalStoichMatrix</code></a> — <span class="docstring-category">Method</span></summary><section><div><pre><code class="language-julia hljs">    CanonicalStoichMatrix(species)</code></pre><p>Construct a StoichMatrix from a list of species i.e. the matrix giving the stoichiometric coefficients of the species in columns with respect to the atoms in rows.</p><p><strong>Arguments</strong></p><ul><li><code>species</code>: list of species.</li></ul><p><strong>Examples</strong></p><pre><code class="language-julia hljs">julia&gt; H₂O, H⁺, OH⁻, CO₂, HCO₃⁻, CO₃²⁻ = Species.(split(&quot;H₂O H⁺ OH⁻ CO₂ HCO₃⁻ CO₃²⁻&quot;))
 6-element Vector{Species{Int64}}:
  H₂O {H₂O} [H₂O ◆ H2O]
  H⁺ {H⁺} [H⁺ ◆ H+]
@@ -214,4 +214,4 @@ julia&gt; push_primaries(SM).N
   0   0   1
  -1  -1  -1
   1   1   2
-  0  -1  -1</code></pre></div></section></details></article></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../species/">« Species</a><a class="docs-footer-nextpage" href="../reactions/">Reactions »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.17.0 on <span class="colophon-date" title="Friday 21 August 2026 23:12">Friday 21 August 2026</span>. Using Julia version 1.12.7.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+  0  -1  -1</code></pre></div></section></details></article></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../species/">« Species</a><a class="docs-footer-nextpage" href="../reactions/">Reactions »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.17.0 on <span class="colophon-date" title="Monday 24 August 2026 15:14">Monday 24 August 2026</span>. Using Julia version 1.12.7.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
