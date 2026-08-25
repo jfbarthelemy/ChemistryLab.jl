@@ -283,7 +283,7 @@ p4 = plot(
 
 display(
     plot(
-        p1, p2, p3, p4; layout = (2, 2), size = (1200, 800),
+        p1, p2, p3, p4; layout = (2, 2), top_margin = 7Plots.mm, left_margin = 8Plots.mm, bottom_margin = 8Plots.mm, size = (1200, 800),
         plot_title = "Lavergne et al. (2018) — CEM I, w/c = $WC",
     )
 )

@@ -332,6 +332,6 @@ p3 = plot(t_Q ./ 3600, Q_kJ;
     xlabel="Time [h]", ylabel="Q [kJ/kg]",
     title="Cumulative heat", label="Q(t)", lw=2, color=:purple)
 
-plot(p1, p2, p3; layout=(1,3), size=(1400, 420),
+plot(p1, p2, p3; layout=(1,3), top_margin = 7Plots.mm, left_margin = 8Plots.mm, bottom_margin = 8Plots.mm, size=(1400, 420),
     plot_title="CEM I w/c=$WC — Parrot–Killoh + semi-adiabatic calorimeter")
 ```

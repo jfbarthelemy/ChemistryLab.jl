@@ -153,7 +153,7 @@ p2 = plot(
     legend    = :topleft,
 )
 
-plot(p1, p2; layout = (1, 2), size = (950, 410))
+plot(p1, p2; layout = (1, 2), left_margin = 8Plots.mm, bottom_margin = 8Plots.mm, size = (950, 410))
 ```
 
 ![pH and porosity vs w/c](../assets/wc_ph_porosity.png)

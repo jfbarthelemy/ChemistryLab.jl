@@ -361,7 +361,7 @@ p3 = plot(
 display(
     plot(
         p1, p2, p3;
-        layout = (1, 3), size = (1500, 450),
+        layout = (1, 3), top_margin = 7Plots.mm, left_margin = 8Plots.mm, bottom_margin = 8Plots.mm, size = (1500, 450),
         plot_title = "ChemistryLab — Ternary cement 63% OPC + 30% GGBS + 7% MK  (w/b=$WB)",
     )
 )
