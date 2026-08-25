@@ -22,6 +22,18 @@ ENV["COLUMNS"] = "200"
 ENV["LINES"] = "100"
 ENV["GKSwstype"] = "100"   # headless GR backend — prevents Plots from hanging in doc builds
 
+# Composite panels crop their outer labels unless the margins are explicit — a
+# big enough canvas is not enough on its own. Setting the defaults once here
+# covers every `@example` block, which run inside this process.
+using Plots
+Plots.gr()
+Plots.default(;
+    left_margin = 6Plots.mm,
+    bottom_margin = 6Plots.mm,
+    right_margin = 4Plots.mm,
+    top_margin = 3Plots.mm,
+)
+
 makedocs(;
     clean=false,
     modules=[ChemistryLab],
@@ -35,7 +47,7 @@ makedocs(;
         canonical="https://MicroPoroChemoMechanics.github.io/ChemistryLab.jl",
         repolink="https://github.com/MicroPoroChemoMechanics/ChemistryLab.jl",
         edit_link="main",
-        assets=["assets/favicon.ico", "assets/custom.css"],
+        assets=["assets/favicon.ico", "assets/custom.css", "assets/mathjax-flash.js"],
         prettyurls=(get(ENV, "CI", nothing) == "true"),
         collapselevel=1,
         size_threshold_warn=200_000,

@@ -80,7 +80,7 @@ p2 = plot(
 )
 plot!(p2, th(CEM_I_HOLDOUT), CEM_I_HOLDOUT.Q; label = "holdout", lw = 2, ls = :dash)
 
-plot(p1, p2; layout = (1, 2), size = (900, 350))
+plot(p1, p2; layout = (1, 2), size = (950, 410))
 savefig("calib-data.svg"); nothing # hide
 ```
 
@@ -161,7 +161,7 @@ plot!(p2, th(target), target.Qref .- target.Q; label = "depositors' affinity fit
     lw = 1.5, ls = :dot)
 hline!(p2, [0]; label = "", c = :black, lw = 0.7)
 
-plot(p1, p2; layout = (1, 2), size = (900, 350))
+plot(p1, p2; layout = (1, 2), size = (950, 410))
 savefig("calib-prior.svg"); nothing # hide
 ```
 
@@ -359,7 +359,7 @@ p2 = heatmap(
     nm, nm, id.correlation; clims = (-1, 1), c = :RdBu, xrotation = 45,
     title = "parameter correlation", titlefontsize = 10,
 )
-plot(p1, p2; layout = (1, 2), size = (900, 380))
+plot(p1, p2; layout = (1, 2), size = (950, 450), bottom_margin = 9Plots.mm)
 savefig("calib-identifiability.svg"); nothing # hide
 ```
 
@@ -472,7 +472,7 @@ plot!(p2, th(target), Q_fit .- target.Q; label = "calibrated", lw = 2)
 plot!(p2, th(target), target.Qref .- target.Q; label = "depositors' fit", lw = 1.2, ls = :dot)
 hline!(p2, [0]; label = "", c = :black, lw = 0.7)
 
-plot(p1, p2; layout = (1, 2), size = (900, 350))
+plot(p1, p2; layout = (1, 2), size = (950, 410))
 savefig("calib-fit.svg"); nothing # hide
 ```
 

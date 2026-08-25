@@ -308,7 +308,7 @@ for lsp in [
     rr = Reaction(getindex.(Ref(dict_species_aq17), split(lsp)))
     plot!(p2, θ -> rr.logK⁰(T = 273.15 + θ), 0:0.1:250, label = rr.equation)
 end
-plot(p1, p2, layout = (1, 2))
+plot(p1, p2, layout = (1, 2), size = (900, 400))
 
 # Vapor pressure of water
 l = dict_species_aq17["H2O@"]

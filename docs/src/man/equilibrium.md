@@ -481,7 +481,7 @@ p2 = plot(collect(temperatures), nCa_vals,
     marker = :circle, linewidth = 2, title = "Dissolved species")
 plot!(p2, collect(temperatures), nCal_vals,
     label = "Cal", marker = :square, linewidth = 2)
-plot(p1, p2, layout = (1, 2), size = (700, 350))
+plot(p1, p2, layout = (1, 2), size = (900, 400))
 ```
 
 !!! note "Calcite solubility"
