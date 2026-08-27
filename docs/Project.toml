@@ -10,6 +10,7 @@ DocumenterCitations = "daee34ce-89f3-4625-b898-19384cb65244"
 DynamicQuantities = "06fc5a27-2a28-4c7c-a15d-362465fb6821"
 LiveServer = "16fef848-5104-11e9-1b77-fb7a48bbb589"
 Symbolics = "0c5d862f-8b57-4792-8d23-62f2024744c7"
+SymbolicUtils = "d1185830-fcd6-423d-90d6-eec64667417b"
 Optimization = "7f7a1694-90dd-40f0-9382-eb1efda571ba"
 OptimaSolver = "24efeca9-a785-406e-adb3-83609348bee7"
 OptimizationIpopt = "43fad042-7963-4b32-ab19-e2a4f9a67124"
@@ -29,3 +30,13 @@ SymbolicNumericIntegration = "78aadeae-fbc0-11eb-17b6-c7ec0477ba9e"
 # bound in the root `Project.toml`.
 OptimaSolver = "0.4"
 SciMLBase = "2, 3"
+# SymbolicUtils is not used directly here; it is declared so that the bound
+# below applies.  SymbolicUtils 4.46.0 makes `Symbolics.renamed_metadata` reach
+# a latent bug -- `Base.ImmutableDict(dict, key, value)`, a three-positional-
+# argument call Base does not provide -- which breaks the precompilation of
+# ModelingToolkitBase, hence of DataDrivenDiffEq and SymbolicNumericIntegration,
+# hence the `add_thermo_model` examples in `man/thermodynamics.md`.  Symbolics
+# admits it through an open bound (`SymbolicUtils = "4.37.0 - 4"`), so the
+# constraint has to be expressed here.  Verified: 4.45.0 precompiles the same
+# graph, DataDrivenDiffEq 1.16.0 included.  Remove once Symbolics ships the fix.
+SymbolicUtils = "~4.45"
