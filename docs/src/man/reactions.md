@@ -94,7 +94,7 @@ pprint(SM)
 When the species involved in a reaction carry thermodynamic data (loaded from a database), the reaction automatically exposes temperature-dependent thermodynamic functions. These are computed lazily on first access and stored in the reaction's `properties` dict:
 
 | Property | Description |
-|----------|-------------|
+|:---------|:------------|
 | `r.ΔᵣCp⁰` | Heat capacity of reaction (J mol⁻¹ K⁻¹) |
 | `r.ΔᵣH⁰`  | Enthalpy of reaction (J mol⁻¹) |
 | `r.ΔᵣS⁰`  | Entropy of reaction (J mol⁻¹ K⁻¹) |
@@ -174,7 +174,7 @@ pprint(rxns[1])
     The stoichiometric matrix for this system (elements as rows, species as columns) is:
 
     |       | C | H | O |
-    |-------|---|---|---|
+    |:------|:--|:--|:--|
     | CH₄   | 1 | 4 | 0 |
     | O₂    | 0 | 0 | 2 |
     | CO₂   | 1 | 0 | 2 |

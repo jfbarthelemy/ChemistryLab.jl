@@ -14,7 +14,7 @@ the inorganic database provides H₂O, H⁺, OH⁻ and Na⁺;
 the organic database provides maleic acid and its conjugate bases.
 
 | Symbol | Species | Phase |
-|--------|---------|-------|
+|:-------|:--------|:------|
 | `MalH2@` | H₂A — maleic acid | aqueous solute |
 | `MalH-`  | HA⁻ — hydrogen maleate | aqueous solute |
 | `Mal-2`  | A²⁻ — maleate | aqueous solute |
@@ -167,7 +167,7 @@ hline!(p, [pKa2];  linestyle = :dot,  color = :green,  label = "pKₐ₂ = $pKa2
 The titration curve shows five characteristic zones:
 
 | Zone | V(NaOH) | Dominant species | pH |
-|------|---------|------------------|----|
+|:-----|:--------|:-----------------|:---|
 | Initial state | 0 mL | H₂A | Low, controlled by pKₐ₁ |
 | First buffer | 0–5 mL | H₂A / HA⁻ | ≈ pKₐ₁ = 1.92 at V = 2.5 mL |
 | First equivalence point (PE₁) | 5 mL | HA⁻ | First inflection |

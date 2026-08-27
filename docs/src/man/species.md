@@ -88,13 +88,13 @@ The molar mass is automatically calculated and stored in the species `properties
 **Predefined property:**
 
 | Key | Type | Description |
-| --- | --- | --- |
+| :-- | :-- | :-- |
 | `:M` | `Quantity` (g/mol) | Molar mass, computed automatically from the formula |
 
 **Common user-added thermodynamic properties (loaded from databases or set manually):**
 
 | Key | Type | Description |
-| --- | --- | --- |
+| :-- | :-- | :-- |
 | `:Cp⁰` | `SymbolicFunc(T)` | Standard heat capacity (J mol⁻¹ K⁻¹) |
 | `:ΔₐH⁰` | `SymbolicFunc(T)` | Standard enthalpy of formation (J mol⁻¹) |
 | `:S⁰` | `SymbolicFunc(T)` | Standard entropy (J mol⁻¹ K⁻¹) |

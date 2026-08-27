@@ -1,5 +1,36 @@
 # Getting started
 
+## Installation
+
+To install ChemistryLab.jl, use the Julia package manager:
+
+- From the Julia REPL, type `]` to enter the Pkg REPL mode and run:
+
+```julia
+pkg> add ChemistryLab
+```
+
+- Or, equivalently, via the `Pkg` API:
+
+```julia
+julia> import Pkg; Pkg.add("ChemistryLab")
+```
+
+## Citation
+
+If you use ChemistryLab in your work, please cite the following:
+
+```bibtex
+@software{chemistrylab_jl,
+  author       = {Barthélémy, Jean-François and
+                  Soive, Anthony},
+  title        = {ChemistryLab.jl: Numerical laboratory for
+                   computational chemistry},
+  doi          = {10.5281/zenodo.17756074},
+  url          = {https://doi.org/10.5281/zenodo.17756074},
+}
+```
+
 This quickstart shows a few common, minimal examples to get you productive with ChemistryLab. It demonstrates loading species from a database, building reactions and solving a thermodynamic equilibrium problem.
 
 ## Simplified example
@@ -81,7 +112,7 @@ The previous section computed thermodynamic properties of reactions analytically
 Three objects are needed:
 
 | Object | Role |
-|--------|------|
+|:-------|:-----|
 | [`ChemicalSystem`](@ref) | Immutable description of the system: species list, primary species, stoichiometric matrices, and derived index maps. Built once and reused. |
 | [`ChemicalState`](@ref) | Mutable thermodynamic state: amounts `n` (mol), temperature `T` and pressure `P`. Modified in-place before and after solving. |
 | `equilibrate` | Convenience function that wraps a `ChemicalSystem` + `ChemicalState` into an optimization problem and solves it. Returns a new equilibrated `ChemicalState`. |
@@ -121,3 +152,16 @@ Derived quantities such as pH, pOH, phase volumes and individual species amounts
 - For cement-specific workflows, use `CemSpecies` and the `databases` utilities to convert between oxide- and atom-based representations.
 
 Now try the `quickstart` examples interactively in the REPL and then follow the next pages of the tutorial for deeper coverage.
+
+## Quick tips
+
+- In the REPL try small calls like `using ChemistryLab; Species("CaCO3")` and `Formula("SO4-2")` to explore parsing behavior interactively.
+- Start with `docs/src/examples/example_stoich_matrix.md` to see a concise, runnable example converting a stoichiometric matrix into reactions.
+- For equilibrium calculations, see `docs/src/man/equilibrium.md` for the minimal workflow, then explore the `co2_carbonate_system` and `cement_carbonation` examples.
+- If you plan to work with ThermoFun/Cemdata sources, run the examples in `docs/src/man/databases.md` after placing the required `.json`/`.dat` data files in the `data/` directory.
+
+## Next steps
+
+You can see the `examples` section for more advanced runnable examples and small worked problems, including CO₂ dissolution, carbonate speciation, cement carbonation, and clinker dissolution.
+
+Happy exploring — this tutorial aims to be practical and runnable, so please tell me which example you want expanded into a fully reproducible script.

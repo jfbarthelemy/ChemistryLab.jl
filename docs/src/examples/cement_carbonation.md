@@ -36,7 +36,7 @@ paste: clinker phases, classic hydration products, and the three principal carbo
 products.
 
 | Group | Symbols | Role |
-|-------|---------|------|
+|:------|:--------|:-----|
 | Clinker | `C3S C2S C3A C4AF Gp` | Initial anhydrous phases |
 | Hydration products | `Portlandite Jennite ettringite monosulphate12 C3AH6` | Formed during hydration |
 | Carbonation products | `Cal monocarbonate hemicarbonate` | Formed on CO₂ uptake |
@@ -254,7 +254,7 @@ p2
 The simulation reveals four successive zones as CO₂ uptake increases:
 
 | Zone | ξ range | Dominant reaction | pH |
-|------|---------|------------------|----|
+|:-----|:--------|:-----------------|:---|
 | **I** — AFm conversion | 0 → ~0.2 | monosulphate + CO₂ → monocarbonate + gypsum | ≈ 12.5 |
 | **II** — Portlandite buffering | ~0.2 → 1 | Portlandite + CO₂ → calcite + H₂O | ≈ 12.0–12.5 |
 | **III** — Portlandite depletion | ξ ≈ 1 | Portlandite exhausted; pH drops sharply | 12 → 9.5 |

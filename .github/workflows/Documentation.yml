@@ -17,18 +17,33 @@ jobs:
   build:
     #needs: test
     runs-on: ubuntu-latest
+    # The VitePress pass runs after Documenter's, so the job is longer than it
+    # was; a bound keeps a hung build from occupying a runner indefinitely.
+    timeout-minutes: 120
     permissions:
         actions: write # needed to allow julia-actions/cache to proactively delete old caches that it has created
         pull-requests: read
         contents: write
         statuses: write
     steps:
-      # 1. Checkout the repository
+      # 1. Checkout the repository, with full history so `git tag` is complete:
+      # DocumenterVitepress decides whether a tagged build also becomes `stable`
+      # by looking for a higher release tag, and a shallow checkout sees none.
       - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
       - uses: julia-actions/setup-julia@v3
         with:
           version: '1'
       - uses: julia-actions/cache@v3
+      # Node itself comes from NodeJS_20_jll, which the Julia depot cache above
+      # already covers; this caches only what `npm install` fetches for the
+      # VitePress build, keyed on the manifest that determines it.
+      - uses: actions/cache@v4
+        with:
+          path: docs/node_modules
+          key: ${{ runner.os }}-npm-${{ hashFiles('docs/package.json') }}
+          restore-keys: ${{ runner.os }}-npm-
       # The Pkg server intermittently advertises a General tree hash that its
       # CDN then answers with a 404, which kills the first `Pkg.add` of a cold
       # depot before any of this repository's code runs.  Install the registry

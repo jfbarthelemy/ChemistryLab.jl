@@ -86,7 +86,7 @@ dict_species_calcite["Ca(HCO3)+"]
 `speciation` accepts seed arguments in three forms:
 
 | Seed argument | Description |
-|---------------|-------------|
+|:--------------|:------------|
 | `Vector{Symbol}` | Explicit list of atom symbols |
 | `Vector{<:AbstractSpecies}` | Species objects — their union of atoms defines the space |
 | `Vector{<:AbstractString}` | Species symbol strings — looked up in `species_list` |
@@ -94,7 +94,7 @@ dict_species_calcite["Ca(HCO3)+"]
 Common keyword arguments:
 
 | Keyword | Default | Description |
-|---------|---------|-------------|
+|:--------|:--------|:------------|
 | `aggregate_state` | all states | restrict to `[AS_AQUEOUS]`, `[AS_CRYSTAL]`, etc. |
 | `class` | all classes | restrict to `[SC_AQSOLUTE]`, etc. |
 | `exclude_species` | `[]` | species (or symbols) to always exclude |

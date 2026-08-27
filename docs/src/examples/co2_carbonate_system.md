@@ -19,7 +19,7 @@ All species are loaded from the **SLOP98 inorganic** database.
 The system contains only H, O, C and charge-bearing species; no other elements are needed.
 
 | Symbol    | Species             | Phase           |
-|-----------|---------------------|-----------------|
+|:----------|:--------------------|:----------------|
 | `H2O@`    | H₂O — water         | aqueous solvent |
 | `H+`      | H⁺ — proton         | aqueous solute  |
 | `OH-`     | OH⁻ — hydroxide     | aqueous solute  |
@@ -255,7 +255,7 @@ p2
 ## Analysis
 
 | Zone | pH range | Dominant species |
-|------|----------|-----------------|
+|:-----|:---------|:----------------|
 | Acidic / high CO₂ | pH < 6.35 (pKₐ₁) | CO₂(aq) |
 | Buffer zone 1 | pH ≈ pKₐ₁ = 6.35 | CO₂(aq) / HCO₃⁻ (equal amounts) |
 | Mid-range | 6.35 < pH < 10.33 | HCO₃⁻ |
