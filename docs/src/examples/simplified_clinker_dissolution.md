@@ -108,7 +108,7 @@ end
 [`equilibrate`](@ref) accepts a `variable_space` keyword that selects the optimization variable space:
 
 | `variable_space`        | Variables | Recommended when |
-|------------------|-----------|-----------------|
+|:-----------------|:----------|:----------------|
 | `Val(:linear)`   | mole amounts `nᵢ ≥ 0` | most systems, default |
 | `Val(:log)`      | `log nᵢ` | systems spanning many orders of magnitude |
 
@@ -190,7 +190,7 @@ state_eq2 = solve(solver, state)
 All activity models inherit from [`AbstractActivityModel`](@ref). The only built-in model is [`DiluteSolutionModel`](@ref), which implements:
 
 | Phase | Law | Expression |
-|-------|-----|-----------|
+|:------|:----|:----------|
 | Solvent (H₂O) | Raoult | `ln a = ln xₛ` |
 | Aqueous solutes | Henry | `ln a = ln(cᵢ / c°)`, `c° = 1 mol/L` |
 | Crystals | Pure solid | `ln a = 0` |

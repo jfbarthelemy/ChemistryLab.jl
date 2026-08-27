@@ -30,7 +30,7 @@ kf(T, P, t, n::StateView, lna::StateView, n_initial::StateView) -> Real [mol/s]
 where
 
 | Argument | Unit | Description |
-| --- | --- | --- |
+| :-- | :-- | :-- |
 | `T` | K | Temperature (plain `Real` or `ForwardDiff.Dual`) |
 | `P` | Pa | Pressure |
 | `t` | s | Current integration time |
@@ -212,7 +212,7 @@ kp = KineticsProblem(cs, [rxn_C3S, rxn_C2S, rxn_C3A, rxn_C4AF], state0, tspan)
 All constructors support DynamicQuantities `Quantity` values.  Plain `Real` → SI assumed.
 
 | Constructor | Parameter | Default SI unit | Example |
-| --- | --- | --- | --- |
+| :-- | :-- | :-- | :-- |
 | `arrhenius_rate_constant` | `k₀` | mol/(m²·s) | `0.5u"mmol/(m^2*s)"` |
 | `arrhenius_rate_constant` | `Ea` | J/mol | `62.0u"kJ/mol"` |
 | `parrot_killoh` params | `K₁, K₂, K₃` | s⁻¹ | `1.5u"1/d"` |
@@ -611,7 +611,7 @@ hydration model. They are not interchangeable, and their parameter sets are not
 transferable between them.
 
 | | [`parrot_killoh`](@ref) | [`parrot_killoh_avrami`](@ref) |
-|---|---|---|
+|:--|:--|:--|
 | Nucleation–growth | `(K₁/N₁)(1-ξ)^N₁ / (1 + B·ξ^N₃)` | `(k₁/n₁)(1-ξ)(-ln(1-ξ))^(1-n₁)` (Avrami) |
 | Second mechanism | `K₂(1-ξ)^N₂` | `k₂(1-ξ)^(2/3) / (1-(1-ξ)^(1/3))` (Jander) |
 | Third mechanism | `3K₃(1-ξ)^(2/3) / (N₃(1-(1-ξ)^(1/3)))` | `k₃(1-ξ)^n₃` (power law) |

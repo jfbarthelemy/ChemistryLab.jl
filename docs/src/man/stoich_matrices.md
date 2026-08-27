@@ -7,7 +7,7 @@ A stoichiometric matrix encodes how each chemical species is composed of element
 For example, three species:
 
 | Species | H | O | C |
-| ------- | - | - | - |
+| :------ | : | : | : |
 | H₂O    | 2 | 1 | 0 |
 | H⁺     | 1 | 0 | 0 |
 | CO₂    | 0 | 2 | 1 |

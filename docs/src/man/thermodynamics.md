@@ -7,7 +7,7 @@ ChemistryLab represents temperature-dependent thermodynamic properties (Cp°, Δ
 ## Overview
 
 | Type | Backed by | When to use |
-| --- | --- | --- |
+| :-- | :-- | :-- |
 | [`SymbolicFunc`](@ref) | Symbolics.jl expression, compiled to a `RuntimeGeneratedFunction` | Any model expressible as a closed-form symbolic formula |
 | [`NumericFunc`](@ref) | Plain Julia closure | Complex models with no closed-form (e.g. HKF electrostatic integrals) |
 | [`ThermoFactory`](@ref) | A `SymbolicFunc` template with free parameters | Factories that stamp out many `SymbolicFunc` instances from the same expression |
@@ -136,7 +136,7 @@ S°, ΔₐH°, and ΔₐG° are the analytical integrals, adjusted so that the r
 **Parameters** (all keyword arguments, in SI):
 
 | Parameter | Unit | Description |
-| --- | --- | --- |
+| :-- | :-- | :-- |
 | `a₀` … `a₁₀` | see table below | Cp coefficients (unused ones set to 0) |
 | `S⁰` | J mol⁻¹ K⁻¹ | Entropy at reference T |
 | `ΔₐH⁰` | J mol⁻¹ | Enthalpy of formation at reference T |
@@ -146,7 +146,7 @@ S°, ΔₐH°, and ΔₐG° are the analytical integrals, adjusted so that the r
 Coefficient units:
 
 | Parameter | Unit |
-| --- | --- |
+| :-- | :-- |
 | `a₀`, `a₁₀` | J/(mol·K) |
 | `a₁` | J/(mol·K²) |
 | `a₂` | J·K/mol |
@@ -387,7 +387,7 @@ f_piece(T = 600.0)
 ## Summary
 
 | Task | Code |
-| --- | --- |
+| :-- | :-- |
 | Constant with unit | `SymbolicFunc(37.14u"J/mol/K")` |
 | Single variable T | `SymbolicFunc(:T)` |
 | Expression with parameters | `SymbolicFunc(:(a + b*T); a=30.0, b=5e-3)` |

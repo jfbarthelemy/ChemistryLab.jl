@@ -14,7 +14,7 @@ the inorganic database provides H₂O, H⁺, OH⁻, NaOH and Na⁺;
 the organic database provides acetic acid and acetate.
 
 | Symbol   | Species                    | Phase           |
-|----------|----------------------------|-----------------|
+|:---------|:---------------------------|:----------------|
 | `AceH@`  | CH₃COOH — acetic acid      | aqueous solute  |
 | `Ace-`   | CH₃COO⁻ — acetate          | aqueous solute  |
 | `NaOH@`  | NaOH — sodium hydroxide    | aqueous solute  |

@@ -52,7 +52,7 @@ state_eq = equilibrate(state)
 ChemistryLab provides two solver extensions. Load whichever fits your workflow:
 
 | Extension packages | Default solver | When to use |
-|---|---|---|
+|:--|:--|:--|
 | `Optimization`, `OptimizationIpopt` | `IpoptOptimizer` | general-purpose, robust |
 | `OptimaSolver` | `OptimaOptimizer` | preferred when available |
 
@@ -338,7 +338,7 @@ state_m = state_eq / 1000   # millimolar scale
 [`rescale!`](@ref) scales all molar amounts **in-place** so that the total of the matching physical quantity equals `target`:
 
 | `target` dimension | Quantity brought to `target` |
-|--------------------|------------------------------|
+|:-------------------|:-----------------------------|
 | mol                | `moles(state).total`         |
 | kg (mass)          | `mass(state).total`          |
 | m³ (volume)        | `volume(state).total`        |
@@ -366,7 +366,7 @@ println("pH   = ", pH(state_pkg))   # intensive quantities are invariant
 [`equilibrate`](@ref) accepts a `variable_space` keyword that selects the optimization variable space:
 
 | `variable_space`        | Variables | Recommended when |
-|------------------|-----------|-----------------|
+|:-----------------|:----------|:----------------|
 | `Val(:linear)`   | mole amounts `nᵢ ≥ 0` | most systems, default |
 | `Val(:log)`      | `log nᵢ` | systems spanning many orders of magnitude |
 
@@ -498,7 +498,7 @@ level used by standard geochemical codes.
 ### Choosing a model
 
 | Model | Formula | Valid range | Parameters needed |
-| --- | --- | --- | --- |
+| :-- | :-- | :-- | :-- |
 | [`DiluteSolutionModel`](@ref) | Raoult / Henry | I ≪ 1 mol/kg | none |
 | [`HKFActivityModel`](@ref) | B-dot extended Debye-Hückel | I ≲ 1 mol/kg | `A`, `B`, `Ḃ` (defaults at 25 °C) |
 | [`DaviesActivityModel`](@ref) | Davies equation | I ≲ 0.5 mol/kg | `A`, `b` (defaults at 25 °C) |
@@ -508,7 +508,7 @@ level used by standard geochemical codes.
 ### `DiluteSolutionModel` (ideal dilute solution)
 
 | Phase | Law | Expression |
-| --- | --- | --- |
+| :-- | :-- | :-- |
 | Solvent (H₂O) | Raoult | `ln a = ln xₛ` |
 | Aqueous solutes | Henry | `ln a = ln(cᵢ / c°)`, `c° = 1 mol/L` |
 | Crystals | Pure solid | `ln a = 0` |
@@ -673,7 +673,7 @@ cs = ChemicalSystem(
 ### Activity models for solid solutions
 
 | Model | Formula | Notes |
-| --- | --- | --- |
+| :-- | :-- | :-- |
 | [`IdealSolidSolutionModel`](@ref) | `ln aᵢ = ln xᵢ` | Default, any number of end-members |
 | [`RedlichKisterModel`](@ref) | `ln aᵢ = ln xᵢ + ln γᵢ` (Margules) | Binary only (2 end-members), parameters in J/mol |
 

@@ -568,7 +568,7 @@ and three experiments were needed to see why, which is worth setting out because
 the first two explanations were wrong.
 
 | loss | grid | RMSE on `Q` | `corr(τ_ind, k₁_C3S)` | fitted `τ` |
-|--- |--- |--- |--- |--- |
+|:-- |:-- |:-- |:-- |:-- |
 | `Q` only | 60 pts | **24.4** | 0.9815 | 3.1 h |
 | `Q` + model `q̇` | 60 pts | 27.6 | 0.9940 | 5.3 h |
 | `Q` + matched slopes | 60 pts | 27.6 | 0.9941 | 5.3 h |

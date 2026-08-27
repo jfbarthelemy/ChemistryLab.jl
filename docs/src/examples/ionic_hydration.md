@@ -264,7 +264,7 @@ and the numbers used below are theirs, for the plain-cement mix `C100` of their
 Table 11 at w/b = 0.5:
 
 | quantity | value | source |
-|---|---|---|
+|:--|:--|:--|
 | binder / dry sand / water | 371 g / 1113 g / 196 g | Table 11, `C100` |
 | calorimeter vessel `C_vessel` | 380 J/K | §4.1 — see the note below |
 | sand heat capacity | 812 J/K | `Qtz` of CEMDATA18, 0.73 J/(g·K) |

@@ -33,7 +33,7 @@ cs = ChemicalSystem(species, CEMDATA_PRIMARIES)
 The clinker composition (mass fractions of the anhydrous cement phases) is fixed throughout the scan:
 
 | Phase | Symbol | Mass fraction |
-|-------|--------|---------------|
+|:------|:-------|:--------------|
 | Alite | `C3S`  | 67.8 % |
 | Belite | `C2S` | 16.6 % |
 | Aluminate | `C3A` | 4.0 % |
@@ -183,7 +183,7 @@ p3
 ## Analysis
 
 | w/c zone | Limiting factor | Key observations |
-|----------|-----------------|-----------------|
+|:---------|:----------------|:----------------|
 | < 0.35 | **Water** | Incomplete hydration; unreacted C₃S persists; low porosity |
 | ≈ 0.40–0.42 | Balanced | Complete hydration just achievable; minimum porosity |
 | > 0.45 | **Clinker** | All clinker dissolves; excess water becomes capillary porosity |

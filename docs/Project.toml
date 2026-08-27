@@ -7,6 +7,7 @@ Statistics = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
 TOML = "fa267f1f-6049-4f14-aa54-33bafae1ed76"
 Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
 DocumenterCitations = "daee34ce-89f3-4625-b898-19384cb65244"
+DocumenterVitepress = "4710194d-e776-4893-9690-8d956a29c365"
 DynamicQuantities = "06fc5a27-2a28-4c7c-a15d-362465fb6821"
 LiveServer = "16fef848-5104-11e9-1b77-fb7a48bbb589"
 Symbolics = "0c5d862f-8b57-4792-8d23-62f2024744c7"
@@ -23,6 +24,9 @@ PrettyTables = "08abe8d2-0d0c-5749-adfa-8a2ac140af0d"
 SymbolicNumericIntegration = "78aadeae-fbc0-11eb-17b6-c7ec0477ba9e"
 
 [compat]
+Documenter = "1.17"
+DocumenterCitations = "1.5"
+DocumenterVitepress = "0.3"
 # The docs environment declares OptimaSolver directly, and without a bound here
 # it resolved to 0.2.1 — whose `OptimaOptimizer` has neither `use_fd_hessian`
 # nor `nullspace_step`, so every equilibrium `@example` block failed with a
