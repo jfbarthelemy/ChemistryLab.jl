@@ -15,7 +15,19 @@
 
 [![DOI](https://img.shields.io/badge/DOI-10.5281%2Fzenodo.17756074-blue)](https://doi.org/10.5281/zenodo.17756074)
 
-ChemistryLab.jl is a computational chemistry toolkit. Although initially dedicated to low-carbon cementitious materials and aqueous solutions and designed for researchers, engineers, and developers working with cement chemistry, its scope is actually wider. It provides formula handling, species management, stoichiometric matrix construction, and database interoperability (ThermoFun and Cemdata). Main features include chemical formula parsing, Unicode/Phreeqc notation conversion, reaction and equilibrium analysis, and data import/export.
+`ChemistryLab.jl` handles chemical formulas, species and reactions as
+first-class objects, reads thermodynamic data from ThermoFun and Cemdata, and
+solves equilibrium by Gibbs-energy minimization. Kinetics and chemo-mechanical
+coupling build on the same objects.
+
+It grew out of work on low-carbon cementitious materials and aqueous solutions,
+but its scope is not restricted to them: formula parsing, Unicode/Phreeqc
+conversion, stoichiometric matrices, reaction algebra, activity models,
+temperature sweeps and speciation diagrams are general.
+
+It is written for work that has to be reproducible and scripted — aqueous
+geochemistry, cement chemistry, and any problem where speciation, a database and
+a solver have to be driven from code rather than from a dialog box.
 
 ## Features
 
