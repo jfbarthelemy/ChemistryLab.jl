@@ -143,12 +143,12 @@ state_eq = equilibrate(state)
 println("pH = ", round(pH(state_eq), digits = 2))
 ```
 
-Derived quantities such as pH, pOH, phase volumes and individual species amounts are all accessible on the returned `ChemicalState`. For a detailed description of the solver options, activity models, and temperature sweeps, see the equilibrium tutorial (`Tutorial → Chemical Equilibrium`).
+Derived quantities such as pH, pOH, phase volumes and individual species amounts are all accessible on the returned `ChemicalState`. For a detailed description of the solver options, activity models, and temperature sweeps, see the equilibrium tutorial (`Tutorials → Chemical Equilibrium`).
 
 ## Notes and next steps
 
 - The `Formula`, `Species`, `Reaction` and `StoichMatrix` APIs are intentionally small and composable — explore the `docs/src/` pages for detailed examples.
-- For equilibrium calculations, see `docs/src/man/equilibrium.md` and the worked examples `co2_carbonate_system` and `cement_carbonation`.
+- For equilibrium calculations, see `docs/src/tutorials/equilibrium.md` and the worked examples `co2_carbonate_system` and `cement_carbonation`.
 - For cement-specific workflows, use `CemSpecies` and the `databases` utilities to convert between oxide- and atom-based representations.
 
 Now try the `quickstart` examples interactively in the REPL and then follow the next pages of the tutorial for deeper coverage.
@@ -157,8 +157,8 @@ Now try the `quickstart` examples interactively in the REPL and then follow the 
 
 - In the REPL try small calls like `using ChemistryLab; Species("CaCO3")` and `Formula("SO4-2")` to explore parsing behavior interactively.
 - Start with `docs/src/examples/example_stoich_matrix.md` to see a concise, runnable example converting a stoichiometric matrix into reactions.
-- For equilibrium calculations, see `docs/src/man/equilibrium.md` for the minimal workflow, then explore the `co2_carbonate_system` and `cement_carbonation` examples.
-- If you plan to work with ThermoFun/Cemdata sources, run the examples in `docs/src/man/databases.md` after placing the required `.json`/`.dat` data files in the `data/` directory.
+- For equilibrium calculations, see `docs/src/tutorials/equilibrium.md` for the minimal workflow, then explore the `co2_carbonate_system` and `cement_carbonation` examples.
+- If you plan to work with ThermoFun/Cemdata sources, run the examples in `docs/src/tutorials/databases.md` after placing the required `.json`/`.dat` data files in the `data/` directory.
 
 ## Next steps
 
