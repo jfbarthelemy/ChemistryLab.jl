@@ -401,6 +401,27 @@ function _solve_dual(
     state_v = _primal(state)
     eq_v = SciMLBase.solve(esolver, state_v; ϵ = ϵ, b = isnothing(b) ? nothing : _plain.(b))
     nstar = Float64[ustrip(us"mol", nᵢ) for nᵢ in eq_v.n]
+    return _attach_sensitivity(state, nstar, esolver.μ, ϵ; b = b)
+end
+
+"""
+    _attach_sensitivity(state, nstar, μ, ϵ; b = nothing) -> ChemicalState
+
+Differentiate the equilibrium map implicitly at a composition already found, and
+return it carrying the dual parts.
+
+Split out of [`_solve_dual`](@ref) so the same derivative can be attached to an
+answer obtained by any route — in particular to a certified one, which is solved
+in real arithmetic by construction. Pushing duals through the iteration itself
+would be wrong anyway: an active set has a discrete component, so the map
+`b ↦ n*(b)` is smooth only piecewise, and the derivative belongs at the solution
+with the active set frozen.
+"""
+function _attach_sensitivity(
+        state::ChemicalState{C, S, Q, R}, nstar, μ, ϵ::Float64; b = nothing,
+    ) where {C, S, Q, R <: ForwardDiff.Dual}
+    esolver = (; μ = μ)
+    state_v = _primal(state)
 
     A = Float64.(state.system.SM.A)
     p_v = _build_params(state_v; ϵ = ϵ)

@@ -172,7 +172,57 @@ function integrate(kp::KineticsProblem, ks::KineticsSolver; kwargs...)
     else
         sol = solve(prob, solver; merged...)
     end
+    _warn_if_unphysical(sol, p, kp)
     return sol
+end
+
+"""
+    _warn_if_unphysical(sol, p, kp)
+
+Warn when the trajectory ends on amounts no chemistry can produce.
+
+This is not tidying. Measured on calcite dissolving under `r = k(1 − Ω)` over
+`10⁵ s`, `Rodas5P` — and `OrdinaryDiffEq`'s default polyalgorithm, which picks a
+stiff method here — return a reaction extent of **−457 mol** and
+`retcode = Success`, while the explicit `Tsit5` gets the right answer
+(`1.104e-4`) in 85 626 steps. The stiff methods need a Jacobian, the residual
+carries a re-speciation the Jacobian does not see, and the error control built on
+that same Jacobian reports success on nonsense.
+
+The implicit step of `kinetic_step` does not have the problem — it is exact on the
+same case at `Δt = 10³ s` and, at `10⁵ s`, wrong but **reporting** it through its
+certificate — and `kinetic_step_adaptive` reaches the equilibrium values to eight
+digits in seven steps. Until the ODE route carries the exact Jacobian, an answer
+from it deserves this check.
+"""
+function _warn_if_unphysical(sol, p, kp)
+    u = sol.u[end]
+    nb, nk, nr = p.n_be, p.n_nk, p.n_rxn_state
+    # The test is CREATION OF MATTER, not the sign of an extent. A negative
+    # extent is legitimate — that is precipitation — and on the measured failure
+    # the extent came out at −457 mol, so a threshold on it would have to be
+    # arbitrary. What cannot happen is an amount exceeding what the system was
+    # given: `Rodas5P` returned 457 mol of calcite from a budget of 55.6.
+    total0 = sum(p.n_initial_full)
+    ceiling = 2 * total0 + 1
+    bad = String[]
+    for j in 1:nk
+        v = u[nb + j]
+        name = symbol(kp.system.species[kp.idx_kinetic[j]])
+        v < -1.0e-8 && push!(bad, "$name = $(round(v, sigdigits = 4)) mol, negative")
+        v > ceiling && push!(
+            bad,
+            "$name = $(round(v, sigdigits = 4)) mol against a total budget of " *
+                "$(round(total0, sigdigits = 4))",
+        )
+    end
+    for j in 1:nr
+        ξ = u[nb + nk + j]
+        abs(ξ) > ceiling && push!(bad, "extent $j = $(round(ξ, sigdigits = 4)) mol")
+    end
+    isempty(bad) && return nothing
+    @warn """the trajectory ends on amounts no chemistry can produce, and the     integrator reported success: $(join(bad, ", ")). A stiff method here needs a     Jacobian that the re-speciation in the residual does not supply, so its error     control is built on the wrong derivative. Use `kinetic_step_adaptive`, whose     step is chosen from a local error estimate on the extents and which is exact on     this class of problem, or an explicit method if the system allows it.""" maxlog = 1
+    return nothing
 end
 
 # ── __init__: register default solver ────────────────────────────────────────

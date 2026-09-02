@@ -100,6 +100,43 @@ pinning the mineral. On calcite that leaves `K = [−1]`, hence `M = 1` and
 `Δξ = Δt·r`: measured, the calcite left after 1000 s at 1 µmol/s is
 `n₀ − kΔt` to the last bit, with the element balance at `10⁻¹⁴`.
 
+### Choosing the step length, and a case where the stiff ODE route is wrong
+
+[`kinetic_step_adaptive`](@ref) takes one step of `Δt` and two of `Δt/2`, compares
+the extents, and accepts the finer pair when the difference is within tolerance —
+Richardson's estimate, which for a first-order method IS the error of the coarse
+step. Three implicit solves per accepted step is the price.
+
+Reaktoro has nothing equivalent: its kinetics adds a single initial step to the
+equilibrium options, the step is the caller's, and backward Euler being first
+order, one ten times too large is ten times less accurate with nothing to say so.
+
+Measured on calcite dissolving under `r = k(1 − Ω)` with `k = 10⁻⁴ mol/s` over
+`10⁵ s`, against the equilibrium the trajectory converges to:
+
+| route | steps | result |
+|:--|--:|:--|
+| `Rodas5P`, and `OrdinaryDiffEq`'s default polyalgorithm | 6 | **extent −457 mol**, `retcode = Success` |
+| `Tsit5`, explicit | 85 626 | correct, in 519 s |
+| one `kinetic_step` of `10⁵ s` | 1 | wrong — and its certificate says so |
+| `kinetic_step_adaptive` | **7** | correct to eight digits |
+
+The first row is the one to know about. A stiff method needs a Jacobian; the
+residual of the ODE route carries a re-speciation the Jacobian does not see; and
+the error control built on that same derivative reports success on nonsense. The
+extension now warns when a trajectory ends on amounts no chemistry can produce —
+457 mol of calcite from a budget of 55.6 — but a warning is not a fix, and until
+the ODE route carries the exact Jacobian the implicit step is the route to use
+whenever a rate law reads the solution.
+
+The tolerance is relative to the amount each reaction acts on, not to the extent.
+Scaling by `Δξ` is the obvious thing to write and does not work: `Δξ ∝ Δt`, so
+that tolerance vanishes with the step while the equilibrium solve's own noise does
+not, the measured error behaves as `noise/(reltol·Δt)` and **grows** as the step
+shrinks. Measured, the controller then halved to the floor without advancing, and
+the final answer got worse as the tolerance was tightened. An ODE integrator's
+`reltol` multiplies the solution for exactly this reason.
+
 ### Solid solutions in the step, and the two settings the certificate decides
 
 A solid solution takes part like any other phase — the products of a kinetic

@@ -103,3 +103,50 @@
     end
 
 end
+
+@testsection "ForwardDiff through the certified route" begin
+
+    # The certified route solves in real arithmetic — an active set has a discrete
+    # component, so the map `b ↦ n*(b)` is smooth only piecewise and pushing duals
+    # through the search would be wrong. The derivative is attached at the answer,
+    # from the optimality conditions.
+    #
+    # This has to be tested rather than assumed: the certified path converts the
+    # component totals to `Float64` to fix them once, and before the dual branch
+    # existed that silently dropped every partial.
+    sp = Dict(symbol(s) => s for s in build_species(
+        datapath("slop98-inorganic-thermofun.json")))
+    cs = ChemicalSystem(
+        [sp[s] for s in split("H2O@ H+ OH- CO2@ HCO3- CO3-2 Ca+2 Cal")],
+        ["H2O@", "H+", "Ca+2", "CO3-2", "Zz"],
+    )
+    idx = Dict(symbol(s) => i for (i, s) in enumerate(cs.species))
+
+    function pH_of(x)
+        n = Any[fill(0.0 * oneunit(x) * u"mol", length(cs.species))...]
+        n[idx["H2O@"]] = 55.5 * oneunit(x) * u"mol"
+        n[idx["Cal"]] = 0.05 * oneunit(x) * u"mol"
+        n[idx["CO2@"]] = x * u"mol"
+        return pH(equilibrate(ChemicalState(cs, n)))
+    end
+
+    x0 = 0.01
+    ad = ForwardDiff.derivative(pH_of, x0)
+    h = 1.0e-6
+    fd = (pH_of(x0 + h) - pH_of(x0 - h)) / (2h)
+
+    @test isfinite(ad)
+    @test ad != 0                       # the partials are not dropped
+    @test ad ≈ fd rtol = 1.0e-5         # measured at 4.3e-9
+    @test ad < 0                        # more CO2, lower pH
+
+    # And the primal value is the certified one, not something the dual path
+    # computed separately.
+    @test pH_of(x0) ≈ pH(first(equilibrate_certified(let
+        n = Any[fill(0.0u"mol", length(cs.species))...]
+        n[idx["H2O@"]] = 55.5u"mol"; n[idx["Cal"]] = 0.05u"mol"
+        n[idx["CO2@"]] = x0 * u"mol"
+        ChemicalState(cs, n)
+    end))) atol = 1.0e-12
+
+end

@@ -93,6 +93,24 @@ function equilibrate_certified(
         return (eq, nothing)
     end
 
+    # A composition carrying dual numbers takes the implicit-function route: the
+    # certified solve runs in real arithmetic, and the derivative is attached at
+    # the answer. Pushing duals through the active-set search would be wrong —
+    # the map is smooth only piecewise — and through `Float64` conversions like
+    # the `b` below it would simply be lost, which is what happened before this
+    # branch existed.
+    if eltype(state.n) <: DynamicQuantities.AbstractQuantity{<:ForwardDiff.Dual}
+        state_v = _primal(state)
+        eq_v, cert = equilibrate_certified(
+            state_v; model = model, ϵ = ϵ, verbose = verbose,
+            constraint = constraint, parameters = parameters,
+            b = b === nothing ? nothing : _plain.(b), kwargs...,
+        )
+        nstar = Float64[ustrip(us"mol", x) for x in eq_v.n]
+        μ = build_potentials(state.system, model)
+        return (_attach_sensitivity(state, nstar, μ, ϵ; b = b), cert)
+    end
+
     des = DualEquilibriumSolver(state.system, model; verbose = verbose)
 
     # `b` is fixed ONCE, from the state as given. Letting each start define its

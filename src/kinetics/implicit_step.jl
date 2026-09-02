@@ -421,3 +421,119 @@ function _step_rate_closure(kss::KineticStepSolver, des, T, P, t, n0)
         ]
     end
 end
+
+# ── adaptive stepping ────────────────────────────────────────────────────────
+#
+# What Reaktoro does not have. Its kinetics adds a single field to the
+# equilibrium options — an initial step — and the step itself is the caller's,
+# with no estimate of what taking it cost. The scheme is backward Euler, so the
+# error is first order in `Δt`, and a step ten times too large returns an answer
+# ten times less accurate with nothing to say so.
+#
+# The estimate is Richardson's, on the extents: one step of `Δt` against two of
+# `Δt/2`. For a first-order method the difference IS the error of the coarse step
+# to leading order, and `2·(ξ_fine − ξ_coarse)` estimates the error of the fine
+# one. Three implicit solves per accepted step, which is the price.
+
+"""
+    kinetic_step_adaptive(kss, state, Δt; reltol, abstol, ...) -> (state, Δt_used, Δt_next)
+
+One kinetic step with its length chosen from a local error estimate.
+
+Takes one step of `Δt` and two of `Δt/2`, compares the extents, and accepts the
+finer pair when the estimated error is within tolerance — halving and retrying
+otherwise. Returns the accepted state, the step actually taken, and a suggestion
+for the next one.
+
+The estimate is Richardson's for a first-order method: `ξ_fine − ξ_coarse` is the
+error of the coarse step to leading order. The error controlled is therefore on
+the **reaction extents**, which is what a kinetic step advances; the composition
+follows from them through an exact equilibrium solve, so it carries no separate
+error of its own.
+
+`Δt` is the step to attempt, `max_halvings` bounds the retries, and the tolerance
+is `abstol + reltol·sⱼ` per reaction, where `sⱼ` is the **amount the extent acts
+on** — `Σᵢ |Kᵢⱼ| nᵢ`, the kinetic minerals of reaction `j` at the start of the
+step.
+
+Scaling by the extent instead, `reltol·|Δξⱼ|`, does not work, and the reason is
+worth stating because it is the obvious thing to write. `Δξ ∝ Δt`, so that
+tolerance vanishes with the step while the equilibrium solve's own noise does
+not: the measured error then behaves as `noise / (reltol·Δt)` and **grows** as the
+step shrinks. Measured, the controller halved to the floor without advancing and
+the final answer got worse as the tolerance was tightened — 2.5e-5 at `1e-3`
+against 9.2e-5 at `1e-5`. An ODE integrator's `reltol` multiplies the solution,
+not the increment, for exactly this reason.
+
+# Example
+
+```julia
+st, dt_used, dt_next = kinetic_step_adaptive(kss, st0, 3600.0u"s"; reltol = 1e-4)
+```
+
+See also [`kinetic_step`](@ref) for a step of a length you choose, and
+[`integrate`](@ref) for the `ODEProblem` route, which brings SciML's own
+step-size control and its choice of stiff solvers.
+"""
+function kinetic_step_adaptive(
+        kss::KineticStepSolver, state::ChemicalState, Δt;
+        t = 0.0, reltol::Float64 = 1.0e-4, abstol::Float64 = 1.0e-14,
+        max_halvings::Int = 12, ϵ::Float64 = 1.0e-16,
+        warm_start::Bool = true, pin_minerals = :auto,
+        parameters::Union{Nothing, Base.RefValue} = nothing,
+        error_estimate::Union{Nothing, Base.RefValue} = nothing,
+    )
+    Δt_s = Δt isa DynamicQuantities.AbstractQuantity ? ustrip(us"s", Δt) : Float64(Δt)
+    Δt_s > 0 || throw(ArgumentError("`Δt` must be positive, got $Δt_s s."))
+
+    common = (;
+        ϵ = ϵ, warm_start = warm_start, pin_minerals = pin_minerals,
+    )
+
+    # The scale the tolerance is relative to: the amount each reaction acts on.
+    n_now = Float64[ustrip(us"mol", x) for x in state.n]
+    scales = [
+        max(sum(abs(kss.K[i, j]) * n_now[i] for i in axes(kss.K, 1)), 1.0e-30)
+            for j in axes(kss.K, 2)
+    ]
+
+    h = Δt_s
+    for _ in 0:max_halvings
+        q_c = Ref(Float64[])
+        kinetic_step(kss, state, h; t = t, parameters = q_c, common...)
+
+        q_1 = Ref(Float64[])
+        mid = kinetic_step(kss, state, h / 2; t = t, parameters = q_1, common...)
+        q_2 = Ref(Float64[])
+        fine = kinetic_step(
+            kss, mid, h / 2; t = t + h / 2, parameters = q_2, common...,
+        )
+        ξ_fine = q_1[] .+ q_2[]
+
+        err = maximum(
+            abs(ξ_fine[j] - q_c[][j]) / (abstol + reltol * scales[j])
+                for j in eachindex(ξ_fine)
+        )
+        error_estimate === nothing || (error_estimate[] = err)
+
+        if err <= 1
+            parameters === nothing || (parameters[] = ξ_fine)
+            # First order, so the step scales as the tolerance ratio itself,
+            # capped at doubling — the usual safety factor of 0.9.
+            Δt_next = h * min(2.0, max(0.2, 0.9 / max(err, 1.0e-10)))
+            return (fine, h, Δt_next)
+        end
+        h /= 2
+    end
+
+    throw(
+        ErrorException(
+            "the local error on the reaction extents stayed above tolerance after " *
+                "$max_halvings halvings, down to Δt = $(Δt_s / 2^max_halvings) s. " *
+                "Either a rate law is discontinuous at this composition — a hard " *
+                "gate on a species that has just run out will do it — or the " *
+                "tolerance is below what the equilibrium solve itself delivers " *
+                "(its own tolerance is $(kss.dual.opts.tol)).",
+        )
+    )
+end

@@ -119,6 +119,50 @@ extents came out 4.3 times short. For a model whose assemblage IS the
 stoichiometry, the ODE route already does exactly that, and the tutorial now opens
 with a table saying which route answers which question.
 
+### Choosing the step length, and a case the stiff ODE route gets wrong
+
+`kinetic_step_adaptive` chooses `Δt` from a Richardson estimate on the extents —
+one step against two half-steps, which for a first-order method is the error of
+the coarse one. Reaktoro has no equivalent: the step is the caller's and nothing
+reports what taking it cost.
+
+Measured on calcite under `r = k(1 − Ω)`, `k = 10⁻⁴ mol/s`, over `10⁵ s`:
+
+| route | steps | result |
+|:--|--:|:--|
+| `Rodas5P`, and OrdinaryDiffEq's default polyalgorithm | 6 | **extent −457 mol**, `retcode = Success` |
+| `Tsit5`, explicit | 85 626 | correct, 519 s |
+| one `kinetic_step` of `10⁵ s` | 1 | wrong, and its certificate says so |
+| `kinetic_step_adaptive` | **7** | correct to eight digits |
+
+A stiff method needs a Jacobian, the residual carries a re-speciation the Jacobian
+does not see, and the error control built on it reports success on nonsense. The
+`OrdinaryDiffEq` extension now warns when a trajectory ends on amounts no
+chemistry can produce — 457 mol of calcite from a budget of 55.6 — naming the
+species and the budget. That is a warning, not a fix: until the ODE route carries
+the exact Jacobian, the implicit step is the route for a rate law that reads the
+solution.
+
+One design point worth recording, because the obvious choice fails. The tolerance
+is relative to the amount each reaction acts on, **not** to the extent. Scaling by
+`Δξ` makes the tolerance vanish with the step while the equilibrium solve's noise
+does not, so the measured error grows as the step shrinks: the controller halved
+to the floor without advancing, and the answer got worse as the tolerance was
+tightened — 2.5e-5 at `reltol = 1e-3` against 9.2e-5 at `1e-5`.
+
+### ForwardDiff through the certified route
+
+A composition carrying dual numbers takes the implicit-function route: the
+certified solve runs in real arithmetic and the derivative is attached at the
+answer. This had to be built rather than inherited — the certified path converts
+the component totals to `Float64` to fix them once, which silently dropped every
+partial. `∂pH/∂n(CO₂)` now agrees with a central difference to `4.3e-9` relative,
+and the primal value is the certified one.
+
+Pushing duals through the search would be wrong in any case: an active set has a
+discrete component, so the map `b ↦ n*(b)` is smooth only piecewise and the
+derivative belongs at the solution with the active set frozen.
+
 ### Correctness of published values
 
 - **The "maleic acid" titration is malonate.** The SLOP98 entries are

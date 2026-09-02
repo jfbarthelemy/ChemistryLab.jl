@@ -269,3 +269,196 @@ end
     @test count(>(1.0e-6), [n_cold[findfirst(==(nm), names2)] for nm in members]) < 4
 
 end
+
+@testsection "the step length can be chosen from a local error estimate" begin
+
+    # What Reaktoro's kinetics does not have. Its options add a single initial
+    # step to the equilibrium options; the step is the caller's and nothing
+    # reports what taking it cost. The scheme is backward Euler, so a step ten
+    # times too large is ten times less accurate, silently.
+    sp = Dict(symbol(x) => x for x in build_species(
+        datapath("slop98-inorganic-thermofun.json")))
+    cs = ChemicalSystem(
+        [sp[x] for x in split("H2O@ H+ OH- CO2@ HCO3- CO3-2 Ca+2 Cal")],
+        ["H2O@", "H+", "Ca+2", "CO3-2", "Zz"],
+    )
+    i_Cal = findfirst(x -> symbol(x) == "Cal", cs.species)
+    function calcite_water()
+        st = ChemicalState(cs)
+        set_quantity!(st, "Cal", 1.0e-2u"mol")
+        set_quantity!(st, "H2O@", 1.0u"kg")
+        set_quantity!(st, "H+", 1.0e-7u"mol")
+        set_quantity!(st, "OH-", 1.0e-7u"mol")
+        return st
+    end
+
+    rxn2 = Reaction(
+        OrderedDict(cs["Cal"] => 1.0),
+        OrderedDict(cs["Ca+2"] => 1.0, cs["CO3-2"] => 1.0); symbol = "calcite",
+    )
+    k = 1.0e-5
+    stoich = Float64.(
+        KineticReaction(
+            cs, rxn2,
+            KineticFunc((T, P, t, n, lna, n0) -> 0.0, NamedTuple(), u"mol/s"),
+        ).stoich,
+    )
+    R = 8.31446261815324
+    GT = [
+        ustrip(us"J/mol", s[:ΔₐG⁰](T = 298.15u"K", P = 1.0e5u"Pa"; unit = true)) /
+            (R * 298.15) for s in cs.species
+    ]
+    kr = KineticReaction(
+        cs, rxn2,
+        KineticFunc(
+            (T, P, t, n, lna, n0) -> begin
+                Ω = saturation_ratio(stoich, [lna[symbol(s)] for s in cs.species], GT)
+                k * (1 - Ω)
+            end, NamedTuple(), u"mol/s",
+        ),
+    )
+    kss2 = KineticStepSolver(cs, DiluteSolutionModel(), [kr])
+    cal(s) = ustrip(us"mol", s.n[i_Cal])
+
+    # Reference: 256 equal steps to t = 400 s.
+    TEND = 400.0
+    st = calcite_water()
+    for _ in 1:256
+        st = kinetic_step(kss2, st, TEND / 256)
+    end
+    ref = cal(st)
+
+    # One step of the whole interval, for comparison: first order, so it is out
+    # by about 1.2e-6 mol.
+    one_step = cal(kinetic_step(kss2, calcite_water(), TEND))
+    @test abs(one_step - ref) > 1.0e-7
+
+    function march(reltol)
+        s = calcite_water()
+        t, h, taken = 0.0, TEND, Float64[]
+        while t < TEND - 1.0e-9 && length(taken) < 200
+            s, used, h = kinetic_step_adaptive(
+                kss2, s, min(h, TEND - t); t = t, reltol = reltol,
+            )
+            t += used
+            push!(taken, used)
+        end
+        return (cal(s), taken)
+    end
+
+    v3, steps3 = march(1.0e-3)
+    v4, steps4 = march(1.0e-4)
+
+    # The march completes — it does not stall. That is the property the first
+    # version of this controller lacked: with the tolerance taken relative to
+    # `Δξ`, which vanishes with the step, the estimated error grew as the step
+    # shrank and it halved to the floor without advancing.
+    @test sum(steps3) ≈ TEND rtol = 1.0e-9
+    @test sum(steps4) ≈ TEND rtol = 1.0e-9
+    @test length(steps3) < 200 && length(steps4) < 200
+
+    # A tighter tolerance takes more steps and lands closer.
+    @test length(steps4) > length(steps3)
+    @test abs(v4 - ref) < abs(one_step - ref)
+    @test abs(v4 - ref) < 1.0e-10        # measured at 2.5e-13
+
+    # And the step size is chosen, not fixed: it varies over two orders of
+    # magnitude within one march.
+    @test maximum(steps4) / minimum(steps4) > 10
+
+    # An estimate is available to the caller.
+    e = Ref(0.0)
+    kinetic_step_adaptive(
+        kss2, calcite_water(), TEND; reltol = 1.0e-4, error_estimate = e,
+    )
+    @test e[] > 0
+    @test isfinite(e[])
+
+end
+
+@testsection "the adaptive step survives a case the stiff ODE route gets wrong" begin
+
+    # Measured, and the reason the tutorial recommends the implicit route for a
+    # rate law that reads the solution. On calcite dissolving under `r = k(1 − Ω)`
+    # over 1e5 s with k = 1e-4:
+    #
+    #   Rodas5P and the default polyalgorithm : extent = −457 mol, retcode Success
+    #   Tsit5, explicit                       : correct, 85 626 steps, 519 s
+    #   one implicit step of 1e5 s            : wrong, and its certificate says so
+    #   kinetic_step_adaptive                 : correct to eight digits, 7 steps
+    #
+    # A stiff method needs a Jacobian, the residual carries a re-speciation the
+    # Jacobian does not see, and the error control built on it reports success on
+    # nonsense. Only the last two rows are asserted here; the ODE route's failure
+    # is guarded by a warning in the extension rather than pinned by a test, since
+    # the answer it returns is not a number worth encoding.
+    sp = Dict(symbol(x) => x for x in build_species(
+        datapath("slop98-inorganic-thermofun.json")))
+    cs = ChemicalSystem(
+        [sp[x] for x in split("H2O@ H+ OH- CO2@ HCO3- CO3-2 Ca+2 Cal")],
+        ["H2O@", "H+", "Ca+2", "CO3-2", "Zz"],
+    )
+    i_Cal = findfirst(x -> symbol(x) == "Cal", cs.species)
+    i_Ca = findfirst(x -> symbol(x) == "Ca+2", cs.species)
+    rxn3 = Reaction(
+        OrderedDict(cs["Cal"] => 1.0),
+        OrderedDict(cs["Ca+2"] => 1.0, cs["CO3-2"] => 1.0); symbol = "calcite",
+    )
+    k = 1.0e-4
+    stoich = Float64.(
+        KineticReaction(
+            cs, rxn3,
+            KineticFunc((T, P, t, n, lna, n0) -> 0.0, NamedTuple(), u"mol/s"),
+        ).stoich,
+    )
+    R = 8.31446261815324
+    GT = [
+        ustrip(us"J/mol", x[:ΔₐG⁰](T = 298.15u"K", P = 1.0e5u"Pa"; unit = true)) /
+            (R * 298.15) for x in cs.species
+    ]
+    kr = KineticReaction(
+        cs, rxn3,
+        KineticFunc(
+            (T, P, t, n, lna, n0) -> begin
+                Ω = saturation_ratio(stoich, [lna[symbol(x)] for x in cs.species], GT)
+                k * (1 - Ω)
+            end, NamedTuple(), u"mol/s",
+        ),
+    )
+    kss3 = KineticStepSolver(cs, DiluteSolutionModel(), [kr])
+    des3 = DualEquilibriumSolver(cs, DiluteSolutionModel())
+
+    function big()
+        st = ChemicalState(cs)
+        set_quantity!(st, "Cal", 5.0e-2u"mol")
+        set_quantity!(st, "H2O@", 1.0u"kg")
+        set_quantity!(st, "H+", 1.0e-7u"mol")
+        set_quantity!(st, "OH-", 1.0e-7u"mol")
+        return st
+    end
+
+    eq = SciMLBase.solve(des3, big())
+    Ca_eq = ustrip(us"mol", eq.n[i_Ca])
+    Cal_eq = ustrip(us"mol", eq.n[i_Cal])
+
+    # One step of the whole interval is wrong — and reports it.
+    cert = Ref{Any}(nothing)
+    one = kinetic_step(kss3, big(), 1.0e5; certificate = cert)
+    @test !cert[].optimal
+    @test ustrip(us"mol", one.n[i_Cal]) < 0.5 * Cal_eq      # it dissolved everything
+
+    # The adaptive march gets there, choosing its own steps.
+    TEND = 1.0e5
+    st = big()
+    t, h, taken = 0.0, TEND, Float64[]
+    while t < TEND - 1.0e-6 && length(taken) < 300
+        st, used, h = kinetic_step_adaptive(kss3, st, min(h, TEND - t); t = t, reltol = 1.0e-4)
+        t += used
+        push!(taken, used)
+    end
+    @test sum(taken) ≈ TEND rtol = 1.0e-9
+    @test length(taken) < 30                                # measured at 7
+    @test ustrip(us"mol", st.n[i_Ca]) ≈ Ca_eq rtol = 1.0e-6
+    @test ustrip(us"mol", st.n[i_Cal]) ≈ Cal_eq rtol = 1.0e-8
+
+end

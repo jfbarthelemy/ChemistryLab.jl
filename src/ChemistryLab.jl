@@ -252,6 +252,7 @@ module ChemistryLab
         FixedpH,
         KineticStepSolver,
         kinetic_step,
+        kinetic_step_adaptive,
         AbstractSolidSolutionModel,
         IdealSolidSolutionModel,
         RedlichKisterModel,
