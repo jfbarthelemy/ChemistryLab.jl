@@ -389,7 +389,16 @@ end
     # starting guess. Asserting zero here would encode a false expectation; what
     # is asserted is that the mechanism reports rather than hides.
     @test ChemistryLab.NONCONVERGED[] >= 0
-    @test ChemistryLab.NONCONVERGED[] <= length(sol.t) + 1
+    # The ceiling is the number of right-hand-side evaluations, since there is one
+    # equilibrium solve per evaluation and at most one report per solve. It used to
+    # be `length(sol.t) + 1`, one per ACCEPTED step, which is not a bound at all —
+    # an adaptive integrator evaluates the residual several times per step, and
+    # with the feasibility error scaled row by row (OptimaSolver 0.5.0) more solves
+    # are correctly reported short, so the old ceiling was reached at 9 for 7
+    # steps and the test failed for the right behavior.
+    nf = hasproperty(sol, :stats) && hasproperty(sol.stats, :nf) ?
+        sol.stats.nf : typemax(Int)
+    @test ChemistryLab.NONCONVERGED[] <= nf
 
     # The counter is a plain Ref, resettable before a run.
     ChemistryLab.NONCONVERGED[] = 0

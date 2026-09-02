@@ -52,7 +52,7 @@ directory activates `scripts/` itself.
 |---|---|
 | `aqueous_equilibration_basic.jl` | smallest complete equilibration: species, system, state, solve |
 | `titration_acetic_acid.jl` | pH curve of a weak monoacid by NaOH, against Henderson–Hasselbalch |
-| `titration_maleic_acid.jl` | the same for a diacid, with its two equivalence points |
+| `titration_malonic_acid.jl` | the same for a diacid, with both pKa derived from the database |
 | `clinker_hydrate_equilibration.jl` | equilibrium assemblage of a clinker with its hydrates |
 | `slag_clinker_equilibration.jl` | the same for a slag-blended system |
 

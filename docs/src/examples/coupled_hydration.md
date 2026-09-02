@@ -1,4 +1,4 @@
-# The hydrating paste, end to end
+# [The hydrating paste, end to end](@id sec-coupled-hydration)
 
 A worked application of [Coupling kinetics and equilibrium](@ref): alite and
 belite dissolve according to [ParrotKilloh1984](@cite), and the hydrate

@@ -56,13 +56,41 @@ ChemistryLab provides two solver extensions. Load whichever fits your workflow:
 | `Optimization`, `OptimizationIpopt` | `IpoptOptimizer` | general-purpose, robust |
 | `OptimaSolver` | `OptimaOptimizer` | preferred when available |
 
-When both are loaded, `OptimaSolver` always takes priority for `equilibrate(state)`.
+When both are loaded, `OptimaSolver` provides the default single back end. On the
+cement equilibria this package targets both reach an element balance of the order
+of `1e-14`, and OptimaSolver is 3 to 26 times faster.
 
-That default is measured, not assumed. On the cement equilibria this package
-targets, scored on two quantities neither solver defines — the element balance
-`‖A·n − A·n₀‖∞`, a hard physical constraint, and the Gibbs objective itself —
-both back-ends reach a balance of the order of `1e-14`, and OptimaSolver is 3 to
-26 times faster. Pass a solver explicitly to override the choice.
+### `equilibrate(state)` does not pick one of them — it proves the answer
+
+Neither back end is reliable on its own, so the one-argument `equilibrate` solves
+by **every** route available and keeps the answer
+[`optimality_certificate`](@ref) proves optimal. Measured, with the element
+balance judged row by row against each row's own budget:
+
+| case | interior point | dual Newton | certified route |
+|:--|--:|--:|--:|
+| calcite in water, 10–40 °C | **3.0e-2** | 3.0e-12 | certified |
+| calcite + 1 mmol CO₂ | 1.0e-3 | 6.3e-13 | certified |
+| calcite + 50 mmol CO₂ | 1.3e-16 | 8.5e-14 | certified |
+| pure water | 1.3e-16 | 1.3e-16 | certified |
+| CEM I paste, w/c 0.45 and 0.60 | 1.5e-14 | 2.0e-14 | certified |
+| CEM I paste, w/c 0.30 | 7.2e-16 | 3.3e-10, **not** certified | certified |
+
+Ten of ten certified through both routes; seven through the interior point alone,
+nine through the dual Newton alone. The interior point's 3 % on the first row is
+not a tolerance: it is a **charge balance wrong in the second digit**, and the
+reason it cannot be improved is that the fraction-to-boundary rule caps its step
+at 15 % of a correction the next iteration re-poses — traced over twenty-three
+iterations with the residual frozen at 3.0e-6 and `‖dn‖` decaying at `1 − α`.
+
+```julia
+state_eq = equilibrate(state)                   # certified (the default)
+state_eq = equilibrate(state; certify = false)  # one back end, as before
+eq, cert = equilibrate_certified(state)         # when the proof itself is wanted
+```
+
+Pass a solver explicitly — `equilibrate(state, OptimaOptimizer())` — to use that
+one back end and nothing else.
 
 ## Proving that an answer is the answer
 
@@ -106,7 +134,15 @@ and whatever produced it. Writing ``u = -A^\top y`` for the element potentials:
 |:--|:--|:--|
 | ``\mu_i + (A^\top y)_i = 0`` | interior (`n > floor`) | stationarity |
 | ``An = b`` | — | conservation of matter |
-| ``u_i \le g_i`` | at the bound | every absent phase undersaturated |
+| ``u_i \le g_i`` | a **pure** phase at its bound | that phase undersaturated |
+| ``\ln \sum_i \exp(u_i - g_i - \ln\gamma_i) \le 0`` | a **mixing** phase held entirely absent | that solution cannot form |
+
+The last row is Michelsen's tangent-plane measure, and it is a separate test
+because a mixing phase needs one: its members are never exactly zero while it
+exists, so they are neither interior nor at a bound, and a solid solution left out
+of the assemblage used to pass the certificate **unexamined**. The trial
+composition is refined against the phase's own activity model, so the test is not
+the ideal approximation.
 
 Two subtleties decide whether the check is meaningful.
 
@@ -153,16 +189,119 @@ cert.optimal    # true: a proof, for a convex problem
 ```
 
 !!! note "What it buys, measured"
-    On this package's Reaktoro reference — calcite, CO₂ and water — the certified
-    answer matches **every** species to 1 %, including `CaOH+`, which
-    `test/equilibrium_reference.jl` records as `@test_broken` because the
-    interior-point answer is 147 % high. On calcite in pure water the certified pH
-    is **9.90** against an interior-point 6.96: not an imprecision but a wrong
-    answer, and one nothing in that solver's output reveals.
+    On calcite in pure water the certified pH is **9.90** against an
+    interior-point 6.96 — not an imprecision but a wrong answer, and one nothing
+    in that solver's output reveals. On the Reaktoro reference (calcite, CO₂ and
+    water) both routes now agree with Reaktoro on every species: above `10⁻⁵` mol
+    to `10⁻³` relative, the trace ions to 5 %, the worst being `CaOH⁺` at ×1.032
+    on 1.6 nmol. That reference used to carry a `@test_broken` for `CaOH⁺` at
+    ×2.47; what closed it was the convergence test moving to the true KKT error at
+    `μ = 0` (`OptimaSolver` 0.4.1), and `test/equilibrium_reference.jl` is now 26
+    plain assertions.
 
     [`speciated_states`](@ref) certifies every instant it replays and names any it
     cannot. On a full ordinary Portland cement over 28 days, all forty replayed
     instants are certified, with element balances between `1e-11` and `1e-13` mol.
+
+## [Constraints other than fixed T and P](@id sec-equilibrium-constraints)
+
+A closed system at given temperature and pressure is one case among several. A
+vessel that exchanges no heat has its temperature *determined* by the reaction; a
+titration holds the pH and lets the amount of acid follow. Both are equilibrium
+problems, and both are stated by saying what is held and what is unknown.
+
+!!! compat "Needs OptimaSolver 0.5"
+    The blocks in this section are shown rather than executed: the documentation
+    environment resolves `OptimaSolver` from the registry, and the parameter block
+    these constraints ride on arrived in 0.5.0. The figures quoted below are the
+    ones `test/equilibrium_constraints.jl` asserts.
+
+```julia
+using ChemistryLab, DynamicQuantities, OptimaSolver
+
+# The same calcite system, but adiabatic: no heat leaves, so T is an unknown
+st = ChemicalState(cs)
+set_quantity!(st, "Cal",  1e-2u"mol")
+set_quantity!(st, "H2O@", 1.0u"kg")
+set_quantity!(st, "H+",   1e-2u"mol")
+set_quantity!(st, "OH-",  1e-10u"mol")
+
+des   = DualEquilibriumSolver(cs, DiluteSolutionModel())
+eq_ad = solve(des, st; constraint = Adiabatic())
+
+temperature(eq_ad)      # 298.1996 K — the reaction warms it by 0.0496 K
+pH(eq_ad)               # 6.4323, against 6.4329 at fixed temperature
+```
+
+| constraint | held | unknown | vehicle |
+|:--|:--|:--|:--|
+| [`FixedTP`](@ref) (default) | `T`, `P` | — | — |
+| [`Adiabatic`](@ref) | the enthalpy of the initial state | `T` | parameter |
+| [`FixedEnthalpy`](@ref) | a prescribed `H` | `T` | parameter |
+| [`FixedVolume`](@ref) | a prescribed `V` | `P` | parameter |
+| [`SealedVolume`](@ref) | the volume of the initial state | `P` | parameter |
+| [`FixedpH`](@ref) | `−log₁₀ a(H⁺)` | the titrant amount | column |
+| [`FixedActivity`](@ref) | `a` of any species | the titrant amount | column |
+
+### The two vehicles
+
+They are not interchangeable, and the distinction is the same one Reaktoro draws.
+
+A **prescribed property** — an enthalpy, a volume — adds one *parameter* and one
+equation to the solver's own square system. Nothing loops around the equilibrium
+solve: the temperature is an unknown beside the amounts and the element
+potentials, and the enthalpy balance is one more row of the same Newton system.
+So an adiabatic solve costs one equation, not a solve per trial temperature.
+
+A **prescribed chemical potential** — a pH, an activity — adds one *column* to the
+conservation matrix instead: an unknown amount of a titrant the system may draw
+on. The linear rows become `A n − A[:, titrant] q = b`, so the system is open to
+that one substance and closed to everything else, and `q` comes back as part of
+the answer — it is the reagent consumed, which is what a titration measures.
+
+```julia
+q = Ref(Float64[])
+eq_ph = solve(des, st; constraint = FixedpH(7.0), parameters = q)
+q[][1]      # 3.4673e-3 mol of H+ had to be added to hold pH 7
+```
+
+On 10 mmol of calcite in a kilogram of water, whose free pH is 9.90, holding the
+pH takes more acid the lower the target, and at pH 6 the calcite is gone
+entirely:
+
+| pH held | H⁺ added (mol) | calcite left (mol) |
+|--:|--:|--:|
+| 6 | 1.689e-2 | 0 |
+| 7 | 3.467e-3 | 7.063e-3 |
+| 8 | 8.648e-4 | 9.149e-3 |
+| 9 | 2.504e-4 | 9.728e-3 |
+
+### What is checked, and what is refused
+
+The adiabatic answer is validated two ways. Against physics: `H⁺ + OH⁻ → H₂O`
+comes out at **−55.85 kJ/mol** at every amount tested, against the accepted
+−55.8, with nothing fitted to it — the enthalpies come from the database and the
+temperature is an unknown of the system. And against itself: solving at a *fixed*
+temperature equal to the one the adiabatic solve found returns the same
+composition to `1e-12`.
+
+A volume constraint on a **condensed** system is **refused**, with the lever it
+measured named in the error. The molar volumes of water and of the minerals in the
+shipped databases are exactly pressure-independent — `V⁰(1 bar) = V⁰(100 bar)` to
+the last bit for `H2O@` and `Cal` — and only a few aqueous ions vary, `OH⁻` by 8 %
+over 100 bar. The relative lever `(∂V/∂P)·P/V` is then about `1e-6`, meaning some
+**9 600 bar to change the volume by one percent**. That is the physics, not a
+solver limitation: the volume of an incompressible condensed system is fixed by
+its composition. Declare a gas phase to give the pressure something to do. To
+report the volume change of a sealed specimen at fixed pressure — what a hydrating
+binder actually needs — use [`porosity`](@ref) with a reference state instead.
+
+!!! note "Constraints need the certifying solver"
+    The prescribed property or potential is an unknown of the dual Newton's own
+    system, so a constraint other than `FixedTP` requires `OptimaSolver` and a
+    system with an aqueous phase and `H2O@`. Asking for one otherwise raises,
+    rather than being silently ignored. `equilibrate(state; constraint = ...)`
+    routes through the certified path, so the answer still comes with its proof.
 
 ## Differentiating an equilibrium
 
@@ -460,10 +599,13 @@ nCal_vals = Float64[]  # mmol
 i_Ca  = findfirst(sp -> symbol(sp) == "Ca+2", cs.species)
 i_Cal = findfirst(sp -> symbol(sp) == "Cal",  cs.species)
 
-s = ChemicalState(cs)
+# Start from the charged state built above, not from `ChemicalState(cs)`:
+# a fresh state holds no matter at all, so every element balance would be zero
+# and the sweep would return the same trivial solution at all 21 temperatures.
 for θ in temperatures
-    set_temperature!(s, (273.15 + θ) * u"K")
-    s_eq = solve(solver, s)
+    s_T = deepcopy(state)
+    set_temperature!(s_T, (273.15 + θ) * u"K")
+    s_eq = solve(solver, s_T)
     push!(pH_vals,   pH(s_eq))
     push!(nCa_vals,  ustrip(s_eq.n[i_Ca]) * 1e3)
     push!(nCal_vals, ustrip(s_eq.n[i_Cal]) * 1e3)
@@ -484,8 +626,22 @@ plot!(p2, collect(temperatures), nCal_vals,
 plot(p1, p2, layout = (1, 2), left_margin = 8Plots.mm, bottom_margin = 8Plots.mm, size = (900, 400))
 ```
 
-!!! note "Calcite solubility"
-    Calcite is a **retrograde soluble** mineral: its solubility decreases with increasing temperature, so less Ca²⁺ is released and pH rises slightly as temperature increases.
+!!! note "Retrograde Kₛₚ, and yet more dissolved calcium"
+    Calcite is **retrograde soluble**: its solubility product falls as temperature
+    rises. The sweep above reproduces that — the ionic product ``[\text{Ca}^{2+}]
+    [\text{CO}_3^{2-}]`` it settles on goes from ``10^{-8.411}`` at 10 °C to
+    ``10^{-8.517}`` at 30 °C, matching the ``K_{sp}`` the database itself gives to
+    within 0.003 log units, and ``-8.48`` at 25 °C is the accepted value for
+    calcite.
+
+    The dissolved calcium nevertheless **increases**, from 0.146 to 0.158 mmol/L.
+    That is not a contradiction: this system is **closed**, with 1 mmol of total
+    carbonate and no CO₂ reservoir. As temperature rises the pH drops from 9.83
+    to 9.43, which shifts carbonate to bicarbonate and takes free CO₃²⁻ from 26.5
+    down to 19.2 µmol/L — more than enough to offset the smaller ``K_{sp}``. The
+    familiar statement that retrograde solubility means *less* dissolved calcium
+    holds for a system buffered at a fixed CO₂ partial pressure, not for a sealed
+    one. Fix the partial pressure instead (add a gas phase) and the sign flips.
 
 ---
 

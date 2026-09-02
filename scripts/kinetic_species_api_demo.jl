@@ -44,10 +44,14 @@ species = speciation(substances, input_species; aggregate_state = [AS_AQUEOUS])
 const WC = 0.4
 const α_max = min(1.0, WC / 0.42)
 
-pk_C3S = parrot_killoh(PK_PARAMS_C3S, "C3S"; α_max)
-pk_C2S = parrot_killoh(PK_PARAMS_C2S, "C2S"; α_max)
-pk_C3A = parrot_killoh(PK_PARAMS_C3A, "C3A"; α_max)
-pk_C4AF = parrot_killoh(PK_PARAMS_C4AF, "C4AF"; α_max)
+# Blaine fineness of the binder, used by the canonical rate law through
+# `blaine_factor`. 380 m²/kg is an ordinary CEM I.
+const BLAINE = 380.0u"m^2/kg"
+
+pk_C3S = parrot_killoh_avrami(PK84_PARAMS_C3S, "C3S"; α_max, blaine = BLAINE)
+pk_C2S = parrot_killoh_avrami(PK84_PARAMS_C2S, "C2S"; α_max, blaine = BLAINE)
+pk_C3A = parrot_killoh_avrami(PK84_PARAMS_C3A, "C3A"; α_max, blaine = BLAINE)
+pk_C4AF = parrot_killoh_avrami(PK84_PARAMS_C4AF, "C4AF"; α_max, blaine = BLAINE)
 
 # ── 3. ChemicalSystem with kinetic_species ───────────────────────────────────
 

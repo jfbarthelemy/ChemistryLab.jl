@@ -73,25 +73,25 @@ species must cancel. The implicit-function route gives `2×10⁻¹⁶`; a specie
 absent from the solution gets identically zero, against `2×10⁻⁹` by finite
 differences.
 
-## What does not agree
+## The trace species
 
-One species, and it is inconsequential.
+They agree too, and it took two fixes to get there.
 
-| species | ChemistryLab | Reaktoro | ratio |
-|:--|--:|--:|--:|
-| H₂O, Cal, Ca²⁺, HCO₃⁻, CO₂, Ca(HCO₃)⁺, Ca(CO₃)@ | — | — | 1.000 ± 0.0003 |
-| H⁺ | 3.714×10⁻⁷ | 3.693×10⁻⁷ | 1.006 |
-| CO₃²⁻ | 9.403×10⁻⁷ | 9.379×10⁻⁷ | 1.003 |
-| OH⁻ | 2.829×10⁻⁸ | 2.706×10⁻⁸ | 1.045 |
-| **CaOH⁺** | 3.914×10⁻⁹ | 1.586×10⁻⁹ | **2.47** |
+| species | amount | ChemistryLab | Reaktoro | ratio |
+|:--|--:|--:|--:|--:|
+| H₂O, Cal, Ca²⁺, HCO₃⁻, CO₂, Ca(HCO₃)⁺, Ca(CO₃)@ | > 10⁻⁵ | — | — | 1.0000 ± 0.0002 |
+| CO₃²⁻ | 9×10⁻⁷ | 9.3814×10⁻⁷ | 9.3786×10⁻⁷ | 1.0003 |
+| H⁺ | 4×10⁻⁷ | 3.6923×10⁻⁷ | 3.6929×10⁻⁷ | 0.9998 |
+| OH⁻ | 3×10⁻⁸ | 2.7109×10⁻⁸ | 2.7063×10⁻⁸ | 1.0017 |
+| CaOH⁺ | 2×10⁻⁹ | 1.6365×10⁻⁹ | 1.5855×10⁻⁹ | 1.0321 |
 
-`pKw` on this system is **13.979**. Pure water gives `[H⁺]/[OH⁻] = 1.0` and
-`pKw = 13.9994`.
+`pKw` on this system is **13.9994**, against Reaktoro's **14.0001**. Pure water
+gives `[H⁺]/[OH⁻] = 1.0`.
 
-`CaOH⁺` is 2.5× high at `4×10⁻⁹` mol. Ipopt lands on the same value (×2.46), so
-that residual belongs to neither back-end; at that amount it moves nothing.
+`CaOH⁺`, the smallest amount in the system at 1.6 nmol, is the only species
+above 0.2 % out, and it is 3.2 % out. Nothing in the comparison is marked broken.
 
-### How it was fixed
+### How the trace species were fixed
 
 Two defects in the back-end's Newton iteration, both now corrected in
 `OptimaSolver` 0.2.5.
@@ -118,16 +118,32 @@ is `5.5×10⁻⁷`, so every trace ion below it was declared to sit on a bound o
 enforced**. The correlation was exact: the three species below the threshold
 were the three wrong ones.
 
-| species | amount | below the old threshold? | before | after |
-|:--|--:|:--|--:|--:|
-| CaOH⁺ | 3×10⁻⁸ | yes | ×20.8 | ×2.47 |
-| OH⁻ | 9×10⁻⁸ | yes | ×3.19 | ×1.045 |
-| H⁺ | 5×10⁻⁷ | yes | ×1.24 | ×1.006 |
-| CO₃²⁻ | 1×10⁻⁶ | no | ×1.10 | ×1.003 |
-| Ca(CO₃)@ | 6×10⁻⁶ | no | ×1.02 | ×1.0004 |
+| species | amount | below the old threshold? | before | after the two fixes | today |
+|:--|--:|:--|--:|--:|--:|
+| CaOH⁺ | 3×10⁻⁸ | yes | ×20.8 | ×2.47 | ×1.032 |
+| OH⁻ | 9×10⁻⁸ | yes | ×3.19 | ×1.045 | ×1.002 |
+| H⁺ | 5×10⁻⁷ | yes | ×1.24 | ×1.006 | ×1.000 |
+| CO₃²⁻ | 1×10⁻⁶ | no | ×1.10 | ×1.003 | ×1.000 |
+| Ca(CO₃)@ | 6×10⁻⁶ | no | ×1.02 | ×1.0004 | ×1.000 |
 
 The criterion is now relative to the variable's own bound, which is what
 "sitting on it" means.
+
+The last column is today's answer, still from the interior-point path. What
+closed the residual ×2.47 on `CaOH⁺` was **the convergence test** (`OptimaSolver`
+0.4.1): `is_converged` used to compare the residual evaluated at the *current*
+barrier level `μ`, a quantity that vanishes at the solution of the barrier
+subproblem whatever `μ` is — so the solver could report success `O(μ)` away from
+the actual optimum, and the trace species are where that shows first. It now uses
+the same residual at `μ = 0`, which is the true KKT error and cannot be met at a
+loose barrier.
+
+The reason the ×2.47 had been accepted is worth recording. The argument was that
+Ipopt landed on the same point (×2.46), so the discrepancy looked like a property
+of the problem rather than of one solver. **Both were barrier iterations stopping
+short of stationarity at μ = 0**, which is exactly the regime in which two codes
+of the same family agree with each other and not with the answer. Agreement
+between two back-ends that share a failure mode is not evidence.
 
 ### What the diagnosis cost, and what to skip next time
 
@@ -193,6 +209,8 @@ conda create -n reaktoro-env -c conda-forge reaktoro thermofun
 conda run -n reaktoro-env python test/reference/reaktoro_calcite_co2.py
 ```
 
-Paste the output into `REAKTORO` in `test/equilibrium_reference.jl`. The
-assertions that currently fail are marked `@test_broken`, so a fix announces
-itself as an unexpected pass rather than sitting unnoticed.
+Paste the output into `REAKTORO` in `test/equilibrium_reference.jl`. Every
+assertion there is a plain `@test` and all 26 pass — species above `10⁻⁵` mol to
+`10⁻³` relative, trace ions to 5 %. There is no `@test_broken` left in the
+comparison; if one is ever needed again, the tolerance it hides belongs in the
+comment beside it.

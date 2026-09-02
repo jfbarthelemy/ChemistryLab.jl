@@ -468,6 +468,68 @@ end
     pk_fine = parrot_killoh_avrami(PK84_PARAMS_C3S, "C3S"; blaine = 770u"m^2/kg")
     @test at(pk_fine, 0.3) ≈ 2 * at(pk, 0.3) rtol = 1.0e-10
 
+    # ── The same oracle, applied to the DEPRECATED smoothed variant ──────────
+    #
+    # This is the test that would have caught it. `parrot_killoh` with
+    # `PK_PARAMS_*` is limited by its diffusion branch for EVERY phase from
+    # α ≈ 0.028 on, because its prefactor `3K₃/N₃ = 0.0018 d⁻¹` is 28 times
+    # smaller than the canonical `k₂ = 0.05 d⁻¹`. The rate then integrates in
+    # closed form, `α = α_max[1 − (1 − √(2K₃t/N₃))³]`, which does not depend on
+    # the phase at all: all four reach 0.2386 at seven days, against the 0.61
+    # the cement literature reports for a CEM I at w/c = 0.40.
+    #
+    # The behaviour is pinned rather than fixed: the variant is deprecated and
+    # its attribution withdrawn, so what matters is that the discrepancy stays
+    # visible instead of being rediscovered from a demo that looks plausible.
+    function branches_smoothed(p, ξ)
+        K₁ = ustrip(p.K₁); N₁ = p.N₁
+        K₂ = ustrip(p.K₂); N₂ = p.N₂
+        K₃ = ustrip(p.K₃); N₃ = p.N₃
+        om = 1 - ξ
+        return (
+            (K₁ / N₁) * om^N₁ / (1 + p.B * ξ^N₃),                       # nucleation-growth
+            K₂ * om^N₂,                                                 # interaction
+            3 * K₃ * om^(2 / 3) / (N₃ * max(1 - om^(1 / 3), 1.0e-10)),  # diffusion (Jander)
+        )
+    end
+
+    # `min(max(r_NG, r_I), r_D)`: diffusion caps the other two.
+    smoothed_is_diffusion_limited(p, ξ) = let b = branches_smoothed(p, ξ)
+        b[3] <= max(b[1], b[2])
+    end
+
+    # Measured, over the interval a seven-day run traverses: THREE of the four
+    # phases are diffusion-limited there and therefore land on the same
+    # phase-blind Jander value. C₄AF is the exception — its own
+    # nucleation-growth branch is slower than diffusion, so it limits instead,
+    # and C₄AF comes out LOWER still (0.193 against 0.239 in the run that
+    # exposed this). Both failures have the same cause and neither is physical.
+    for p in (PK_PARAMS_C3S, PK_PARAMS_C2S, PK_PARAMS_C3A)
+        @test all(smoothed_is_diffusion_limited(p, ξ) for ξ in 0.06:0.01:0.30)
+    end
+    @test !smoothed_is_diffusion_limited(PK_PARAMS_C3S, 0.001)
+    @test !any(smoothed_is_diffusion_limited(PK_PARAMS_C4AF, ξ) for ξ in 0.06:0.01:0.30)
+
+    # The closed-form Jander solution, and the fact that it is phase-blind:
+    # K₃ = 0.0024 d⁻¹ and N₃ = 4 are identical across all four parameter sets,
+    # even though K₁ spans a factor of 18.
+    jander_alpha(p, t_days) = let
+        K₃ = ustrip(us"1/d", p.K₃)
+        1 - (1 - sqrt(2 * K₃ * t_days / p.N₃))^3
+    end
+    for p in (PK_PARAMS_C3S, PK_PARAMS_C2S, PK_PARAMS_C3A)
+        @test jander_alpha(p, 7.0) ≈ 0.250524 atol = 1.0e-5
+    end
+    @test maximum(ustrip(us"1/d", p.K₁) for p in
+        (PK_PARAMS_C3S, PK_PARAMS_C2S, PK_PARAMS_C3A, PK_PARAMS_C4AF)) /
+        minimum(ustrip(us"1/d", p.K₁) for p in
+        (PK_PARAMS_C3S, PK_PARAMS_C2S, PK_PARAMS_C3A, PK_PARAMS_C4AF)) > 18.0
+
+    # Phase-blind: one distinct value across the four parameter sets, because
+    # K₃ and N₃ are identical in all of them.
+    @test length(unique(round(jander_alpha(p, 7.0); digits = 6) for p in
+        (PK_PARAMS_C3S, PK_PARAMS_C2S, PK_PARAMS_C3A, PK_PARAMS_C4AF))) == 1
+
     pk_dry = parrot_killoh_avrami(PK84_PARAMS_C3S, "C3S"; humidity = 0.7)
     @test at(pk_dry, 0.3) == 0.0                                  # hydration stopped
     pk_h = parrot_killoh_avrami(PK84_PARAMS_C3S, "C3S"; humidity = 0.9)

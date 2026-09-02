@@ -49,7 +49,10 @@ end
     include("activities.jl")
     include("solid_solutions.jl")
     include("equilibrium_reference.jl")
+    include("published_values.jl")
     include("test_dual_solver.jl")
+    include("certified_equilibrium.jl")
+    include("equilibrium_constraints.jl")
 end
 
 @testsection "Utils tests" begin
@@ -62,6 +65,7 @@ end
     include("kinetics/test_postprocessing.jl")
     include("kinetics/test_feasibility.jl")
     include("kinetics/test_calibration.jl")
+    include("kinetics/test_implicit_step.jl")
     include("coupling_reference.jl")
 end
 

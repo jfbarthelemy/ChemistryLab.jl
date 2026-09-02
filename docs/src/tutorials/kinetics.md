@@ -1,4 +1,4 @@
-# Chemical Kinetics
+# [Chemical Kinetics](@id sec-kinetics)
 
 This tutorial covers the kinetics module of ChemistryLab.jl, which implements
 mineral dissolution and precipitation kinetics coupled to fast aqueous speciation,
@@ -17,6 +17,123 @@ negative stoichiometric coefficient for the mineral so `dn/dt < 0`).
 At each evaluation of this ODE right-hand side, the aqueous speciation is optionally
 re-equilibrated, providing accurate activity coefficients for the saturation ratio
 ``\Omega = \text{IAP}/K``.
+
+## [Which route: two ways to advance in time](@id sec-kinetics-routes)
+
+There are two, they answer different questions, and choosing wrongly is the most
+common mistake. Both take the same [`KineticReaction`](@ref) objects and the same
+rate laws.
+
+| | implicit step — [`kinetic_step`](@ref) | ODE integration — [`integrate`](@ref) |
+|:--|:--|:--|
+| what advances | one Gibbs minimization per step, extents included | `dn/dt = ν' r(n)`, handed to SciML |
+| kinetics–equilibrium coupling | **strong**: the aqueous phase is at equilibrium *at the end of the step* | the aqueous phase is re-speciated between evaluations |
+| the hydrate assemblage | **thermodynamic** — whatever minimizes `G` | **imposed** by the stoichiometry you wrote |
+| time stepping | `Δt` is yours | adaptive, with a choice of stiff solvers |
+| overshooting saturation | impossible, at any `Δt` | controlled by the integrator's tolerances |
+| several reactions per mineral | yes | yes |
+
+**Use the implicit step** when the products should be decided by thermodynamics —
+a mineral dissolving into a solution, carbonation, an assemblage you do not want
+to prescribe. This is the algorithm of [Leal2017](@cite), the one Reaktoro
+implements, and it is unconditionally stable: with a rate law `r = k(1 − Ω)` on
+calcite, a step of `10⁶ s` at `k = 10⁻⁵ mol/s` would dissolve 10 mol explicitly —
+a thousand times the calcite present — and the implicit step lands at `Ω =
+0.999989`, approaching saturation from below and never crossing it.
+
+**Use the ODE route** when the reactions themselves are the model — a
+stoichiometric hydration scheme in the form of [Lavergne2018](@cite), where
+`C₃S + H₂O → C-S-H + CH` is written out and the products are prescribed, not
+proposed. Every product then follows the coefficients you gave, several pathways
+may share a mineral, and the integrator chooses the step.
+
+!!! note "Prescribed products AND strong coupling is not yet available"
+    Combining the two — an imposed solid assemblage inside the implicit step —
+    needs one constraint per kinetic species rather than one per reaction. It was
+    implemented and does not converge: pinning a pure phase by a linear row
+    leaves its stationarity row in the system as well, made trivially satisfiable
+    by that row's own multiplier, and the Jacobian degenerates. Measured on two
+    C₃A pathways the extents came out 4.3 times short, with the solve reporting
+    non-convergence. `coupling = :species` therefore raises rather than returning
+    that answer. Removing the pinned variables' stationarity rows is what remains.
+
+### The implicit step, in full
+
+```julia
+using ChemistryLab, DynamicQuantities, OptimaSolver, OrderedCollections
+
+rxn  = Reaction(OrderedDict(cs["Cal"] => 1.0),
+                OrderedDict(cs["Ca+2"] => 1.0, cs["CO3-2"] => 1.0);
+                symbol = "calcite dissolution")
+rate = KineticFunc((T, P, t, n, lna, n0) -> 1.0e-6, NamedTuple(), u"mol/s")
+kr   = KineticReaction(cs, rxn, rate)
+
+kss = KineticStepSolver(cs, DiluteSolutionModel(), [kr])
+
+Δξ  = Ref(Float64[])
+st1 = kinetic_step(kss, st0, 100.0u"s"; parameters = Δξ)
+Δξ[]        # the reaction extents the step found, in mol
+```
+
+What the step solves is one problem, not two:
+
+```math
+\min_n G(n) \quad\text{s.t.}\quad
+\begin{cases}
+A n = b_0 \\
+K^{\mathsf T} n - \Delta\xi = \xi_0 \\
+\Delta\xi - \Delta t\, M\, r(n) = 0, \quad M = K^{\mathsf T}K \\
+n \ge 0
+\end{cases}
+```
+
+The extents are unknowns beside the amounts and the element potentials, and the
+rate is evaluated at the **end-of-step** composition — backward Euler. Two things
+follow. There is no frozen speciation in a right-hand side, so no lag between the
+kinetic and the equilibrium species. And the reactivity constraint is *linear*, so
+it joins the conservation block: the algebraic cost of kinetics is the number of
+**reactions**, not of species.
+
+`K` carries each reaction's stoichiometry restricted to the **non-aqueous**
+participants, since an aqueous product re-speciates and pinning it would stop
+pinning the mineral. On calcite that leaves `K = [−1]`, hence `M = 1` and
+`Δξ = Δt·r`: measured, the calcite left after 1000 s at 1 µmol/s is
+`n₀ − kΔt` to the last bit, with the element balance at `10⁻¹⁴`.
+
+### Solid solutions in the step, and the two settings the certificate decides
+
+A solid solution takes part like any other phase — the products of a kinetic
+dissolution may be a C-S-H solution, decided by thermodynamics at the end of each
+step. On C₃S dissolving at 20 µmol/s into a four-member CSHQ solution, the step
+comes out certified at a stationarity of `2×10⁻¹³`, with `Δξ = Δt·r` exactly, all
+four end-members present, and ten times the step giving ten times the C-S-H.
+
+Two settings are decided by the certificate rather than by the caller, because
+neither answer works on both kinds of problem:
+
+  - `warm_start` (default `true`) equilibrates the starting **guess** when the
+    system carries solid solutions, leaving the component totals untouched. A
+    mixing phase is admitted by a tangent-plane test, and from a composition where
+    the phase is absent that admission fails: a cold start left one end-member at
+    `2.7×10⁻⁹` with a stationarity residual of 6.5. The failure belongs to the
+    cold start and not to the kinetics — a plain equilibrium from the same guess
+    fails identically.
+  - `pin_minerals` (default `:auto`) says whether the kinetic minerals are held in
+    the active set. Measured: on two C₃A pathways, **not** pinning is certified at
+    `1.8×10⁻¹²` while pinning gives 7.9 and no certificate; on C₃S into a C-S-H
+    solution, not pinning runs the step all the way to equilibrium — `C3S = 0`,
+    `Δξ` twenty-five times too large, because the mineral is exhausted at
+    equilibrium and the drop rule removes it, after which nothing enforces its
+    reactivity row. `:auto` tries both and keeps the answer the certificate
+    **proves**, which is exact rather than heuristic: the problem is convex, so
+    its KKT conditions decide.
+
+Pass `certificate = Ref{Any}(nothing)` to see the proof. It is taken on the
+augmented problem, whose reactivity rows carry the multipliers that make a
+kinetically held mineral's stationarity satisfiable — the same composition tested
+against the *unconstrained* equilibrium reports a residual of 7 `RT`, because a
+mineral held back by a rate law is supersaturated by construction. That is what
+being held back means.
 
 ## Rate functions: KineticFunc and StateView
 
@@ -37,6 +154,114 @@ where
 | `n` | mol | Moles of all species — named access via [`StateView`](@ref) |
 | `lna` | — | Log-activities — named access via `StateView` |
 | `n_initial` | mol | Initial moles — named access via `StateView` |
+
+### What a rate law may depend on
+
+Everything in that table, by species name. A rate law is an ordinary Julia
+function, so there is no expression language to learn and no restriction on what
+it may read:
+
+```julia
+# 1. a constant rate
+KineticFunc((T, P, t, n, lna, n0) -> 1.0e-6, NamedTuple(), u"mol/s")
+
+# 2. depending on how much is left — first order in the mineral
+KineticFunc((T, P, t, n, lna, n0) -> k * n["C3S"], NamedTuple(), u"mol/s")
+
+# 3. depending on the SOLUTION — pH, or any activity
+KineticFunc(
+    (T, P, t, n, lna, n0) -> begin
+        a_H = exp(lna["H+"])            # `lna` is the natural log of the activity
+        k * a_H^0.5
+    end, NamedTuple(), u"mol/s")
+
+# 4. depending on time explicitly
+KineticFunc((T, P, t, n, lna, n0) -> k * exp(-t / 86400), NamedTuple(), u"mol/s")
+
+# 5. depending on the degree of reaction, since `n0` is there too
+KineticFunc(
+    (T, P, t, n, lna, n0) -> begin
+        α = 1 - n["C3S"] / n0["C3S"]
+        k * (1 - α)^(2 / 3)
+    end, NamedTuple(), u"mol/s")
+```
+
+### A reaction that waits for another species to run out
+
+This is the pattern [Lavergne2018](@cite) uses for the aluminate sequence, and it
+needs nothing special: read the species you are waiting on and multiply by a gate.
+
+In that model C₃A takes three successive routes, and which one runs depends on
+what is left:
+
+| stage | while | C₃A reacts with | forming |
+|--:|:--|:--|:--|
+| 1 | gypsum remains | gypsum | ettringite (AFt) |
+| 2 | gypsum gone, ettringite remains | the ettringite already formed | monosulfoaluminate (AFm) |
+| 3 | both gone | water alone | C₃AH₆ |
+
+Three [`KineticReaction`](@ref) objects on the same mineral, each gated on the
+reactant its stage consumes:
+
+```julia
+# Stage 1 — runs while there is gypsum
+r_aft = KineticFunc(
+    (T, P, t, n, lna, n0) -> begin
+        Gp = n["Gp"]
+        Gp <= 0 && return zero(Gp)
+        k1 * n["C3A"] * _gate(Gp, n0["Gp"])
+    end, NamedTuple(), u"mol/s")
+
+# Stage 2 — takes over once the gypsum is exhausted, and consumes the AFt
+r_afm = KineticFunc(
+    (T, P, t, n, lna, n0) -> begin
+        ett = n["ettringite"]
+        ett <= 0 && return zero(ett)
+        k2 * n["C3A"] * (1 - _gate(n["Gp"], n0["Gp"])) * _gate(ett, n0["Gp"])
+    end, NamedTuple(), u"mol/s")
+
+# Stage 3 — only once BOTH are gone
+r_hydrogarnet = KineticFunc(
+    (T, P, t, n, lna, n0) -> begin
+        k3 * n["C3A"] *
+            (1 - _gate(n["Gp"], n0["Gp"])) * (1 - _gate(n["ettringite"], n0["Gp"]))
+    end, NamedTuple(), u"mol/s")
+
+# A smooth gate: 1 while the reactant is plentiful, 0 once it is spent.
+_gate(x, xref) = tanh(max(x, zero(x)) / (1e-3 * xref))
+```
+
+Note that the gates are written from the amounts, and that stage 2 consumes a
+species stage 1 produced. Both work because the reaction extents are carried in
+the state, so a non-kinetic amount moves during the step — see the two rules
+below.
+
+Two rules make gates like this behave:
+
+  - **Return a zero of the right type**, `zero(CH)` rather than `0.0`. The rate is
+    differentiated for the stiff solver's Jacobian and for parameter sensitivity,
+    and a hard `Float64` zero breaks the dual-number chain.
+  - **Prefer a smooth gate** where you can, as `_gate` above does. A `min` or a
+    hard cut-off is a kink, and an adaptive integrator will shorten its step to
+    crawl over it; `tanh` costs nothing and integrates cleanly. Keep the hard
+    `<= 0 && return zero(x)` guard as well — it is what keeps a rate from being
+    computed on a negative amount the integrator proposed and rejected.
+
+A gate on a species the reactions consume only works because the reaction extents
+are carried in the ODE state, which is what lets non-kinetic amounts move during
+the step. Before that they were pinned at their initial values inside the
+residual, so a gate never closed and the reaction ran past depletion — while the
+kinetic mass balance stayed exact and the solver reported success. That failure
+mode is pinned by a test; see
+[Rate laws that depend on a consumed reactant](@ref kinetics-frozen-species).
+
+!!! tip "Several reactions on one mineral"
+    Write one [`KineticReaction`](@ref) per pathway, each with its own rate law,
+    and pass them all. The ODE state holds one entry per unique mineral and the
+    contributions accumulate, so C₃A reacting through both an ettringite and a
+    monosulfoaluminate pathway is two reactions sharing a species — see
+    [Multiple kinetic reactions per mineral](@ref). Gating one pathway on the
+    exhaustion of the sulfate is how the switch between them is written.
 
 [`StateView`](@ref) provides O(1) named access to a species vector via a pre-built
 dictionary (`sv["C3S"]` — no per-step dict allocation):
@@ -71,32 +296,40 @@ ForwardDiff.derivative(T -> k_acid(; T = T), 298.15)  # AD-compatible
 
 ## Cement clinker hydration: [ParrotKilloh1984](@cite) model
 
-[`parrot_killoh`](@ref) is the factory for the [ParrotKilloh1984](@cite) kinetic model.
-It returns a [`KineticFunc`](@ref) that uses the `StateView`-based calling convention
-and is fully AD-compatible.
+[`parrot_killoh_avrami`](@ref) is the factory for the [ParrotKilloh1984](@cite)
+kinetic model. It returns a [`KineticFunc`](@ref) that uses the `StateView`-based
+calling convention and is fully AD-compatible.
 
 ```julia
 using ChemistryLab, DynamicQuantities
 
 # Predefined NamedTuple parameters for the four main clinker phases
-#   PK_PARAMS_C3S, PK_PARAMS_C2S, PK_PARAMS_C3A, PK_PARAMS_C4AF
-# Each has keys: K₁, N₁, K₂, N₂, K₃, N₃, B, Ea, T_ref (with units)
+#   PK84_PARAMS_C3S, PK84_PARAMS_C2S, PK84_PARAMS_C3A, PK84_PARAMS_C4AF
+# Each has keys: k₁, n₁, k₂, k₃, n₃, Ea, T_ref (with units)
 
-pk_C3S = parrot_killoh(PK_PARAMS_C3S, "C3S")    # → KineticFunc
+pk_C3S = parrot_killoh_avrami(PK84_PARAMS_C3S, "C3S")    # → KineticFunc
 
-# Custom α_max ([Powers1948](@cite) limit for w/c = 0.40)
+# Water availability limit of [Powers1948](@cite) for w/c = 0.40
 WC    = 0.40
-α_max = min(1.0, WC / 0.42)
-pk_C3S_wc = parrot_killoh(PK_PARAMS_C3S, "C3S"; α_max = α_max)
+α_max = powers_alpha_max(WC)          # 0.952 at w/c = 0.40
+pk_C3S_wc = parrot_killoh_avrami(PK84_PARAMS_C3S, "C3S"; α_max = α_max)
 
-# Custom parameters — accepts Quantity or plain SI Real
-pk_ggbs = parrot_killoh(
-    (K₁=0.15u"1/d", N₁=2.0, K₂=0.003u"1/d", N₂=2.0,
-     K₃=0.0015u"1/d", N₃=3.5, B=0.2, Ea=46_000.0u"J/mol", T_ref=293.15u"K"),
-    "GGBS";
-    α_max = 0.9,
+# Fineness correction — the rate scales as B / 385 m²/kg
+pk_C3S_fine = parrot_killoh_avrami(
+    PK84_PARAMS_C3S, "C3S"; α_max = α_max, blaine = 380u"m^2/kg",
 )
 ```
+
+!!! warning "`parrot_killoh` is deprecated — use `parrot_killoh_avrami`"
+    ChemistryLab also exports [`parrot_killoh`](@ref), a smoothed variant with its
+    own parameter sets `PK_PARAMS_*`. Its formulas are **not** those of
+    [ParrotKilloh1984](@cite) and its parameters match no published set, so the
+    attribution has been withdrawn. With `PK_PARAMS_*` the diffusion branch takes
+    over within the first few percent of hydration, and C₃S, C₂S and C₃A then all
+    land on α(7 d) = 0.2386 whatever their `K₁` — against the ≈ 0.61 the
+    literature reports for a CEM I at w/c = 0.40. See
+    [Two Parrot–Killoh variants](@ref pk-variants). Supplementary cementitious
+    materials do not follow Parrot–Killoh at all: use [`waller`](@ref).
 
 Rate evaluation:
 
@@ -160,7 +393,7 @@ convenience wrapper.
 [`KineticReaction`](@ref) associates a [`Reaction`](@ref) with a `KineticFunc`:
 
 ```julia
-pk = parrot_killoh(PK_PARAMS_C3S, "C3S")
+pk = parrot_killoh_avrami(PK84_PARAMS_C3S, "C3S")
 
 # Convenience: look up "C3S" in cs by symbol/formula, build minimal dissolution Reaction
 kr = KineticReaction(cs, "C3S", pk)
@@ -170,7 +403,7 @@ rxn = cs.dict_reactions["calcite dissolution"]
 kr  = KineticReaction(cs, rxn, tst_calcite)
 
 # Reaction-centric (kinetics stored in rxn.properties)
-rxn[:rate] = parrot_killoh(PK_PARAMS_C3S, "C3S")
+rxn[:rate] = parrot_killoh_avrami(PK84_PARAMS_C3S, "C3S")
 kr = KineticReaction(cs, rxn)
 ```
 
@@ -195,7 +428,7 @@ using ChemistryLab, OrdinaryDiffEq, DynamicQuantities
 
 sp(name) = cs[name]
 
-pk_C3S = parrot_killoh(PK_PARAMS_C3S, "C3S"; α_max = min(1.0, WC / 0.42))
+pk_C3S = parrot_killoh_avrami(PK84_PARAMS_C3S, "C3S"; α_max = powers_alpha_max(WC))
 
 rxn_C3S = Reaction(
     OrderedDict(sp("C3S") => 1.0, sp("H2O@") => 3.33),
@@ -215,9 +448,9 @@ All constructors support DynamicQuantities `Quantity` values.  Plain `Real` → 
 | :-- | :-- | :-- | :-- |
 | `arrhenius_rate_constant` | `k₀` | mol/(m²·s) | `0.5u"mmol/(m^2*s)"` |
 | `arrhenius_rate_constant` | `Ea` | J/mol | `62.0u"kJ/mol"` |
-| `parrot_killoh` params | `K₁, K₂, K₃` | s⁻¹ | `1.5u"1/d"` |
-| `parrot_killoh` params | `Ea` | J/mol | `41.57u"kJ/mol"` |
-| `parrot_killoh` params | `T_ref` | K | `293.15u"K"` |
+| `parrot_killoh_avrami` params | `k₁, k₂, k₃` | s⁻¹ | `1.5u"1/d"` |
+| `parrot_killoh_avrami` params | `Ea` | J/mol | `42.0u"kJ/mol"` |
+| `parrot_killoh_avrami` params | `T_ref` | K | `293.15u"K"` |
 | `FixedSurfaceArea` | `A` | m² | `500.0u"cm^2"` |
 | `BETSurfaceArea` | `A_specific` | m²/kg | `0.09u"m^2/g"` |
 | `Reaction` | `:ΔᵣH⁰` (custom species) | J/mol | `NumericFunc((T,) -> -36100.0, (:T,), u"J/mol")` |
@@ -361,11 +594,12 @@ end
 set_quantity!(state0, "H2O@", WC * u"kg")
 
 # ── 3. [ParrotKilloh1984](@cite) rate functions with Powers α_max ───────────────────────
-α_max   = min(1.0, WC / 0.42)
-pk_C3S  = parrot_killoh(PK_PARAMS_C3S,  "C3S";  α_max)
-pk_C2S  = parrot_killoh(PK_PARAMS_C2S,  "C2S";  α_max)
-pk_C3A  = parrot_killoh(PK_PARAMS_C3A,  "C3A";  α_max)
-pk_C4AF = parrot_killoh(PK_PARAMS_C4AF, "C4AF"; α_max)
+α_max   = powers_alpha_max(WC)
+BLAINE  = 380.0u"m^2/kg"
+pk_C3S  = parrot_killoh_avrami(PK84_PARAMS_C3S,  "C3S";  α_max, blaine = BLAINE)
+pk_C2S  = parrot_killoh_avrami(PK84_PARAMS_C2S,  "C2S";  α_max, blaine = BLAINE)
+pk_C3A  = parrot_killoh_avrami(PK84_PARAMS_C3A,  "C3A";  α_max, blaine = BLAINE)
+pk_C4AF = parrot_killoh_avrami(PK84_PARAMS_C4AF, "C4AF"; α_max, blaine = BLAINE)
 
 # ── 4. Kinetic reactions (reaction-centric) ─────────────────────────────────
 # Reactions follow [LothenbachWinnefeld2006](@cite) — Jennite = Ca₉Si₆O₁₈(OH)₆·8H₂O
@@ -536,7 +770,7 @@ The ODE state contains **one entry per unique mineral**; contributions accumulat
 in `du[j]`.
 
 ```julia
-pk_c3a = parrot_killoh(PK_PARAMS_C3A, "C3A"; α_max)
+pk_c3a = parrot_killoh_avrami(PK84_PARAMS_C3A, "C3A"; α_max)
 
 kr_C3A_ett  = KineticReaction(cs, rxn_C3A_ettringite,   pk_c3a)
 kr_C3A_mono = KineticReaction(cs, rxn_C3A_monosulphate, pk_c3a)
@@ -610,19 +844,35 @@ ChemistryLab ships **two** implementations of the Parrot & Killoh clinker
 hydration model. They are not interchangeable, and their parameter sets are not
 transferable between them.
 
-| | [`parrot_killoh`](@ref) | [`parrot_killoh_avrami`](@ref) |
+| | [`parrot_killoh`](@ref) (deprecated) | [`parrot_killoh_avrami`](@ref) |
 |:--|:--|:--|
 | Nucleation–growth | `(K₁/N₁)(1-ξ)^N₁ / (1 + B·ξ^N₃)` | `(k₁/n₁)(1-ξ)(-ln(1-ξ))^(1-n₁)` (Avrami) |
 | Second mechanism | `K₂(1-ξ)^N₂` | `k₂(1-ξ)^(2/3) / (1-(1-ξ)^(1/3))` (Jander) |
 | Third mechanism | `3K₃(1-ξ)^(2/3) / (N₃(1-(1-ξ)^(1/3)))` | `k₃(1-ξ)^n₃` (power law) |
 | Combination | `min(max(r_NG, r_I), r_D)` | `min` of all three |
-| Parameters | [`PK_PARAMS_C3S`](@ref) … | [`PK84_PARAMS_C3S`](@ref) … |
+| Parameters | `PK_PARAMS_C3S` …, provenance unestablished | [`PK84_PARAMS_C3S`](@ref) … |
+| Status | deprecated, warns once | **use this one** |
 
 `parrot_killoh_avrami` is the **canonical 1984 formulation**, with the parameters
 of [ParrotKilloh1984](@cite) as reported by [LothenbachWinnefeld2006](@cite) and
 used by [Lavergne2018](@cite). Use it when you want the α(t) curves of the cement
 literature. A useful signature of a correct transcription: with those parameters
 C₂S has no nucleation–growth stage and C₃S no diffusion-controlled stage.
+
+`parrot_killoh` is kept only so that existing scripts keep running. Its
+nucleation–growth term carries no Avrami logarithm, `K₃` sits where the canonical
+form has `k₂`, `N₁ = 3.3` is the canonical `n₃`, and `k₃ = 1.1` has no counterpart
+at all — so the two are different models, not two parameterizations of one. The
+primary source (*British Ceramic Proceedings* **35**, 41–53, 1984) has no DOI and
+could not be consulted, so the smoothed variant is not attributed to it. With
+`PK_PARAMS_*` the diffusion branch takes over at α ≈ 0.003 (C₂S), 0.013 (C₃S) and
+0.057 (C₃A); those three then follow the closed form
+`α(t) = α_max·[1 − (1 − √(2·K₃·t / N₃))³]`, giving **α(7 d) = 0.2386 for all
+three**, while C₄AF is limited by its own nucleation branch and reaches only
+0.193. Converting the four clinker demos to the canonical variant moved a CEM I
+paste at w/c = 0.40 from a mean degree of 0.234 to 0.628, an adiabatic
+temperature rise from 2.0 to 14.2 °C, and the heat released at seven days from
+115 to 308 kJ/kg of cement.
 
 ```julia
 pk = parrot_killoh_avrami(

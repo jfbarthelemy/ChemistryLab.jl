@@ -1,5 +1,183 @@
 # Changelog
 
+## v0.14.0 — an equilibrium that comes with a proof, and a kinetic step that is one problem
+
+### Breaking changes
+
+- `equilibrate(state)` now solves through **every** loaded back end and returns
+  the answer `optimality_certificate` proves optimal. It is slower and, on some
+  systems, gives a different — correct — answer. `equilibrate(state; certify =
+  false)` restores the single-back-end behavior.
+- `OptimaSolver = "0.5"` is required. The parameter block the new constraints and
+  the kinetic step ride on arrived there; against 0.5's predecessor the extension
+  fails with a `MethodError` on `DualNewtonProblem`.
+- The `equilibrate` keyword `model` is now named explicitly in the one-argument
+  form, and `certify` and `constraint` are new keywords. Code passing positional
+  arguments is unaffected.
+
+### An interior-point answer whose charge balance was wrong in the second digit
+
+On 1 mmol of calcite dissolving in 1 kg of water, the interior-point path returned
+`‖An − b‖∞ = 3×10⁻⁶`, which looks like round-off. It is not: the rows of a
+conservation matrix do not share a scale, and against its own budget that residual
+is **3 % on the charge row** and 0.3 % on the carbonate, while the water row at
+55.5 mol sits at `1.8×10⁻⁸`. The pH came out 9.5210 against a correct 9.5274.
+
+The measure is fixed in `OptimaSolver` 0.5.0. The answer is fixed here, and the
+iteration is not the place: traced over twenty-three iterations, `α` is pinned at
+its ceiling of 0.15 and `‖dn‖` decays at `1 − α` with the residual frozen — the
+fraction-to-boundary rule lets through 15 % of a correction the next iteration
+re-poses. Thirty thousand iterations change nothing, nor does a tolerance of
+`10⁻⁶`.
+
+What does is that the problem is convex, so its KKT conditions are sufficient and
+`optimality_certificate` **decides** rather than ranks. `equilibrate` therefore
+solves by every route and keeps a proved answer:
+
+| case | interior point | dual Newton | certified |
+|:--|--:|--:|--:|
+| calcite in water, 10–40 °C | 3.0e-2 | 3.0e-12 | proved |
+| calcite + 1 mmol CO₂ | 1.0e-3 | 6.3e-13 | proved |
+| calcite + 50 mmol CO₂ | 1.3e-16 | 8.5e-14 | proved |
+| pure water | 1.3e-16 | 1.3e-16 | proved |
+| CEM I, w/c 0.45 and 0.60 | 1.5e-14 | 2.0e-14 | proved |
+| CEM I, w/c 0.30 | 7.2e-16 | 3.3e-10, **not** proved | proved |
+
+Ten of ten, against seven through the interior point alone and nine through the
+dual Newton alone.
+
+One bug found in the process, and it mattered: `solve_certified` recomputed the
+component totals from **each** starting point. A start that violates the balance
+therefore posed a different problem, and the dual solve certified the answer to
+the shifted one — two "certified" compositions 0.2 % apart on dissolved calcium,
+which a convex problem with one minimum cannot have. `b` is now fixed once, from
+the state as given.
+
+### Equilibrium under something other than fixed (T, P)
+
+`Adiabatic`, `FixedEnthalpy`, `FixedVolume`, `SealedVolume`, `FixedpH` and
+`FixedActivity`, passed as `equilibrate(state; constraint = ...)`.
+
+The prescribed quantity is an unknown of the solver's own square system, not an
+outer loop: an adiabatic solve costs one equation, not a solve per trial
+temperature. Two vehicles, and they are not interchangeable — a prescribed
+**property** adds a parameter and its residual, a prescribed **chemical
+potential** adds a *column* to the conservation matrix, an unknown amount of a
+titrant the system may draw on, and that amount comes back as part of the answer.
+
+Validated against a published number: adiabatic `H⁺ + OH⁻ → H₂O` gives
+**−55.85 kJ/mol** at every amount tested, against the accepted −55.8, with
+nothing fitted to it. `ΔT = 6.62 K` for 0.5 mol in a kilogram of water, against
+27.9 kJ over 4.18 kJ/K. Enthalpy conserved to `10⁻¹²` relative, and solving at a
+*fixed* temperature equal to the one found returns the same composition to
+`10⁻¹²`.
+
+A volume constraint on a condensed system is **refused**, with the lever it
+measured named in the error. The molar volumes of water and of the minerals in
+these databases are exactly pressure-independent, so the relative lever
+`(∂V/∂P)·P/V` is about `10⁻⁶` — some 9 600 bar to change the volume by one
+percent. That is the physics: the volume of an incompressible condensed system is
+fixed by its composition. Declare a gas phase, or use `porosity(state, reference)`
+for a sealed specimen at fixed pressure.
+
+### A kinetic step as Leal poses it: one problem, fully implicit
+
+`KineticStepSolver` and `kinetic_step`. The reaction extents are unknowns of the
+same Gibbs minimization as the amounts and the element potentials, and the rate is
+evaluated at the **end-of-step** composition. No frozen speciation in a right-hand
+side, and no lag between the kinetic and the equilibrium species. The reactivity
+constraint being linear, it joins the conservation block, so the algebraic cost of
+kinetics is the number of **reactions**, not of species.
+
+Measured against an analytic answer: at a constant 1 µmol/s, `Δξ = Δt·r` to
+`10⁻¹⁰` relative and the calcite left is `n₀ − kΔt` to the last bit, with the
+element balance at `10⁻¹⁴`.
+
+Measured on the feedback path nothing exercised before: with `r = k(1 − Ω)` at
+`k = 10⁻⁵ mol/s`, an explicit step of `10⁶ s` would dissolve 10 mol — a thousand
+times the calcite present. The implicit step lands at `Ω = 0.999989`, approaching
+saturation from below and never crossing it, at any step size.
+
+A **solid solution** takes part: C₃S dissolving into a four-member CSHQ solution
+comes out certified at a stationarity of `2×10⁻¹³`, with all four end-members
+present and ten times the step giving ten times the C-S-H. Two settings are
+decided by the certificate rather than guessed, because neither answer works on
+both kinds of problem — `warm_start` for the admission of a mixing phase from a
+cold start, `pin_minerals` for whether the kinetic minerals are held in the active
+set. Both are documented with the measurements that decide them.
+
+The certificate of a kinetic step is taken on the **augmented** problem. A mineral
+held back by a rate law is supersaturated by construction, so tested against the
+unconstrained equilibrium it reports a residual of 7 `RT` and a correct answer is
+called wrong.
+
+`coupling = :species`, which would impose the assemblage instead of proposing it,
+**raises**. It was implemented and does not converge: pinning a pure phase by a
+linear row leaves its stationarity row in the system as well, made trivially
+satisfiable by that row's own multiplier, and the Jacobian degenerates — the
+extents came out 4.3 times short. For a model whose assemblage IS the
+stoichiometry, the ODE route already does exactly that, and the tutorial now opens
+with a table saying which route answers which question.
+
+### Correctness of published values
+
+- **The "maleic acid" titration is malonate.** The SLOP98 entries are
+  `MALONIC-ACID,AQ` / `H-MALONATE,AQ` / `MALONATE,AQ`, the three-carbon diacid.
+  Their `ΔₐG⁰` give pKa **2.851 / 5.696** against a tabulated malonic 2.83 / 5.69,
+  and nowhere near maleic's 1.92 / 6.27. The database was right and the name was
+  wrong. The script and the page are renamed, and both pKa are now derived rather
+  than hard-coded — the old figures were plotted as dashed lines that crossed the
+  curve at no half-equivalence, so the defect was visible in the published figure.
+- **`parrot_killoh` is deprecated and no longer attributed to Parrott & Killoh.**
+  Its nucleation term carries no Avrami logarithm, `K₃` sits where the canonical
+  form has `k₂`, `N₁ = 3.3` is the canonical `n₃`, and `k₃ = 1.1` has no
+  counterpart: two different models, not two parameterizations. With `PK_PARAMS_*`
+  the diffusion branch takes over at α ≈ 0.003 (C₂S), 0.013 (C₃S) and 0.057
+  (C₃A), and those three then land on **α(7 d) = 0.2386 whatever their `K₁`**,
+  while C₄AF is limited by its own nucleation branch at 0.193. A CEM I at
+  w/c = 0.40 is reported near 0.61. All demos and doc pages now use
+  `parrot_killoh_avrami` with `PK84_PARAMS_*`: the CEM I paste moves from
+  ᾱ(7 d) = 0.234 to **0.628**, ΔT from 2.0 to **14.2 °C**, and the heat released
+  from 115 to **308 kJ/kg**. The slag and metakaolin laws move to `waller`.
+- **The calorimeter's `Cp` was double-counted.** The denominator is
+  `Cp + Σᵢ nᵢ Cp°ᵢ(T)` with the second term recomputed at every step, so adding
+  the sample to `Cp` counts it twice and understates ΔT by a factor of about 1.75.
+  Three scripts and one doc page corrected; the docstring, which contradicted
+  itself, now carries the warning.
+- **A documented temperature sweep ran on an empty state.** `ChemicalState(cs)`
+  holds no matter, so every element balance was zero and all 21 points returned
+  the same trivial answer — flat lines, with prose describing a curve that was not
+  there. Repaired, it also shows the note was backwards: `Kₛₚ` is retrograde
+  (`10^-8.411` at 10 °C to `10^-8.517` at 30 °C, matching the database to 0.003
+  log units, and `−8.48` at 25 °C is the accepted value), and yet dissolved
+  calcium **rises**, because the pH falls 0.4 and shifts carbonate to bicarbonate.
+  The familiar statement holds for a system buffered at fixed pCO₂, not a sealed
+  one.
+- **The w/c page was out of navigation, and not by accident.** Its heavy blocks
+  were never executed and the scan contradicts its analysis on three points:
+  ettringite never forms (the sulfate all goes to `monosulphate12` at
+  equilibrium), no clinker survives at any w/c including 0.30, and the porosity has
+  neither minimum nor inflection — so no Powers threshold, which is kinetic and
+  not thermodynamic. Rewritten with executed blocks, the sealed-curing porosity
+  convention (`porosity(eq, fresh)`, 5.3 points and a 7.4 % volume shrinkage apart
+  from the one-argument form at w/c = 0.50), its assumptions written out, and put
+  back in the navigation.
+- Stale documentation removed: the `@test_broken` on `CaOH⁺` at ×2.47 has been
+  gone since the convergence test moved to the true KKT error at `μ = 0`, and the
+  `pKw = 13.979` that came with it was computed from the pre-fix `OH⁻` — it is
+  13.9994 against Reaktoro's 14.0001.
+
+### New tests
+
+`test/published_values.jl` pins the malonate pKa and the retrograde calcite sweep
+against the database's own `Kₛₚ`; `test/certified_equilibrium.jl` the certified
+route, including that `b` must be fixed once; `test/equilibrium_constraints.jl` the
+adiabatic enthalpy of neutralization, the refused volume constraint and the
+implicit titrant; `test/kinetics/test_implicit_step.jl` the analytic kinetic step,
+the impossibility of crossing saturation, several reactions on one mineral, and a
+solid solution inside the step.
+
+
 ## v0.13.0 — a data file is named, not located
 
 ### Breaking changes

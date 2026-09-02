@@ -161,10 +161,21 @@ where:
 
 # Fields
 
-  - `Cp`: heat capacity of calorimeter + sample [J/K] (stored as `Quantity`).
+  - `Cp`: heat capacity of everything the ODE does **not** compute for itself —
+    the vessel, the flask, an inert filler — in J/K, stored as a `Quantity`.
   - `heat_loss`: callable `φ(ΔT::Real) -> Real [W]`.
   - `T_env`: ambient temperature [K] (stored as `Quantity`).
   - `T0`: initial temperature [K] (stored as `Quantity`).
+
+!!! warning "`Cp` must NOT include the sample"
+    The denominator of the balance above is `Cp + Σᵢ nᵢ Cp°ᵢ(T)`, and the second
+    term is recomputed from the database at every step. Adding the sample's own
+    heat capacity to `Cp` therefore counts it **twice** and understates the
+    temperature rise — by a factor of about 1.75 on a cement paste at w/c = 0.4,
+    where the paste contributes some 2.5 kJ/K against 0.9 kJ/K for the flask.
+    Three scripts shipped with this package made exactly that mistake, and the
+    field description above used to invite it by saying "calorimeter + sample".
+    Pass the vessel, and let the solver add the paste.
 
 # Examples
 
@@ -172,9 +183,10 @@ where:
 # Linear heat loss — Newton cooling
 cal = SemiAdiabaticCalorimeter(; Cp=4000.0u"J/K", T_env=293.15u"K", L=0.5u"W/K", T0=293.15u"K")
 
-# Quadratic heat loss (Lavergne et al. 2018)
+# Quadratic heat loss (Lavergne et al. 2018). `Cp` is the vessel alone;
+# the paste's own heat capacity is added by the solver from the database.
 cal = SemiAdiabaticCalorimeter(;
-    Cp        = 3449.0u"J/K",
+    Cp        = 900.0u"J/K",
     T_env     = 293.15u"K",
     heat_loss = ΔT -> 0.3*ΔT + 0.003*ΔT^2,
     T0        = 293.15u"K",

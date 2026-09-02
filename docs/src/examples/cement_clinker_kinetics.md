@@ -55,15 +55,23 @@ nothing # hide
 ## 3. Parrot--Killoh kinetic models
 
 Maximum degree of hydration from the [Powers1948](@cite) law:
-``\alpha_{\max} \leq w/c \,/\, 0.42``.
+``\alpha_{\max} \leq w/c \,/\, 0.42``, and the fineness correction of
+[Lavergne2018](@cite), the rate scaling as ``B / 385\;\text{m}^2/\text{kg}``.
+
+This uses [`parrot_killoh_avrami`](@ref) with `PK84_PARAMS_*`, the canonical
+formulation. The smoothed [`parrot_killoh`](@ref) variant this page used until
+v0.14.0 is deprecated: it is diffusion-limited from a few percent of hydration
+on, which held the mean degree at seven days to 0.234 and the heat released to
+115 kJ/kg — see [Two Parrot–Killoh variants](@ref pk-variants).
 
 ```@example clinker
-const α_max = min(1.0, WC / 0.42)
+const α_max = powers_alpha_max(WC)      # 0.952 at w/c = 0.40
+const BLAINE = 380.0u"m^2/kg"           # ordinary CEM I fineness
 
-pk_C3S  = parrot_killoh(PK_PARAMS_C3S,  "C3S";  α_max)
-pk_C2S  = parrot_killoh(PK_PARAMS_C2S,  "C2S";  α_max)
-pk_C3A  = parrot_killoh(PK_PARAMS_C3A,  "C3A";  α_max)
-pk_C4AF = parrot_killoh(PK_PARAMS_C4AF, "C4AF"; α_max)
+pk_C3S  = parrot_killoh_avrami(PK84_PARAMS_C3S,  "C3S";  α_max, blaine = BLAINE)
+pk_C2S  = parrot_killoh_avrami(PK84_PARAMS_C2S,  "C2S";  α_max, blaine = BLAINE)
+pk_C3A  = parrot_killoh_avrami(PK84_PARAMS_C3A,  "C3A";  α_max, blaine = BLAINE)
+pk_C4AF = parrot_killoh_avrami(PK84_PARAMS_C4AF, "C4AF"; α_max, blaine = BLAINE)
 nothing # hide
 ```
 
@@ -117,9 +125,14 @@ The semi-adiabatic calorimeter [Lavergne2018](@cite) solves
 where ``\varphi(\Delta T) = a \, \Delta T + b \, \Delta T^2`` models quadratic
 heat losses and ``C_p^{\text{total}} = C_p + \sum_i n_i C_{p,i}^0(T)``.
 
+Since the second term is recomputed from the database at every step, the `Cp`
+field must carry the **fixed part only** — here the flask. This page used to add
+the cement and the mixing water to it as well, counting the sample twice and
+understating ``\Delta T`` by a factor of about 1.75.
+
 ```@example clinker
 cal = SemiAdiabaticCalorimeter(;
-    Cp        = (1.0 * 800.0 + WC * 4186.0 + 1.0 * 900.0) * u"J/K",
+    Cp        = 900.0u"J/K",            # flask alone; the sample is added by the model
     T_env     = 293.15u"K",
     heat_loss = ΔT -> 0.3 * ΔT + 0.003 * ΔT^2,
     T0        = 293.15u"K",

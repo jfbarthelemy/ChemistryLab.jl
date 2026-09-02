@@ -3,7 +3,7 @@
 #
 # Kinetic simulation of OPC clinker hydration via ChemistryLab:
 #   - ChemicalSystem built from the CEMDATA18 database
-#   - KineticsProblem with parrot_killoh (KineticFunc) for the 4 clinker phases
+#   - KineticsProblem with parrot_killoh_avrami (KineticFunc) for the 4 clinker phases
 #   - Heat tracking via SemiAdiabaticCalorimeter
 #
 # This script demonstrates the full workflow:
@@ -77,12 +77,16 @@ set_quantity!(state0, "H2O@", WC * u"kg")
 # Maximum degree of hydration according to Powers (1948): α_max ≤ w/c / 0.42
 # We create models with the computed α_max rather than the default value 1.0.
 
-const α_max = min(1.0, WC / 0.42)
+const α_max = powers_alpha_max(WC)
 
-pk_C3S = parrot_killoh(PK_PARAMS_C3S, "C3S"; α_max)
-pk_C2S = parrot_killoh(PK_PARAMS_C2S, "C2S"; α_max)
-pk_C3A = parrot_killoh(PK_PARAMS_C3A, "C3A"; α_max)
-pk_C4AF = parrot_killoh(PK_PARAMS_C4AF, "C4AF"; α_max)
+# Blaine fineness of the binder. The canonical rate law scales with it through
+# `blaine_factor`; 380 m²/kg is an ordinary CEM I.
+const BLAINE = 380.0u"m^2/kg"
+
+pk_C3S = parrot_killoh_avrami(PK84_PARAMS_C3S, "C3S"; α_max, blaine = BLAINE)
+pk_C2S = parrot_killoh_avrami(PK84_PARAMS_C2S, "C2S"; α_max, blaine = BLAINE)
+pk_C3A = parrot_killoh_avrami(PK84_PARAMS_C3A, "C3A"; α_max, blaine = BLAINE)
+pk_C4AF = parrot_killoh_avrami(PK84_PARAMS_C4AF, "C4AF"; α_max, blaine = BLAINE)
 
 # ── 4. Kinetic reaction list ─────────────────────────────────────────────────
 #
@@ -135,10 +139,16 @@ kinetic_reactions = [rxn_C3S, rxn_C2S, rxn_C3A, rxn_C4AF]
 const TSPAN = (0.0, 7.0 * 86400.0)
 
 # Semi-adiabatic calorimeter parameters (Lavergne et al. 2018)
-#   Cp [J/K]: 1 kg cement + WC kg water + Dewar flask
+#
+# `Cp` is the FIXED heat capacity only — the Dewar flask, 1 kg at about
+# 900 J/(kg·K). The paste's own heat capacity is `Σᵢ nᵢ Cp⁰ᵢ(T)`, which the
+# solver adds from the database at every step (see `extend_ode!`), so adding it
+# here as well would count it twice. This script used to pass
+# `1.0*800 + WC*4186 + 1.0*900 ≈ 3374 J/K`, i.e. flask + cement + water, which
+# put the total near 5.9 kJ/K instead of 3.4 and understated ΔT by about 1.75.
 #   quadratic losses: φ(ΔT) = a·ΔT + b·ΔT²
 cal = SemiAdiabaticCalorimeter(;
-    Cp = (1.0 * 800.0 + WC * 4186.0 + 1.0 * 900.0) * u"J/K",   # ≈ 3449 J/K
+    Cp = 900.0u"J/K",              # Dewar flask alone
     T_env = 293.15u"K",
     heat_loss = ΔT -> 0.3 * ΔT + 0.003 * ΔT^2,
     T0 = 293.15u"K",

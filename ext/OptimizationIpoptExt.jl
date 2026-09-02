@@ -180,6 +180,7 @@ end
 # ── __init__: register default solver (low priority) ─────────────────────────
 
 function __init__()
+    ChemistryLab.register_solver_factory!(_default_ipopt_solver)
     return if isnothing(ChemistryLab._DEFAULT_SOLVER_FACTORY[])
         ChemistryLab._DEFAULT_SOLVER_FACTORY[] = _default_ipopt_solver
     end

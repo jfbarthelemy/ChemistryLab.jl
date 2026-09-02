@@ -137,39 +137,32 @@ set_quantity!(state0, "H2O@", WB * u"kg")
 const α_max = min(1.0, WB / 0.42)
 
 # Clinker (Parrot & Killoh 1984, Schindler & Folliard 2005 corrections)
-pk_C3S = parrot_killoh(PK_PARAMS_C3S, "C3S"; α_max)
-pk_C2S = parrot_killoh(PK_PARAMS_C2S, "C2S"; α_max)
-pk_C3A = parrot_killoh(PK_PARAMS_C3A, "C3A"; α_max)
-pk_C4AF = parrot_killoh(PK_PARAMS_C4AF, "C4AF"; α_max)
+# Blaine fineness of the binder, used by the canonical rate law through
+# `blaine_factor`. 380 m²/kg is an ordinary CEM I.
+const BLAINE = 380.0u"m^2/kg"
 
-# GGBS (slag): PK parameters adapted from the literature
-#   Low K₁ → slow initial kinetics (vitreous, little nucleation)
-#   High Ea → strong temperature sensitivity
-#   α_max = 0.90 (vitreous, partial hydration)
-#   References: Richardson & Groves (1992), Chen & Brouwers (2007)
-pk_ggbs = parrot_killoh(
-    (
-        K₁ = 0.15u"1/d", N₁ = 2.0, K₂ = 0.003u"1/d", N₂ = 2.0,
-        K₃ = 0.0015u"1/d", N₃ = 3.5, B = 0.2,
-        Ea = 46_000.0u"J/mol", T_ref = 293.15u"K",
-    ),
-    "GGBS";
-    α_max = 0.9,
-)
+pk_C3S = parrot_killoh_avrami(PK84_PARAMS_C3S, "C3S"; α_max, blaine = BLAINE)
+pk_C2S = parrot_killoh_avrami(PK84_PARAMS_C2S, "C2S"; α_max, blaine = BLAINE)
+pk_C3A = parrot_killoh_avrami(PK84_PARAMS_C3A, "C3A"; α_max, blaine = BLAINE)
+pk_C4AF = parrot_killoh_avrami(PK84_PARAMS_C4AF, "C4AF"; α_max, blaine = BLAINE)
 
-# MK (metakaolin): PK parameters adapted from the literature
-#   High K₁ → fast initial reactivity (high specific surface area)
-#   α_max = 0.95 (nearly complete under normal conditions)
-#   References: Lothenbach et al. (2011), Deschner et al. (2012)
-pk_mk = parrot_killoh(
-    (
-        K₁ = 0.7u"1/d", N₁ = 1.5, K₂ = 0.008u"1/d", N₂ = 2.0,
-        K₃ = 0.002u"1/d", N₃ = 3.5, B = 0.3,
-        Ea = 48_000.0u"J/mol", T_ref = 293.15u"K",
-    ),
-    "MK";
-    α_max = 0.95,
-)
+# Supplementary cementitious materials do not follow Parrot-Killoh: their
+# pozzolanic or latent-hydraulic reaction is a sigmoid in log-time, which is what
+# `waller` implements. These two used to call the deprecated `parrot_killoh` with
+# parameter sets adapted by hand; that function is diffusion-limited from a few
+# percent of reaction on, so both SCMs stalled at a fraction of their `α_max`.
+#
+# GGBS (ground granulated blast-furnace slag): `WALLER_PARAMS_SLAG` ships with
+# the package, tau = 100 d. alpha_max = 0.90 for a vitreous slag, which only
+# partly reacts.
+pk_ggbs = waller(WALLER_PARAMS_SLAG, "GGBS"; α_max = 0.9)
+
+# MK (metakaolin): there is NO published Waller parameter set for metakaolin, so
+# nothing here is attributed to one. Metakaolin is more reactive than slag, and
+# the reactive-SCM sets that do ship (fly ash, silica fume) both use tau = 80 d;
+# that set is borrowed as an explicit assumption, not a calibration.
+# alpha_max = 0.95, metakaolin reacting nearly completely under normal curing.
+pk_mk = waller(WALLER_PARAMS_SILICA_FUME, "MK"; α_max = 0.95)
 
 # ── 6. Kinetic reaction list ─────────────────────────────────────────────────
 #
@@ -246,14 +239,14 @@ const TSPAN = (0.0u"s", 28.0u"d")
 
 # ── 8. Semi-adiabatic calorimeter ────────────────────────────────────────────
 #
-# Cp [J/K]: ternary cement + water + Dewar flask
-#   cement: 1 kg × 800 J/(kg·K)
-#   water : WB kg × 4186 J/(kg·K)
-#   Dewar : 1 kg × 900 J/(kg·K)
+# `Cp` is the FIXED heat capacity only — the Dewar flask, 1 kg at about
+# 900 J/(kg·K). The paste's own `Σᵢ nᵢ Cp⁰ᵢ(T)` is added by the solver from the
+# database at every step, so counting the binder and the water here as well
+# would count them twice.
 # Quadratic losses (Lavergne et al. 2018)
 
 cal = SemiAdiabaticCalorimeter(;
-    Cp = (1.0 * 800.0 + WB * 4186.0 + 1.0 * 900.0) * u"J/K",
+    Cp = 900.0u"J/K",              # Dewar flask alone
     T_env = 293.15u"K",
     heat_loss = ΔT -> 0.3 * ΔT + 0.003 * ΔT^2,
     T0 = 293.15u"K",

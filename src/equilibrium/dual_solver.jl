@@ -115,7 +115,7 @@ Package the chemistry as the convex program `OptimaSolver` solves. Built per
 solve because the reference potentials `Δ_a G⁰/RT` depend on temperature and
 pressure.
 """
-function _dual_problem(des::DualEquilibriumSolver, p, n0)
+function _dual_phases(des::DualEquilibriumSolver, n0)
     # One mixing phase for the aqueous solution — always present, the solvent as
     # its reference — and one more per declared solid solution, whose presence
     # the tangent-plane test decides.
@@ -143,8 +143,16 @@ function _dual_problem(des::DualEquilibriumSolver, p, n0)
             (members = grp, j_ref = j_ref, always_present = false, mole_fraction = true),
         )
     end
+    return phases
+end
+
+function _dual_problem(des::DualEquilibriumSolver, p, n0, blocks = nothing)
+    phases = _dual_phases(des, n0)
+    bl = blocks === nothing ?
+        _constraint_blocks(FixedTP(), des, nothing, p, n0) : blocks
     return _optima_dual_problem(
         des.A, Float64.(p.ΔₐG⁰overT), des.lna, phases, des.idx_pure, p,
+        bl.gq, bl.hq, bl.cq, bl.q0, bl.qscale, bl.Aq, Int[],
     )
 end
 
@@ -166,12 +174,15 @@ function SciMLBase.solve(
         state::ChemicalState;
         b = nothing,
         ϵ::Float64 = 1.0e-16,
+        constraint::EquilibriumConstraint = FixedTP(),
+        parameters::Union{Nothing, Base.RefValue} = nothing,
     )
     p = _build_params(state; ϵ = ϵ)
     n0 = Float64[ustrip(us"mol", x) for x in state.n]
     bv = b === nothing ? des.A * n0 : Float64.(collect(b))
 
-    res = _optima_dual_solve(_dual_problem(des, p, n0), bv, n0, des.opts)
+    blocks = _constraint_blocks(constraint, des, state, p, n0)
+    res = _optima_dual_solve(_dual_problem(des, p, n0, blocks), bv, n0, des.opts)
 
     res.converged || begin
         NONCONVERGED[] += 1
@@ -179,9 +190,15 @@ function SciMLBase.solve(
         `optimality_certificate`.""" maxlog = 1
     end
 
+    # The parameters the constrained solve FOUND — the temperature an adiabatic
+    # solve reached, the titrant amount a prescribed pH required. They are part of
+    # the answer, not a diagnostic, so the caller can ask for them.
+    parameters === nothing || (parameters[] = copy(res.q))
+
+    T_out, P_out = blocks.apply(temperature(state), pressure(state), res.q)
     return ChemicalState(
         des.system, [nᵢ * u"mol" for nᵢ in res.x];
-        T = temperature(state), P = pressure(state),
+        T = T_out, P = P_out,
     )
 end
 
@@ -268,12 +285,20 @@ dependency: whichever back ends are loaded are the ones available.
 function solve_certified(
         des::DualEquilibriumSolver, starts;
         b = nothing, ϵ::Float64 = 1.0e-16, floor::Float64 = 1.0e-25,
+        constraint::EquilibriumConstraint = FixedTP(),
+        parameters::Union{Nothing, Base.RefValue} = nothing,
     )
     best = nothing
     best_cert = nothing
     best_err = Inf
     for s0 in starts
-        eq = SciMLBase.solve(des, s0; b = b, ϵ = ϵ)
+        eq = SciMLBase.solve(
+            des, s0; b = b, ϵ = ϵ, constraint = constraint, parameters = parameters,
+        )
+        # The certificate is evaluated at the T and P the constrained solve
+        # FOUND, which `eq` carries — not at the ones the start had. `∇f` depends
+        # on both, so certifying against the start's conditions would measure the
+        # stationarity of a different problem.
         cert = optimality_certificate(des, eq; b = b, ϵ = ϵ, floor = floor)
         cert.optimal && return (eq, cert)
         err = max(

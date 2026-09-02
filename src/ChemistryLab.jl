@@ -125,8 +125,10 @@ module ChemistryLab
 
     include("equilibrium/activities.jl")
     include("equilibrium/equilibrium_problems.jl")
+    include("equilibrium/constraints.jl")
     include("equilibrium/equilibrium_solver.jl")
     include("equilibrium/dual_solver.jl")
+    include("equilibrium/certified.jl")
 
     include("kinetics/rate_models.jl")
     include("kinetics/kinetics_reactions.jl")
@@ -134,6 +136,7 @@ module ChemistryLab
     include("kinetics/kinetics_solver.jl")
     include("kinetics/calorimetry.jl")
     include("kinetics/kinetics_postprocessing.jl")
+    include("kinetics/implicit_step.jl")
 
     export SymbolicFunc,
         ThermoFactory,
@@ -238,6 +241,17 @@ module ChemistryLab
     export DualEquilibriumSolver,
         optimality_certificate,
         solve_certified,
+        equilibrate_certified,
+        EquilibriumConstraint,
+        FixedTP,
+        FixedEnthalpy,
+        Adiabatic,
+        FixedVolume,
+        SealedVolume,
+        FixedActivity,
+        FixedpH,
+        KineticStepSolver,
+        kinetic_step,
         AbstractSolidSolutionModel,
         IdealSolidSolutionModel,
         RedlichKisterModel,

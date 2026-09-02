@@ -28,22 +28,13 @@ const RK_SPREAD = 7.12e-4
 
 # ── Trace species ─────────────────────────────────────────────────────────────
 #
-# Everything here agrees with Reaktoro to 5 % or better except `CaOH+`, which
-# comes out 2.5× high at 4e-9 mol. Ipopt lands on the same point (×2.46), so that
-# residual is not attributable to one back-end.
+# Every species now agrees with Reaktoro: those above ~1e-5 mol to 1e-3 relative,
+# the trace ions to 5 %, the worst being `CaOH+` at ×1.032. `pKw` on this system
+# is 13.9994 against Reaktoro's 14.0001; the 13.979 this comment used to quote was
+# computed from the pre-fix `OH-`.
 #
-# It is not attributable to the tolerances either, and this is the point:
-# `DualEquilibriumSolver` — Newton on the KKT system, see `test_dual_solver.jl` —
-# solves the SAME problem to `CaOH+` within 1 % of Reaktoro, along with every
-# other species, and returns a certificate proving global optimality. So the
-# discrepancy below is a property of the interior-point iteration, which stops
-# before stationarity and gives up first on exactly the species that weigh least
-# in the Gibbs energy. The `@test_broken` stays because it records what THIS
-# solver does; it is not a limit of the package.
-#
-# `pKw` on this system is 13.979.
-#
-# It was much worse. Two defects in the back-end, both fixed:
+# That was not always so, and the history is worth keeping because it says where
+# to look when a trace ion is wrong. Two defects in the back-end, both fixed:
 #
 #   * the Newton step formed the Schur complement `S = A H⁻¹ Aᵀ`, which needs
 #     `H` invertible — a pure phase has unit activity, hence exactly zero
@@ -53,6 +44,15 @@ const RK_SPREAD = 7.12e-4
 #     55 mol that threshold was 5.5e-7, so every trace ion below it was declared
 #     to sit on a bound of 1e-16 and its stationarity was never enforced. That
 #     alone accounted for CaOH⁺ ×20.8, OH⁻ ×3.19 and `pKw` = 13.40.
+#
+# After those two, `CaOH+` was still 2.5× high at 4e-9 mol and was left
+# `@test_broken`, on the reasoning that Ipopt landed on the same point (×2.46) so
+# the discrepancy could not belong to one back-end. That reasoning was wrong: both
+# were barrier iterations stopping before stationarity at μ = 0, and trace species
+# are exactly where that shows. `is_converged` was comparing the residual at the
+# CURRENT barrier level, which vanishes at the barrier subproblem's solution for
+# any μ; it now uses the same residual at μ = 0, the true KKT error (OptimaSolver
+# 0.4.1). The `@test_broken` is gone and the assertion below is a plain `@test`.
 #
 const TRACE_CUTOFF = 1.0e-5
 
@@ -140,17 +140,20 @@ const N_H2O, N_CAL, N_CO2 = 55.5, 0.05, 0.01
         @test h ≈ oh rtol = 1.0e-4
         @test 13.9 < -log10(h * oh) < 14.1
 
-        # And it stays fixed for the right reason: forcing the Schur complement back
-        # on does NOT give the autoprotolysis ratio, so the null-space step is what
-        # carries the result. The assertion is that the answer is wrong, not that it
-        # is wrong in a particular direction — it used to come out at
-        # [H⁺]/[OH⁻] ≈ 3.78 and now at 8.7e-5, both far from one, and pinning the
-        # sign made the test fail for a change that did not touch what it is about.
-        # If this ever starts passing, the defect was cured elsewhere.
+        # The Schur-complement route used to get this wrong, and no longer does.
+        #
+        # It came out at [H⁺]/[OH⁻] ≈ 3.78, then at 8.7e-5, both far from one, and
+        # this assertion was written the other way round — "the answer is wrong" —
+        # with the note that if it ever started passing, the defect had been cured
+        # elsewhere. It has: with the feasibility error scaled row by row
+        # (OptimaSolver 0.5.0) the route reaches 0.9956, within half a percent of
+        # unity. The unscaled measure was dominated by the solvent row at 55.5 mol
+        # and stopped the iteration on a point that satisfied it while the trace
+        # ions did not, which on pure water is the whole answer.
         eqs = equilibrate(ChemicalState(csw, n), OptimaOptimizer(; nullspace_step = false))
         vs = [ustrip(us"mol", x) for x in eqs.n]
         ratio = vs[findfirst(==("H+"), nw)] / vs[findfirst(==("OH-"), nw)]
-        @test !isapprox(ratio, 1.0; rtol = 1.0e-2)
+        @test isapprox(ratio, 1.0; rtol = 1.0e-2)
     end
 
     @testset "element balance closes exactly" begin

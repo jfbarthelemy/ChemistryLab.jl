@@ -5,7 +5,7 @@
 # calorimeter using the method of Lavergne et al. (2018).
 #
 # Hydration kinetics: Parrot & Killoh (1984) model
-#   via ChemistryLab.parrot_killoh (KineticFunc),
+#   via ChemistryLab.parrot_killoh_avrami (KineticFunc), canonical formulation,
 #   temperature: Arrhenius correction per phase,
 #   available water: maximum hydration limit α_max (Powers 1948).
 #
@@ -77,34 +77,23 @@ set_quantity!(state0, "H2O@", WC * u"kg")
 
 # ── 3. Parrot & Killoh kinetic models ────────────────────────────────────────
 #
-# Parameters K₁, N₁, K₂, N₂, K₃, N₃, B, Ea — Parrot & Killoh (1984)
-# Ea — Schindler & Folliard (2005) / van Breugel (1991) [J/mol]
+# The canonical formulation, `parrot_killoh_avrami` with `PK84_PARAMS_*`, whose
+# provenance is traceable through Table 3 of Lavergne et al. (2018) quoting
+# Parrott & Killoh (1984) as reported by Lothenbach et al. (2008); activation
+# energies from their Table 4.
+#
+# This script used to carry a byte-for-byte local copy of `PK_PARAMS_*` under
+# the name `PK_SMOOTHED_*` and feed it to the now-deprecated `parrot_killoh`.
+# That path is diffusion-limited from a few percent of hydration on and gave a
+# mean degree of 0.234 at seven days against the 0.61 the literature reports —
+# see the deprecation note on `parrot_killoh`.
 
-const PK_SMOOTHED_C3S = (
-    K₁ = 1.5u"1/d", N₁ = 3.3, K₂ = 0.018u"1/d", N₂ = 2.5,
-    K₃ = 0.0024u"1/d", N₃ = 4.0, B = 0.5,
-    Ea = 41_570.0u"J/mol", T_ref = 293.15u"K",
-)
-const PK_SMOOTHED_C2S = (
-    K₁ = 0.95u"1/d", N₁ = 0.5, K₂ = 0.0005u"1/d", N₂ = 2.5,
-    K₃ = 0.0024u"1/d", N₃ = 4.0, B = 0.2,
-    Ea = 43_670.0u"J/mol", T_ref = 293.15u"K",
-)
-const PK_SMOOTHED_C3A = (
-    K₁ = 0.082u"1/d", N₁ = 0.87, K₂ = 0.00024u"1/d", N₂ = 2.0,
-    K₃ = 0.0024u"1/d", N₃ = 4.0, B = 0.04,
-    Ea = 54_040.0u"J/mol", T_ref = 293.15u"K",
-)
-const PK_SMOOTHED_C4AF = (
-    K₁ = 0.165u"1/d", N₁ = 3.7, K₂ = 0.0015u"1/d", N₂ = 2.5,
-    K₃ = 0.0024u"1/d", N₃ = 4.0, B = 0.5,
-    Ea = 34_420.0u"J/mol", T_ref = 293.15u"K",
-)
+const BLAINE = 380.0u"m^2/kg"   # ordinary CEM I fineness
 
-pk_C3S = parrot_killoh(PK_SMOOTHED_C3S, "C3S"; α_max = ALPHA_MAX)
-pk_C2S = parrot_killoh(PK_SMOOTHED_C2S, "C2S"; α_max = ALPHA_MAX)
-pk_C3A = parrot_killoh(PK_SMOOTHED_C3A, "C3A"; α_max = ALPHA_MAX)
-pk_C4AF = parrot_killoh(PK_SMOOTHED_C4AF, "C4AF"; α_max = ALPHA_MAX)
+pk_C3S = parrot_killoh_avrami(PK84_PARAMS_C3S, "C3S"; α_max = ALPHA_MAX, blaine = BLAINE)
+pk_C2S = parrot_killoh_avrami(PK84_PARAMS_C2S, "C2S"; α_max = ALPHA_MAX, blaine = BLAINE)
+pk_C3A = parrot_killoh_avrami(PK84_PARAMS_C3A, "C3A"; α_max = ALPHA_MAX, blaine = BLAINE)
+pk_C4AF = parrot_killoh_avrami(PK84_PARAMS_C4AF, "C4AF"; α_max = ALPHA_MAX, blaine = BLAINE)
 
 # ── 4. Kinetic reaction list ─────────────────────────────────────────────────
 #
@@ -153,12 +142,15 @@ kinetic_reactions = [rxn_C3S, rxn_C2S, rxn_C3A, rxn_C4AF]
 #
 # Langavant-type device (standard NF EN 196-9).
 # Quadratic heat loss φ(ΔT) = a·ΔT + b·ΔT² (Lavergne et al. 2018).
-# Heat capacity Cp [J/K] for 1 kg cement + WC kg water + flask:
-#   cp_cement ≈ 800 J/(kg·K), cp_water = 4186 J/(kg·K), cp_flask ≈ 900 J/(kg·K)
+# `CP` is the FIXED heat capacity only — the flask, 1 kg at about
+# 900 J/(kg·K). The paste's own `Σᵢ nᵢ Cp⁰ᵢ(T)` is added by the solver from the
+# database at every step, so counting cement and water here as well would count
+# them twice: `1.0*800 + WC*4186 + 1.0*900 ≈ 3374 J/K` put the total near
+# 5.9 kJ/K instead of 3.4 and understated ΔT by about 1.75.
 
 const T0_K = 20.0 + 273.15    # initial temperature [K]
 const T_ENV_K = 20.0 + 273.15  # ambient temperature [K]
-const CP = 1.0 * 800.0 + WC * 4186.0 + 1.0 * 900.0   # ≈ 3449 J/K
+const CP = 1.0 * 900.0        # flask alone [J/K]
 
 const A_CAL = 0.3   # linear coefficient  [W/K]
 const B_CAL = 0.003  # quadratic coefficient [W/K²]

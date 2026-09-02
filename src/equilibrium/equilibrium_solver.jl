@@ -151,6 +151,40 @@ Result: OptimaSolver wins whenever loaded, regardless of load order.
 """
 const _DEFAULT_SOLVER_FACTORY = Ref{Union{Nothing, Function}}(nothing)
 
+"""
+    _SOLVER_FACTORIES
+
+Every back end an extension has registered, in load order. `equilibrate` uses the
+first as its default; [`equilibrate_certified`](@ref) uses all of them as starting
+points, because neither back end dominates the other — see [`solve_certified`](@ref).
+"""
+const _SOLVER_FACTORIES = Function[]
+
+"""
+    _DUAL_AVAILABLE
+
+Whether the KKT solver and its certificate are loaded. Set by
+`OptimaSolverExt.__init__`, and false otherwise: the dual Newton lives in
+`OptimaSolver`, so with only the Ipopt extension loaded there is no certifying
+route and `equilibrate` must take its plain path rather than raise.
+
+Registering a back end is not the same question. `OptimizationIpopt` registers a
+factory, which makes it a usable STARTING POINT for the certified route, but it
+cannot certify anything by itself.
+"""
+const _DUAL_AVAILABLE = Ref(false)
+
+"""
+    register_solver_factory!(f)
+
+Called from an extension's `__init__` to make its back end available to
+[`equilibrate_certified`](@ref). Idempotent.
+"""
+function register_solver_factory!(f::Function)
+    f in _SOLVER_FACTORIES || push!(_SOLVER_FACTORIES, f)
+    return _SOLVER_FACTORIES
+end
+
 # ── Differentiating an equilibrium ────────────────────────────────────────────
 
 """
@@ -418,13 +452,29 @@ using OptimaSolver
 state_eq = equilibrate(state, OptimaOptimizer())
 ```
 
-**One-argument form** (uses the default solver of the loaded extension):
+**One-argument form** — solves by every available route and returns the answer
+[`optimality_certificate`](@ref) proves globally optimal:
 
 ```julia
-state_eq = equilibrate(state)
+state_eq = equilibrate(state)                  # certified
+state_eq = equilibrate(state; certify = false) # single back end, as before
 ```
 
-When both extensions are loaded, `OptimaSolverExt` always takes priority.
+The certified route is the default because a single back end is not reliable
+here: measured on calcite dissolving in water, the interior point returns a
+composition whose **charge balance is wrong in the second digit** (3 %), because
+the fraction-to-boundary rule caps its step and the residual stops moving. The
+dual Newton gets that case to 1e-12 but fails to admit a supersaturated phase on
+a low-water cement. Offering both and keeping a proved answer certifies all ten
+cases of the reference battery; either alone certifies at most nine.
+
+Use [`equilibrate_certified`](@ref) when the certificate itself is wanted, and
+`certify = false` for the old single-back-end behavior. `certify = true` has no
+effect on a system without an aqueous phase or without `H2O@`, where the dual
+route does not apply.
+
+When both extensions are loaded, `OptimaSolverExt` provides the default single
+back end.
 
 # Arguments
 
@@ -451,7 +501,13 @@ function equilibrate(
     return SciMLBase.solve(esolver, state; ϵ = ϵ)
 end
 
-function equilibrate(state::ChemicalState; kwargs...)
+function equilibrate(
+        state::ChemicalState;
+        certify::Bool = true,
+        model::AbstractActivityModel = DiluteSolutionModel(),
+        constraint::EquilibriumConstraint = FixedTP(),
+        kwargs...,
+    )
     f = _DEFAULT_SOLVER_FACTORY[]
     if isnothing(f)
         error(
@@ -460,5 +516,21 @@ function equilibrate(state::ChemicalState; kwargs...)
                 "or call `equilibrate(state, solver; ...)` explicitly.",
         )
     end
-    return equilibrate(state, f(); kwargs...)
+    if (certify || !(constraint isa FixedTP)) &&
+            _DUAL_AVAILABLE[] && _dual_applicable(state.system)
+        return first(
+            equilibrate_certified(
+                state; model = model, constraint = constraint, kwargs...,
+            ),
+        )
+    end
+    constraint isa FixedTP || throw(
+        ArgumentError(
+            "a constraint other than `FixedTP` is imposed inside the dual " *
+                "solver's own system, so it needs `OptimaSolver` loaded" *
+                (_DUAL_AVAILABLE[] ? "" : " — it is not") *
+                " and a system with an aqueous phase and `H2O@`.",
+        )
+    )
+    return equilibrate(state, f(); model = model, kwargs...)
 end

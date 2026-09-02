@@ -161,7 +161,12 @@ _default_optima_solver() = OptimaOptimizer(;
 # strictly positive, which may vanish, and which is the solvent. The algorithm
 # is `OptimaSolver`'s, and these three methods are the join.
 
-function ChemistryLab._optima_dual_problem(A, g, lna, phases, idx_bounded, params)
+function ChemistryLab._optima_dual_problem(
+        A, g, lna, phases, idx_bounded, params,
+        gq = nothing, hq = nothing, cq = nothing,
+        q0 = Float64[], qscale = Float64[], Aq = nothing,
+        always_active = Int[],
+    )
     return DualNewtonProblem(
         A, g, lna;
         phases = [
@@ -171,6 +176,9 @@ function ChemistryLab._optima_dual_problem(A, g, lna, phases, idx_bounded, param
                 ) for ph in phases
         ],
         idx_bounded = idx_bounded, params = params,
+        gq = gq, hq = hq, cq = cq, q0 = q0, qscale = qscale,
+        Aq = Aq === nothing ? zeros(Float64, size(A, 1), length(q0)) : Aq,
+        always_active = always_active,
     )
 end
 
@@ -185,11 +193,17 @@ function ChemistryLab._optima_dual_solve(prob, b, x0, o)
     )
 end
 
-function ChemistryLab._optima_kkt_certificate(prob, x, b, floor, tol, si_tol)
-    return kkt_certificate(prob, x, b; floor = floor, tol = tol, si_tol = si_tol)
+function ChemistryLab._optima_kkt_certificate(
+        prob, x, b, floor, tol, si_tol, q = nothing,
+    )
+    return q === nothing ?
+        kkt_certificate(prob, x, b; floor = floor, tol = tol, si_tol = si_tol) :
+        kkt_certificate(prob, x, b; floor = floor, tol = tol, si_tol = si_tol, q = q)
 end
 
 function __init__()
+    ChemistryLab.register_solver_factory!(_default_optima_solver)
+    ChemistryLab._DUAL_AVAILABLE[] = true
     return ChemistryLab._DEFAULT_SOLVER_FACTORY[] = _default_optima_solver
 end
 

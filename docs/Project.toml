@@ -32,7 +32,7 @@ DocumenterVitepress = "0.3"
 # nor `nullspace_step`, so every equilibrium `@example` block failed with a
 # MethodError while the package's own tests passed. Keep this in step with the
 # bound in the root `Project.toml`.
-OptimaSolver = "0.4"
+OptimaSolver = "0.5"
 SciMLBase = "2, 3"
 # SymbolicUtils is not used directly here; it is declared so that the bound
 # below applies.  SymbolicUtils 4.46.0 makes `Symbolics.renamed_metadata` reach

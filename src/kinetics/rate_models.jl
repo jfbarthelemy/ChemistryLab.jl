@@ -427,8 +427,41 @@ end
 """
     parrot_killoh(params::NamedTuple, mineral_name::AbstractString; α_max=1.0) -> KineticFunc
 
-Build the Parrot & Killoh (1984) cement clinker hydration rate as a
+Build a smoothed three-mechanism clinker hydration rate as a
 [`KineticFunc`](@ref).
+
+!!! danger "Deprecated, and no longer attributed to Parrott & Killoh"
+    Use [`parrot_killoh_avrami`](@ref) with [`PK84_PARAMS_C3S`](@ref) and
+    siblings instead. This function is kept so that existing scripts keep
+    running, and it warns once per session.
+
+    **Why the attribution is withdrawn.** The formulas below are not those of
+    Parrott & Killoh: the nucleation–growth term carries no Avrami logarithm,
+    and `K₃` — a shell-formation coefficient — sits in the *diffusion*
+    expression where the canonical formulation uses `K₂`. Nor do the shipped
+    parameters match any published set: `N₁ = 3.3` is the canonical `n₃`, and
+    the canonical `k₃ = 1.1` has no counterpart at all. The primary source is a
+    conference proceedings without a DOI (*British Ceramic Proceedings* **35**,
+    41–53, 1984) that could not be consulted, so the attribution is retracted
+    rather than repaired by an invented calibration.
+
+    **Why it matters.** With `PK_PARAMS_*` the diffusion branch takes over very
+    early — measured at `α/α_max` = 0.003 for C₂S, 0.013 for C₃S, 0.057 for C₃A,
+    and over the whole range for C₄AF — and governs throughout the interval a
+    seven-day run traverses, because its prefactor `3K₃/N₃ = 0.0018 d⁻¹` is 28
+    times smaller than the canonical `k₂ = 0.05 d⁻¹`. The rate then integrates
+    in closed form,
+
+        α(t) = α_max · [1 − (1 − √(2·K₃·t / N₃))³]
+
+    which is **independent of the phase**, because `K₃ = 0.0024 d⁻¹` and
+    `N₃ = 4` are identical in all four parameter sets. Measured on a CEM I at
+    w/c = 0.40 over seven days, C₃S, C₂S and C₃A all land on `α ≈ 0.239`, and
+    C₄AF lower still at 0.193 — there its own nucleation-growth branch is
+    slower than diffusion and limits instead. The weighted mean comes to 0.234
+    against the 0.61 the cement literature reports. The signature is
+    unmistakable: `K₁` spans a factor of 18 across the four phases and changes
+    almost nothing.
 
 `params` must be a `NamedTuple` with keys `K₁`, `N₁`, `K₂`, `N₂`, `K₃`, `N₃`,
 `B`, `Ea`, `T_ref`. All dimensional values accept plain `Real` (SI) or
@@ -486,6 +519,13 @@ function parrot_killoh(params::NamedTuple, mineral_name::AbstractString; α_max:
     B = float(params.B)
     Ea = safe_ustrip(us"J/mol", params.Ea)
     T_ref = safe_ustrip(us"K", params.T_ref)
+    @warn """`parrot_killoh` is deprecated: its formulas and parameters are not those of \
+    Parrott & Killoh. With `PK_PARAMS_*` the diffusion branch takes over within the first \
+    few percent of hydration (α ≈ 0.003 for C2S, 0.013 for C3S, 0.057 for C3A), so those \
+    three phases reach α(7 d) = 0.2386 whatever their K₁; C4AF is limited by its own \
+    nucleation branch instead and reaches only 0.193. A CEM I at w/c = 0.40 is reported \
+    near 0.61. Use `parrot_killoh_avrami` with `PK84_PARAMS_*`.""" maxlog = 1
+
     α_max_f = float(α_max)
     R_gas = 8.31446261815324
 
@@ -519,7 +559,7 @@ end
 
 Parrot & Killoh (1984) parameters for alite (C₃S = Ca₃SiO₅).
 
-Original paper values (K₁=1.5, K₂=0.018, K₃=0.0024 d⁻¹).
+Values of the smoothed variant, of unestablished provenance (K₁=1.5, K₂=0.018, K₃=0.0024 d⁻¹).
 Activation energy from Schindler & Folliard (2005).
 Reference temperature: 293.15 K (20 °C).
 
@@ -548,7 +588,7 @@ const PK_PARAMS_C3S = (
 
 Parrot & Killoh (1984) parameters for belite (C₂S = Ca₂SiO₄).
 
-Original paper values (K₁=0.95, K₂=0.0005, K₃=0.0024 d⁻¹).
+Values of the smoothed variant, of unestablished provenance (K₁=0.95, K₂=0.0005, K₃=0.0024 d⁻¹).
 Activation energy from Schindler & Folliard (2005).
 Reference temperature: 293.15 K (20 °C).
 """
@@ -570,7 +610,7 @@ const PK_PARAMS_C2S = (
 Parrot & Killoh (1984) parameters for tricalcium aluminate (C₃A = Ca₃Al₂O₆)
 in the presence of sulfate (gypsum), corresponding to ettringite formation.
 
-Original paper values (K₁=0.082, K₂=0.00024, K₃=0.0024 d⁻¹).
+Values of the smoothed variant, of unestablished provenance (K₁=0.082, K₂=0.00024, K₃=0.0024 d⁻¹).
 Activation energy from Schindler & Folliard (2005).
 Reference temperature: 293.15 K (20 °C).
 """
@@ -592,7 +632,7 @@ const PK_PARAMS_C3A = (
 Parrot & Killoh (1984) parameters for tetracalcium aluminoferrite
 (C₄AF = Ca₄Al₂Fe₂O₁₀).
 
-Original paper values (K₁=0.165, K₂=0.0015, K₃=0.0024 d⁻¹).
+Values of the smoothed variant, of unestablished provenance (K₁=0.165, K₂=0.0015, K₃=0.0024 d⁻¹).
 Activation energy from Schindler & Folliard (2005).
 Reference temperature: 293.15 K (20 °C).
 """
