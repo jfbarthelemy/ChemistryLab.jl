@@ -93,23 +93,13 @@ function equilibrate_certified(
         return (eq, nothing)
     end
 
-    # A composition carrying dual numbers takes the implicit-function route: the
-    # certified solve runs in real arithmetic, and the derivative is attached at
-    # the answer. Pushing duals through the active-set search would be wrong —
-    # the map is smooth only piecewise — and through `Float64` conversions like
-    # the `b` below it would simply be lost, which is what happened before this
-    # branch existed.
-    if eltype(state.n) <: DynamicQuantities.AbstractQuantity{<:ForwardDiff.Dual}
-        state_v = _primal(state)
-        eq_v, cert = equilibrate_certified(
-            state_v; model = model, ϵ = ϵ, verbose = verbose,
-            constraint = constraint, parameters = parameters,
-            b = b === nothing ? nothing : _plain.(b), kwargs...,
-        )
-        nstar = Float64[ustrip(us"mol", x) for x in eq_v.n]
-        μ = build_potentials(state.system, model)
-        return (_attach_sensitivity(state, nstar, μ, ϵ; b = b), cert)
-    end
+    # Duals take the implicit-function route, dispatched on the state's element
+    # type rather than tested for. See `_certified_primal_then_derivative`.
+    dual_route = _certified_dual_route(
+        _amount_number_type(state), state, model, b, ϵ, verbose, constraint,
+        parameters, kwargs,
+    )
+    dual_route === nothing || return dual_route
 
     des = DualEquilibriumSolver(state.system, model; verbose = verbose)
 
@@ -156,4 +146,44 @@ variables by the solvent's chemical potential.
 function _dual_applicable(system::ChemicalSystem)
     isempty(system.idx_aqueous) && return false
     return haskey(system.dict_species, "H2O@")
+end
+
+
+
+"""
+    _certified_dual_route(state, model, b, ϵ, verbose, constraint, parameters, kwargs)
+
+`nothing` for a real-valued composition; the certified answer with its derivative
+attached for one carrying `ForwardDiff.Dual` amounts.
+
+Dispatched on the element type, positionally, so the choice is the type system's
+and neither path pays for the other. Two paths are needed for a mathematical
+reason, not for want of a generic element type: making the component totals
+generic would let duals flow into the solver, and what came back would be the
+derivative of the **algorithm** — an active set decided by sign tests, a line
+search with branches, an iteration count that varies with the data — rather than
+the derivative of the **solution**. The map `b ↦ n*(b)` is smooth only piecewise,
+and on each piece the implicit function theorem gives its derivative at the
+solution with the active set frozen. That is how `OptimaSolver` computes its own
+`Sensitivity`, and how Optima does upstream.
+"""
+_amount_number_type(state::ChemicalState) = _number_type(eltype(state.n))
+_number_type(::Type{<:DynamicQuantities.AbstractQuantity{T}}) where {T} = T
+_number_type(::Type{T}) where {T <: Real} = T
+
+_certified_dual_route(::Type{<:Real}, state, model, b, ϵ, verbose, constraint, parameters, kwargs) =
+    nothing
+
+function _certified_dual_route(
+        ::Type{<:ForwardDiff.Dual}, state, model, b, ϵ, verbose, constraint,
+        parameters, kwargs,
+    )
+    eq_v, cert = equilibrate_certified(
+        _primal(state); model = model, ϵ = ϵ, verbose = verbose,
+        constraint = constraint, parameters = parameters,
+        b = b === nothing ? nothing : _plain.(b), kwargs...,
+    )
+    nstar = Float64[ustrip(us"mol", x) for x in eq_v.n]
+    μ = build_potentials(state.system, model)
+    return (_attach_sensitivity(state, nstar, μ, ϵ; b = b), cert)
 end

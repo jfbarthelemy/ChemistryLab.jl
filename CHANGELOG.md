@@ -135,13 +135,37 @@ Measured on calcite under `r = k(1 − Ω)`, `k = 10⁻⁴ mol/s`, over `10⁵ s
 | one `kinetic_step` of `10⁵ s` | 1 | wrong, and its certificate says so |
 | `kinetic_step_adaptive` | **7** | correct to eight digits |
 
-A stiff method needs a Jacobian, the residual carries a re-speciation the Jacobian
-does not see, and the error control built on it reports success on nonsense. The
-`OrdinaryDiffEq` extension now warns when a trajectory ends on amounts no
-chemistry can produce — 457 mol of calcite from a budget of 55.6 — naming the
-species and the budget. That is a warning, not a fix: until the ODE route carries
-the exact Jacobian, the implicit step is the route for a rate law that reads the
-solution.
+The cause is not a missing Jacobian term, which is the natural guess. The ODE
+route's residual reads the speciation **frozen** at the last accepted step, so
+`∂(du)/∂bₑ = 0` is exact for the system being integrated. What goes wrong is that
+the frozen speciation makes the right-hand side inconsistent with the state within
+a step: an implicit method steps past the point where `Ω` crosses one, the rate
+changes sign, and the run enters a branch it never leaves. Three measurements
+settle it — bounding `dtmax` to `10³ s`, 103 steps against 6, returns the
+identical wrong value to seven digits; removing the re-speciation returns a sane
+answer; and routing the re-speciation through the certified route moves −457 to
+−383. So the fix is not to freeze, which is what the implicit step does.
+
+The `OrdinaryDiffEq` extension now warns when a trajectory ends on amounts no
+chemistry can produce, naming the species and the budget it exceeded. That is
+what the ODE route can offer; a rate law that reads the solution belongs on the
+implicit one.
+
+### Re-speciation escalates to the certified route when it fails the balance
+
+`respeciate!` went through the interior point alone, and where that is wrong it is
+wrong by percent. It now escalates: when the plain solve's absolute element-balance
+residual exceeds the retry tolerance, the partition is re-solved through every
+back end and the answer the KKT certificate proves optimal is kept. The cost of a
+normal run is unchanged, because the escalation fires only on the solves that need
+it.
+
+### `ode_solver = :auto`
+
+Hands the choice of integrator to `OrdinaryDiffEq`'s default polyalgorithm, which
+detects stiffness at run time. It is offered rather than made the default: on
+these problems it lands on the same stiff method as `Rodas5P` and returns the same
+answers, so switching would change nothing while removing a reproducible choice.
 
 One design point worth recording, because the obvious choice fails. The tolerance
 is relative to the amount each reaction acts on, **not** to the extent. Scaling by

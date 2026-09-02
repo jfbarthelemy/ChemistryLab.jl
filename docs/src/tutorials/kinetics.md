@@ -121,13 +121,25 @@ Measured on calcite dissolving under `r = k(1 − Ω)` with `k = 10⁻⁴ mol/s`
 | one `kinetic_step` of `10⁵ s` | 1 | wrong — and its certificate says so |
 | `kinetic_step_adaptive` | **7** | correct to eight digits |
 
-The first row is the one to know about. A stiff method needs a Jacobian; the
-residual of the ODE route carries a re-speciation the Jacobian does not see; and
-the error control built on that same derivative reports success on nonsense. The
-extension now warns when a trajectory ends on amounts no chemistry can produce —
-457 mol of calcite from a budget of 55.6 — but a warning is not a fix, and until
-the ODE route carries the exact Jacobian the implicit step is the route to use
-whenever a rate law reads the solution.
+The first row is the one to know about, and the natural explanation is the wrong
+one. It is **not** a missing Jacobian term: the ODE route's residual reads the
+speciation frozen at the last accepted step, so `∂(du)/∂bₑ = 0` is exact for the
+system being integrated. What goes wrong is that the frozen speciation makes the
+right-hand side inconsistent with the state *within* a step — an implicit method
+steps past the point where `Ω` crosses one, the rate changes sign, and the run
+enters a branch it never leaves.
+
+Three measurements settle it. Bounding `dtmax` to `10³ s`, which takes 103 steps
+instead of 6, returns the **identical** wrong value to seven digits, so the error
+is not in the time discretization. Removing the re-speciation returns a sane
+answer. And routing the re-speciation through the certified route moves −457 to
+−383, so the quality of the partition is not the cause either.
+
+So the fix is not to freeze the speciation, which is exactly what the implicit
+step does. The extension warns when a trajectory ends on amounts no chemistry can
+produce — 457 mol of calcite from a budget of 55.6 — and that is what the ODE
+route can offer: a rate law that reads the solution belongs on the implicit
+route.
 
 The tolerance is relative to the amount each reaction acts on, not to the extent.
 Scaling by `Δξ` is the obvious thing to write and does not work: `Δξ ∝ Δt`, so

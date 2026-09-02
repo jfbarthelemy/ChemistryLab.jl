@@ -33,8 +33,12 @@ Construct once, reuse across multiple [`KineticsProblem`](@ref) instances.
 # Fields
 
   - `ode_solver`: any `SciMLBase.AbstractODEAlgorithm` (e.g. `Rodas5P()` from
-    `OrdinaryDiffEq`). Use `nothing` before `OrdinaryDiffEq` is loaded; an error
-    will be raised at solve time.
+    `OrdinaryDiffEq`), or `:auto` to let `OrdinaryDiffEq` choose — its default
+    polyalgorithm detects stiffness at run time and switches. `nothing` keeps
+    `Rodas5P()`, which stays the default because on the problems here `:auto`
+    lands on the same stiff method and returns the same answers: switching would
+    change nothing while removing a reproducible choice. Use `nothing` before
+    `OrdinaryDiffEq` is loaded; an error will be raised at solve time.
   - `equilibrium_solver`: optional [`EquilibriumSolver`](@ref) to re-equilibrate
     aqueous speciation at each ODE evaluation. When `nothing`, the kinetic minerals
     evolve without re-speciation (faster, less accurate).

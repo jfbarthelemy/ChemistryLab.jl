@@ -116,7 +116,14 @@ function integrate(kp::KineticsProblem, ks::KineticsSolver; kwargs...)
     # used to hit a MethodError, this one taking no kwargs at all.
     defaults = (reltol = 1.0e-8, abstol = 1.0e-10)
     merged = merge(merge(defaults, ks.kwargs), values(kwargs))
-    solver = isnothing(ks.ode_solver) ? Rodas5P() : ks.ode_solver
+    # `ode_solver = :auto` hands the choice to `OrdinaryDiffEq`, whose default
+    # polyalgorithm detects stiffness at run time and switches. It is offered
+    # rather than made the default, and the reason is measured: on the problems
+    # here it lands on the same stiff method as `Rodas5P` and returns the same
+    # answers, so switching the default would change nothing while removing a
+    # reproducible one. `nothing` keeps `Rodas5P`.
+    auto_solver = ks.ode_solver === :auto
+    solver = (isnothing(ks.ode_solver) || auto_solver) ? Rodas5P() : ks.ode_solver
 
     prob = ODEProblem(f!, u0, kp.tspan, p)
 
@@ -140,7 +147,8 @@ function integrate(kp::KineticsProblem, ks::KineticsSolver; kwargs...)
             end;
             save_positions = (false, false),
         )
-        sol = solve(prob, solver; callback = cb, merged...)
+        sol = auto_solver ? solve(prob; callback = cb, merged...) :
+            solve(prob, solver; callback = cb, merged...)
 
         if p.eq_failures[] > 0
             @warn "re-speciation failed on $(p.eq_failures[]) step(s); those steps kept a frozen composition."
@@ -170,7 +178,7 @@ function integrate(kp::KineticsProblem, ks::KineticsSolver; kwargs...)
             case that degrades the speciation from 4 % to 250 % against Reaktoro."""
         end
     else
-        sol = solve(prob, solver; merged...)
+        sol = auto_solver ? solve(prob; merged...) : solve(prob, solver; merged...)
     end
     _warn_if_unphysical(sol, p, kp)
     return sol
@@ -185,15 +193,25 @@ This is not tidying. Measured on calcite dissolving under `r = k(1 − Ω)` over
 `10⁵ s`, `Rodas5P` — and `OrdinaryDiffEq`'s default polyalgorithm, which picks a
 stiff method here — return a reaction extent of **−457 mol** and
 `retcode = Success`, while the explicit `Tsit5` gets the right answer
-(`1.104e-4`) in 85 626 steps. The stiff methods need a Jacobian, the residual
-carries a re-speciation the Jacobian does not see, and the error control built on
-that same Jacobian reports success on nonsense.
+(`1.104e-4`) in 85 626 steps.
 
-The implicit step of `kinetic_step` does not have the problem — it is exact on the
+The cause is NOT a missing Jacobian term, and it is worth saying so because that
+is the natural guess. The residual reads the speciation **frozen** at the last
+accepted step, so `∂(du)/∂bₑ = 0` is exact for the system actually being
+integrated. What goes wrong is that the frozen speciation makes the right-hand
+side inconsistent with the state *within* a step: an implicit method steps clean
+past the point where `Ω` crosses one, the rate changes sign, and the run enters a
+branch it never leaves. Three measurements pin it down — bounding `dtmax` to
+`10³ s`, thirteen times more steps, returns the identical wrong value to seven
+digits; removing the re-speciation returns a sane one; and routing the
+re-speciation through the certified route moves −457 to −383, so the quality of
+the partition is not the cause either.
+
+The fix is not to freeze, which is what `kinetic_step` does: it is exact on the
 same case at `Δt = 10³ s` and, at `10⁵ s`, wrong but **reporting** it through its
-certificate — and `kinetic_step_adaptive` reaches the equilibrium values to eight
-digits in seven steps. Until the ODE route carries the exact Jacobian, an answer
-from it deserves this check.
+certificate, while `kinetic_step_adaptive` reaches the equilibrium values to eight
+digits in seven steps. So this check is what the ODE route can offer, and a rate
+law that reads the solution belongs on the implicit one.
 """
 function _warn_if_unphysical(sol, p, kp)
     u = sol.u[end]

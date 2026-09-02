@@ -395,6 +395,27 @@ function build_kinetics_params(kp::KineticsProblem; ϵ::Float64 = 1.0e-30)
         # description exists to prevent.
         eq_system = eq_sys,
         eq_solver = eq_sub,
+        # The certifying solver over the SAME partition, when one can be built.
+        #
+        # Re-speciation used to go through the interior point alone, and that is
+        # the unreliable path: on calcite under `r = k(1 − Ω)` it returned a
+        # partition violating the element balance by 467 mol, the rate law read
+        # the resulting activities, and the trajectory ran to a reaction extent of
+        # −457 mol with the integrator reporting success. Bounding the time step
+        # changed nothing — 6, 14 and 103 steps gave the identical wrong number to
+        # seven digits — because the error was never in the time discretization.
+        #
+        # With the certified route the certificate DECIDES, so a partition that
+        # does not conserve matter is not accepted in the first place.
+        eq_dual = (
+            isnothing(kp.equilibrium_solver) || !_DUAL_AVAILABLE[] ||
+                !_dual_applicable(eq_sys)
+        ) ? nothing :
+            try
+                DualEquilibriumSolver(eq_sys, kp.activity_model)
+            catch
+                nothing
+            end,
         n_eq_init = n_eq_init,
         n_eq_buf = similar(n_eq_init),
         n_eq_buf2 = similar(n_eq_init),
@@ -755,7 +776,29 @@ function _one_speciation(p, guess, be)
     end
 
     n_e = [ustrip(us"mol", x) for x in eq_result.n]
-    return true, n_e, _abs_residual(p.Ae, n_e, be)
+    abs_res = _abs_residual(p.Ae, n_e, be)
+
+    # ESCALATE, do not certify every time. The interior point is right on most
+    # partitions and cheap; where it is not, it is wrong by percent, not by
+    # rounding — measured, 3 % on the charge balance of a calcite solution. So
+    # the certified route is spent only on the solves that need it, which keeps
+    # the cost of a run essentially unchanged and removes the failures.
+    if abs_res > _RETRY_ABS_TOL && hasproperty(p, :eq_dual) && p.eq_dual !== nothing
+        try
+            eq_c, cert = solve_certified(
+                p.eq_dual, (eq_result, state_eq); b = be, ϵ = p.ϵ,
+            )
+            n_c = [ustrip(us"mol", x) for x in eq_c.n]
+            abs_c = _abs_residual(p.Ae, n_c, be)
+            if cert.optimal || abs_c < abs_res
+                return true, n_c, abs_c
+            end
+        catch
+            # keep the plain answer; the caller judges it on the balance
+        end
+    end
+
+    return true, n_e, abs_res
 end
 
 
