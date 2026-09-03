@@ -56,9 +56,21 @@ ChemistryLab provides two solver extensions. Load whichever fits your workflow:
 | `Optimization`, `OptimizationIpopt` | `IpoptOptimizer` | general-purpose, robust |
 | `OptimaSolver` | `OptimaOptimizer` | preferred when available |
 
-When both are loaded, `OptimaSolver` provides the default single back end. On the
-cement equilibria this package targets both reach an element balance of the order
-of `1e-14`, and OptimaSolver is 3 to 26 times faster.
+When both are loaded, `OptimaSolver` provides the default single back end, and on
+a cement equilibrium it is the faster of the two: 0.10 s against 0.28 s for Ipopt
+on a CEM I paste at w/c = 0.45. An earlier version of this page quoted "3 to 26
+times faster"; that range is not reproduced — the measured factor there is 2.8,
+and on a small calcite system Ipopt is both faster (0.015 s against 0.038 s) and
+far more accurate on the element balance (`3e-12` relative against `3e-2`). Which
+back end is quicker depends on the system, so neither ordering is worth stating
+as a rule.
+
+What is worth stating is that **neither of them returns a KKT point** on a
+cement. Both satisfy the element balance to `10⁻¹⁴`–`10⁻⁹` and agree on the pH to
+three decimals, while their stationarity residual sits at 133 and 136 in `RT`
+units. That does not matter for a pH, and it matters a great deal for a trace
+species or a saturation index — which is why `equilibrate` certifies by default,
+at a cost of about 1.4 s on the same paste.
 
 ### `equilibrate(state)` does not pick one of them — it proves the answer
 
