@@ -7,8 +7,11 @@
 
 @testsection "Certified equilibrium" begin
 
-    sp = Dict(symbol(s) => s for s in build_species(
-        datapath("slop98-inorganic-thermofun.json")))
+    sp = Dict(
+        symbol(s) => s for s in build_species(
+                datapath("slop98-inorganic-thermofun.json")
+            )
+    )
     species = [sp[s] for s in split("H2O@ H+ OH- CO2@ HCO3- CO3-2 Ca+2 Cal")]
     cs = ChemicalSystem(species, ["H2O@", "H+", "Ca+2", "CO3-2", "Zz"])
     A = Matrix{Float64}(cs.SM.A)
@@ -114,8 +117,11 @@ end
     # This has to be tested rather than assumed: the certified path converts the
     # component totals to `Float64` to fix them once, and before the dual branch
     # existed that silently dropped every partial.
-    sp = Dict(symbol(s) => s for s in build_species(
-        datapath("slop98-inorganic-thermofun.json")))
+    sp = Dict(
+        symbol(s) => s for s in build_species(
+                datapath("slop98-inorganic-thermofun.json")
+            )
+    )
     cs = ChemicalSystem(
         [sp[s] for s in split("H2O@ H+ OH- CO2@ HCO3- CO3-2 Ca+2 Cal")],
         ["H2O@", "H+", "Ca+2", "CO3-2", "Zz"],
@@ -142,11 +148,17 @@ end
 
     # And the primal value is the certified one, not something the dual path
     # computed separately.
-    @test pH_of(x0) ≈ pH(first(equilibrate_certified(let
-        n = Any[fill(0.0u"mol", length(cs.species))...]
-        n[idx["H2O@"]] = 55.5u"mol"; n[idx["Cal"]] = 0.05u"mol"
-        n[idx["CO2@"]] = x0 * u"mol"
-        ChemicalState(cs, n)
-    end))) atol = 1.0e-12
+    @test pH_of(x0) ≈ pH(
+        first(
+            equilibrate_certified(
+                let
+                    n = Any[fill(0.0u"mol", length(cs.species))...]
+                    n[idx["H2O@"]] = 55.5u"mol"; n[idx["Cal"]] = 0.05u"mol"
+                    n[idx["CO2@"]] = x0 * u"mol"
+                    ChemicalState(cs, n)
+                end
+            )
+        )
+    ) atol = 1.0e-12
 
 end

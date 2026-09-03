@@ -12,9 +12,12 @@
         # not: SLOP98 carries MALONIC-ACID,AQ / H-MALONATE,AQ / MALONATE,AQ, the
         # three-carbon diacid. The pKa derived from their ΔₐG⁰ settle the matter,
         # since malonic (2.83, 5.69) and maleic (1.92, 6.27) are far apart.
-        sp = Dict(symbol(s) => s for s in vcat(
-            build_species(datapath("slop98-inorganic-thermofun.json")),
-            build_species(datapath("slop98-organic-thermofun.json"))))
+        sp = Dict(
+            symbol(s) => s for s in vcat(
+                    build_species(datapath("slop98-inorganic-thermofun.json")),
+                    build_species(datapath("slop98-organic-thermofun.json"))
+                )
+        )
 
         for name in ("MalH2@", "MalH-", "Mal-2")
             @test haskey(sp, name)
@@ -28,8 +31,11 @@
 
         T = 298.15
         RT = 8.31446261815324 * T
-        _pKa(num, den) = -log10(exp(
-            -(sum(sp[x].ΔₐG⁰(T = T) for x in num) - sp[den].ΔₐG⁰(T = T)) / RT))
+        _pKa(num, den) = -log10(
+            exp(
+                -(sum(sp[x].ΔₐG⁰(T = T) for x in num) - sp[den].ΔₐG⁰(T = T)) / RT
+            )
+        )
 
         pKa1 = _pKa(("MalH-", "H+"), "MalH2@")
         pKa2 = _pKa(("Mal-2", "H+"), "MalH-")
@@ -51,19 +57,22 @@
         # state: every element balance was zero, so all 21 points returned the
         # same trivial answer and the figure was a set of flat lines. This pins
         # the two things that must actually vary, and the one that must not.
-        sp = Dict(symbol(s) => s for s in build_species(
-            datapath("slop98-inorganic-thermofun.json")))
+        sp = Dict(
+            symbol(s) => s for s in build_species(
+                    datapath("slop98-inorganic-thermofun.json")
+                )
+        )
         species = [sp[s] for s in split("H2O@ H+ OH- CO2@ HCO3- CO3-2 Ca+2 Cal")]
         cs = ChemicalSystem(species, ["H2O@", "H+", "Ca+2", "CO3-2", "Zz"])
         idx = Dict(symbol(s) => i for (i, s) in enumerate(cs.species))
 
         function equilibrated(θ)
             st = ChemicalState(cs)
-            set_quantity!(st, "Cal", 1e-3u"mol")
+            set_quantity!(st, "Cal", 1.0e-3u"mol")
             set_quantity!(st, "H2O@", 1.0u"kg")
             V = volume(st)
-            set_quantity!(st, "H+", 1e-4u"mol/L" * V.liquid)
-            set_quantity!(st, "OH-", 1e-10u"mol/L" * V.liquid)
+            set_quantity!(st, "H+", 1.0e-4u"mol/L" * V.liquid)
+            set_quantity!(st, "OH-", 1.0e-10u"mol/L" * V.liquid)
             set_temperature!(st, (273.15 + θ) * u"K")
             return equilibrate(st, OptimaOptimizer())
         end
@@ -79,7 +88,7 @@
         # the answer and not the exit code.
 
         # The state is not empty: about a seventh of the calcite dissolves.
-        @test ustrip(us"mol", eq10.n[idx["Ca+2"]]) > 1e-5
+        @test ustrip(us"mol", eq10.n[idx["Ca+2"]]) > 1.0e-5
 
         molar(eq, s) = ustrip(us"mol", eq.n[idx[s]]) / ustrip(volume(eq).liquid) / 1000
 
@@ -93,8 +102,10 @@
         # It equals the Kₛₚ the database itself gives for Cal = Ca+2 + CO3-2.
         for (θ, logQ) in ((10.0, logQ10), (30.0, logQ30))
             T = 273.15 + θ
-            ΔG = (sp["Ca+2"].ΔₐG⁰(T = T) + sp["CO3-2"].ΔₐG⁰(T = T)
-                  - sp["Cal"].ΔₐG⁰(T = T))
+            ΔG = (
+                sp["Ca+2"].ΔₐG⁰(T = T) + sp["CO3-2"].ΔₐG⁰(T = T)
+                    - sp["Cal"].ΔₐG⁰(T = T)
+            )
             @test logQ ≈ -ΔG / (8.31446261815324 * T) / log(10) atol = 0.01
         end
 

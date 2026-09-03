@@ -66,19 +66,25 @@ function KineticStepSolver(
         kwargs...,
     )
     coupling in (:reactions, :species) || throw(
-        ArgumentError("`coupling` must be `:reactions` (one constraint per " *
-                      "reaction, Leal's form) or `:species` (one per kinetic " *
-                      "species, the assemblage imposed by the stoichiometry).")
+        ArgumentError(
+            "`coupling` must be `:reactions` (one constraint per " *
+                "reaction, Leal's form) or `:species` (one per kinetic " *
+                "species, the assemblage imposed by the stoichiometry)."
+        )
     )
     isempty(reactions) && throw(
-        ArgumentError("no kinetic reaction given: with none, the step is a plain " *
-                      "equilibrium — call `equilibrate` instead.")
+        ArgumentError(
+            "no kinetic reaction given: with none, the step is a plain " *
+                "equilibrium — call `equilibrate` instead."
+        )
     )
     ns = length(system.species)
     for kr in reactions
         length(kr.stoich) == ns || throw(
-            DimensionMismatch("a reaction's `stoich` has $(length(kr.stoich)) " *
-                              "entries for a system of $ns species.")
+            DimensionMismatch(
+                "a reaction's `stoich` has $(length(kr.stoich)) " *
+                    "entries for a system of $ns species."
+            )
         )
     end
     K = _reactivity_matrix(reactions, system, kinetic_species)
@@ -104,10 +110,12 @@ function KineticStepSolver(
     # an assemblage, and `nr` is a handful where the composition is dozens.
     free, dual_free = if coupling === :species
         fr = setdiff(1:ns, idx_kin)
-        (fr, DualEquilibriumSolver(
-            ChemicalSystem(system.species[fr], _primary_symbols(system)), model;
-            kwargs...,
-        ))
+        (
+            fr, DualEquilibriumSolver(
+                ChemicalSystem(system.species[fr], _primary_symbols(system)), model;
+                kwargs...,
+            ),
+        )
     else
         (Int[], nothing)
     end
@@ -209,10 +217,12 @@ function kinetic_step(
         # Leal's form: `[A ; Kᵀ] n + [0 ; −I] Δξ = [A n₀ ; Kᵀ n₀]`, one row per
         # reaction. The extents are functionals of the composition, and every
         # species the partition excludes is left to the minimization.
-        (vcat(des.A, transpose(K)),
-         vcat(zeros(m, nr), -Matrix(1.0I, nr, nr)),
-         vcat(des.A * n0, transpose(K) * n0),
-         true)
+        (
+            vcat(des.A, transpose(K)),
+            vcat(zeros(m, nr), -Matrix(1.0I, nr, nr)),
+            vcat(des.A * n0, transpose(K) * n0),
+            true,
+        )
     else
         # One row per KINETIC SPECIES: `nᵢ − Σⱼ νᵢⱼ Δξⱼ = nᵢ(0)`. Every species in
         # the partition is then pinned by the extents, so a solid-to-solid
@@ -224,10 +234,12 @@ function kinetic_step(
         for (r, i) in enumerate(kss.idx_kin)
             E[r, i] = 1.0
         end
-        (vcat(des.A, E),
-         vcat(zeros(m, nr), -K[kss.idx_kin, :]),
-         vcat(des.A * n0, n0[kss.idx_kin]),
-         false)
+        (
+            vcat(des.A, E),
+            vcat(zeros(m, nr), -K[kss.idx_kin, :]),
+            vcat(des.A * n0, n0[kss.idx_kin]),
+            false,
+        )
     end
 
     T_K = p.T
@@ -393,20 +405,22 @@ function _reactivity_matrix(reactions, system::ChemicalSystem, kinetic_species)
     else
         Set(
             i isa Integer ? Int(i) : begin
-                j = findfirst(==(String(i)), syms)
-                j === nothing && throw(
-                    ArgumentError("`$i` is not a species of this system.")
-                )
-                j
-            end for i in kinetic_species
+                    j = findfirst(==(String(i)), syms)
+                    j === nothing && throw(
+                        ArgumentError("`$i` is not a species of this system.")
+                    )
+                    j
+                end for i in kinetic_species
         )
     end
 
     isempty(kin) && throw(
-        ArgumentError("no kinetic species: every participant of every declared " *
-                      "reaction is aqueous, so there is nothing whose amount the " *
-                      "rate laws decide. Name the controlled species with " *
-                      "`kinetic_species = [...]`.")
+        ArgumentError(
+            "no kinetic species: every participant of every declared " *
+                "reaction is aqueous, so there is nothing whose amount the " *
+                "rate laws decide. Name the controlled species with " *
+                "`kinetic_species = [...]`."
+        )
     )
 
     K = zeros(Float64, ns, length(reactions))
@@ -416,9 +430,11 @@ function _reactivity_matrix(reactions, system::ChemicalSystem, kinetic_species)
 
     for j in axes(K, 2)
         all(iszero, @view K[:, j]) && throw(
-            ArgumentError("reaction $j touches no kinetic species, so its extent " *
-                          "is not determined by the composition. Its solid " *
-                          "participants are missing from the partition.")
+            ArgumentError(
+                "reaction $j touches no kinetic species, so its extent " *
+                    "is not determined by the composition. Its solid " *
+                    "participants are missing from the partition."
+            )
         )
     end
 
@@ -432,8 +448,10 @@ function _reactivity_matrix(reactions, system::ChemicalSystem, kinetic_species)
         throw(
             ArgumentError(
                 "the reactivity constraints are linearly dependent" *
-                    (isempty(culprits) ? "" : " (reactions " *
-                     join(culprits, ", ") * ")") *
+                    (
+                    isempty(culprits) ? "" : " (reactions " *
+                        join(culprits, ", ") * ")"
+                ) *
                     ": `Kᵀn` cannot tell those extents apart and the linear " *
                     "system would be singular. Two reactions may share a mineral " *
                     "— that is the point of a reaction-centric scheme — but they " *
@@ -677,10 +695,12 @@ function _kinetic_step_eliminated(
     end
 
     # Newton on `nr` unknowns, from the explicit prediction.
-    q = Float64[Δt_s * kss.reactions[j].rate_fn(
-        p.T, p.P, t, n0_sv,
-        StateView(collect(des.lna(n0, p)), index), n0_sv,
-    ) for j in 1:nr]
+    q = Float64[
+        Δt_s * kss.reactions[j].rate_fn(
+            p.T, p.P, t, n0_sv,
+            StateView(collect(des.lna(n0, p)), index), n0_sv,
+        ) for j in 1:nr
+    ]
     F = compose!(q)
     for _ in 1:maxit
         maximum(abs, F) <= 1.0e-14 * max(1.0, maximum(abs, q)) && break

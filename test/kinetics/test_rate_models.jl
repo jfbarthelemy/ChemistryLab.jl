@@ -505,10 +505,10 @@ end
     # and C₄AF comes out LOWER still (0.193 against 0.239 in the run that
     # exposed this). Both failures have the same cause and neither is physical.
     for p in (PK_PARAMS_C3S, PK_PARAMS_C2S, PK_PARAMS_C3A)
-        @test all(smoothed_is_diffusion_limited(p, ξ) for ξ in 0.06:0.01:0.30)
+        @test all(smoothed_is_diffusion_limited(p, ξ) for ξ in 0.06:0.01:0.3)
     end
     @test !smoothed_is_diffusion_limited(PK_PARAMS_C3S, 0.001)
-    @test !any(smoothed_is_diffusion_limited(PK_PARAMS_C4AF, ξ) for ξ in 0.06:0.01:0.30)
+    @test !any(smoothed_is_diffusion_limited(PK_PARAMS_C4AF, ξ) for ξ in 0.06:0.01:0.3)
 
     # The closed-form Jander solution, and the fact that it is phase-blind:
     # K₃ = 0.0024 d⁻¹ and N₃ = 4 are identical across all four parameter sets,
@@ -520,15 +520,23 @@ end
     for p in (PK_PARAMS_C3S, PK_PARAMS_C2S, PK_PARAMS_C3A)
         @test jander_alpha(p, 7.0) ≈ 0.250524 atol = 1.0e-5
     end
-    @test maximum(ustrip(us"1/d", p.K₁) for p in
-        (PK_PARAMS_C3S, PK_PARAMS_C2S, PK_PARAMS_C3A, PK_PARAMS_C4AF)) /
-        minimum(ustrip(us"1/d", p.K₁) for p in
-        (PK_PARAMS_C3S, PK_PARAMS_C2S, PK_PARAMS_C3A, PK_PARAMS_C4AF)) > 18.0
+    @test maximum(
+        ustrip(us"1/d", p.K₁) for p in
+            (PK_PARAMS_C3S, PK_PARAMS_C2S, PK_PARAMS_C3A, PK_PARAMS_C4AF)
+    ) /
+        minimum(
+        ustrip(us"1/d", p.K₁) for p in
+            (PK_PARAMS_C3S, PK_PARAMS_C2S, PK_PARAMS_C3A, PK_PARAMS_C4AF)
+    ) > 18.0
 
     # Phase-blind: one distinct value across the four parameter sets, because
     # K₃ and N₃ are identical in all of them.
-    @test length(unique(round(jander_alpha(p, 7.0); digits = 6) for p in
-        (PK_PARAMS_C3S, PK_PARAMS_C2S, PK_PARAMS_C3A, PK_PARAMS_C4AF))) == 1
+    @test length(
+        unique(
+            round(jander_alpha(p, 7.0); digits = 6) for p in
+                (PK_PARAMS_C3S, PK_PARAMS_C2S, PK_PARAMS_C3A, PK_PARAMS_C4AF)
+        )
+    ) == 1
 
     pk_dry = parrot_killoh_avrami(PK84_PARAMS_C3S, "C3S"; humidity = 0.7)
     @test at(pk_dry, 0.3) == 0.0                                  # hydration stopped

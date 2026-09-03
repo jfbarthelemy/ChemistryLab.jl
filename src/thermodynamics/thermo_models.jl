@@ -334,11 +334,11 @@ Helper function to build `ThermoFactory` objects from a model dictionary.
 function build_thermo_factories(dict_expr)
     return Dict(
         k => ThermoFactory(
-                v,
-                [:T, :P];
-                units = get(dict_expr, :units, nothing),
-                output_unit = get(_THERMO_OUTPUT_UNITS, k, u"1"),
-            ) for (k, v) in dict_expr if k != :units
+            v,
+            [:T, :P];
+            units = get(dict_expr, :units, nothing),
+            output_unit = get(_THERMO_OUTPUT_UNITS, k, u"1"),
+        ) for (k, v) in dict_expr if k != :units
     )
 end
 

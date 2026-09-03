@@ -7,8 +7,11 @@
 
 @testsection "Equilibrium constraints" begin
 
-    sp = Dict(symbol(s) => s for s in build_species(
-        datapath("slop98-inorganic-thermofun.json")))
+    sp = Dict(
+        symbol(s) => s for s in build_species(
+                datapath("slop98-inorganic-thermofun.json")
+            )
+    )
 
     @testsection "adiabatic neutralization gives the published enthalpy" begin
         # H⁺ + OH⁻ → H₂O releases 55.8 kJ/mol. Nothing here is fitted to that: the
@@ -27,7 +30,7 @@
         end
 
         ΔT = Float64[]
-        for n in (0.05, 0.10, 0.25, 0.50)
+        for n in (0.05, 0.1, 0.25, 0.5)
             st0 = mix(n)
             n0 = Float64[ustrip(us"mol", x) for x in st0.n]
             H0 = ChemistryLab._total_enthalpy(cs, n0, 298.15, 1.0e5)
@@ -141,8 +144,11 @@ end
     # not a parameter. `Aq` carries it, so the linear rows read
     # `A x − A[:, titrant] q = b`, and the answer includes how much titrant it
     # took, which is what a titration measures.
-    sp = Dict(symbol(s) => s for s in build_species(
-        datapath("slop98-inorganic-thermofun.json")))
+    sp = Dict(
+        symbol(s) => s for s in build_species(
+                datapath("slop98-inorganic-thermofun.json")
+            )
+    )
     cs = ChemicalSystem(
         [sp[s] for s in split("H2O@ H+ OH- CO2@ HCO3- CO3-2 Ca+2 Cal")],
         ["H2O@", "H+", "Ca+2", "CO3-2", "Zz"],

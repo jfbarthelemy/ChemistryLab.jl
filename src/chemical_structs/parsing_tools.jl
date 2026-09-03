@@ -582,16 +582,16 @@ function colored_equation(equation::AbstractString)
         join(
             [
                 string(
-                        COL_STOICH_EXT(
-                            if isone(v)
-                                ""
+                    COL_STOICH_EXT(
+                        if isone(v)
+                            ""
                         elseif v < 0
-                                "($(v))"
+                            "($(v))"
                         else
-                                string(v)
+                            string(v)
                         end,
-                        )
-                    ) * colored_formula(k) for (k, v) in reactants
+                    )
+                ) * colored_formula(k) for (k, v) in reactants
             ],
             " + ",
         )
@@ -602,16 +602,16 @@ function colored_equation(equation::AbstractString)
         join(
             [
                 string(
-                        COL_STOICH_EXT(
-                            if isone(v)
-                                ""
+                    COL_STOICH_EXT(
+                        if isone(v)
+                            ""
                         elseif v < 0
-                                "($(v))"
+                            "($(v))"
                         else
-                                string(v)
+                            string(v)
                         end,
-                        )
-                    ) * colored_formula(k) for (k, v) in products
+                    )
+                ) * colored_formula(k) for (k, v) in products
             ],
             " + ",
         )

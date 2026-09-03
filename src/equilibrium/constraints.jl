@@ -156,7 +156,7 @@ function _temperature_blocks(des, state, p, target_H)
     # every other row of the Newton system.
     cq = (x, q, params) -> [
         (_total_enthalpy(system, x, q[1], P) - target_H) /
-            (ustrip(us"J/(mol*K)", Constants.R) * q[1] * max(sum(x), 1.0))
+            (ustrip(us"J/(mol*K)", Constants.R) * q[1] * max(sum(x), 1.0)),
     ]
     return (;
         nq = 1, gq = gq, hq = hq, cq = cq,
@@ -209,7 +209,7 @@ function _pressure_blocks(des, state, p, target_V)
                     "barely depends on pressure, the relative lever (∂V/∂P)·P/V " *
                     "being $(round(lever, sigdigits = 2)). Changing the volume by " *
                     "one percent would take about " *
-                    "$(round(0.01 / max(lever, 1e-30) * p.P / 1.0e5, sigdigits = 2)) " *
+                    "$(round(0.01 / max(lever, 1.0e-30) * p.P / 1.0e5, sigdigits = 2)) " *
                     "bar. The molar volumes of water and of the minerals in the " *
                     "shipped databases do not depend on pressure at all, so a " *
                     "condensed system's volume is fixed by its composition and " *
@@ -230,7 +230,7 @@ function _pressure_blocks(des, state, p, target_V)
     hq = (x, q, params) -> des.lna(x, merge(params, (P = q[1],)))
     # Scaled by the target volume: the residual is then a relative volume error.
     cq = (x, q, params) -> [
-        (_total_volume(system, x, T, q[1]) - target_V) / max(abs(target_V), 1.0e-12)
+        (_total_volume(system, x, T, q[1]) - target_V) / max(abs(target_V), 1.0e-12),
     ]
     return (;
         nq = 1, gq = gq, hq = hq, cq = cq,
@@ -351,8 +351,10 @@ Position of a species in the solver's system, by symbol or by object.
 function _species_index(des, sym::AbstractString)
     i = findfirst(==(sym), symbol.(des.system.species))
     i === nothing && throw(
-        ArgumentError("`$sym` is not a species of this system, so it cannot be a " *
-                      "titrant or carry a prescribed activity.")
+        ArgumentError(
+            "`$sym` is not a species of this system, so it cannot be a " *
+                "titrant or carry a prescribed activity."
+        )
     )
     return i
 end

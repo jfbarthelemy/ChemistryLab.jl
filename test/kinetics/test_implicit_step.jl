@@ -10,8 +10,11 @@ using LinearAlgebra
 
 @testsection "Implicit kinetic step" begin
 
-    sp = Dict(symbol(s) => s for s in build_species(
-        datapath("slop98-inorganic-thermofun.json")))
+    sp = Dict(
+        symbol(s) => s for s in build_species(
+                datapath("slop98-inorganic-thermofun.json")
+            )
+    )
     cs = ChemicalSystem(
         [sp[s] for s in split("H2O@ H+ OH- CO2@ HCO3- CO3-2 Ca+2 Cal")],
         ["H2O@", "H+", "Ca+2", "CO3-2", "Zz"],
@@ -117,8 +120,11 @@ using LinearAlgebra
     end
 
     @testsection "several reactions may share a mineral" begin
-        CEM = Dict(symbol(s) => s for s in build_species(
-            datapath("cemdata18-thermofun.json")))
+        CEM = Dict(
+            symbol(s) => s for s in build_species(
+                    datapath("cemdata18-thermofun.json")
+                )
+        )
         inp = split("C3A Gp H2O@ ettringite monosulphate12 Portlandite")
         spc = speciation(collect(values(CEM)), inp; aggregate_state = [AS_AQUEOUS])
         cs2 = ChemicalSystem(spc, CEMDATA_PRIMARIES)
@@ -197,8 +203,8 @@ end
     )
     ss = [
         x for x in build_solid_solutions(
-            datapath("solid_solutions.toml"), Dict(symbol(s) => s for s in spc),
-        ) if x.name == "CSHQ"
+                datapath("solid_solutions.toml"), Dict(symbol(s) => s for s in spc),
+            ) if x.name == "CSHQ"
     ]
     cs2 = ChemicalSystem(spc, CEMDATA_PRIMARIES; solid_solutions = ss)
     S(x) = cs2[x]
@@ -271,8 +277,11 @@ end
     # step to the equilibrium options; the step is the caller's and nothing
     # reports what taking it cost. The scheme is backward Euler, so a step ten
     # times too large is ten times less accurate, silently.
-    sp = Dict(symbol(x) => x for x in build_species(
-        datapath("slop98-inorganic-thermofun.json")))
+    sp = Dict(
+        symbol(x) => x for x in build_species(
+                datapath("slop98-inorganic-thermofun.json")
+            )
+    )
     cs = ChemicalSystem(
         [sp[x] for x in split("H2O@ H+ OH- CO2@ HCO3- CO3-2 Ca+2 Cal")],
         ["H2O@", "H+", "Ca+2", "CO3-2", "Zz"],
@@ -387,8 +396,11 @@ end
     # nonsense. Only the last two rows are asserted here; the ODE route's failure
     # is guarded by a warning in the extension rather than pinned by a test, since
     # the answer it returns is not a number worth encoding.
-    sp = Dict(symbol(x) => x for x in build_species(
-        datapath("slop98-inorganic-thermofun.json")))
+    sp = Dict(
+        symbol(x) => x for x in build_species(
+                datapath("slop98-inorganic-thermofun.json")
+            )
+    )
     cs = ChemicalSystem(
         [sp[x] for x in split("H2O@ H+ OH- CO2@ HCO3- CO3-2 Ca+2 Cal")],
         ["H2O@", "H+", "Ca+2", "CO3-2", "Zz"],
@@ -471,8 +483,11 @@ end
     # It pinned that row's multiplier and declared the species dead — stationarity
     # residual 458, extents 4.3 times short. `conservation_rows` now restricts the
     # criterion to the rows that conserve something.
-    CEM = Dict(symbol(x) => x for x in build_species(
-        datapath("cemdata18-thermofun.json")))
+    CEM = Dict(
+        symbol(x) => x for x in build_species(
+                datapath("cemdata18-thermofun.json")
+            )
+    )
     spc = speciation(
         collect(values(CEM)),
         split("C3A Gp H2O@ ettringite monosulphate12 Portlandite");
@@ -493,8 +508,10 @@ end
     krs = [KineticReaction(cs4, r_aft, f(k1)), KineticReaction(cs4, r_afm, f(k2))]
 
     names4 = symbol.(cs4.species)
-    idx4 = Dict(nm => findfirst(==(nm), names4) for nm in
-                ("C3A", "Gp", "ettringite", "monosulphate12"))
+    idx4 = Dict(
+        nm => findfirst(==(nm), names4) for nm in
+            ("C3A", "Gp", "ettringite", "monosulphate12")
+    )
     function fresh4()
         st = ChemicalState(cs4)
         set_quantity!(st, "C3A", 1.0e-2u"mol")

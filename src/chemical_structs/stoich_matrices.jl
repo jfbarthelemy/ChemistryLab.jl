@@ -254,11 +254,11 @@ function _resolve_kinetic_indices(
     )
     return [
         begin
-                idx = findfirst(s -> s == ks, species)
-                isnothing(idx) &&
+            idx = findfirst(s -> s == ks, species)
+            isnothing(idx) &&
                 throw(ArgumentError("Kinetic species \"$(symbol(ks))\" not found in species list."))
-                idx
-            end for ks in kinetic_species
+            idx
+        end for ks in kinetic_species
     ]
 end
 
@@ -268,11 +268,11 @@ function _resolve_kinetic_indices(
     )
     return [
         begin
-                idx = findfirst(s -> symbol(s) == name, species)
-                isnothing(idx) &&
+            idx = findfirst(s -> symbol(s) == name, species)
+            isnothing(idx) &&
                 throw(ArgumentError("Kinetic species \"$name\" not found in species list."))
-                idx
-            end for name in kinetic_species
+            idx
+        end for name in kinetic_species
     ]
 end
 
@@ -979,11 +979,11 @@ function reactions(SM::StoichMatrix)
         lr = unique!(
             [
                 Reaction(
-                        merge(
-                            +, OrderedDict(SM.species[j] => 1), OrderedDict(zip(SM.primaries, -V))
-                        );
-                        symbol = symbol(SM.species[j]),
-                    ) for (j, V) in enumerate(eachcol(SM.A))
+                    merge(
+                        +, OrderedDict(SM.species[j] => 1), OrderedDict(zip(SM.primaries, -V))
+                    );
+                    symbol = symbol(SM.species[j]),
+                ) for (j, V) in enumerate(eachcol(SM.A))
             ]
         )
         return lr[.!isempty.(lr)]

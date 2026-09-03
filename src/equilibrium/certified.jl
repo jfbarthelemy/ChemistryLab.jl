@@ -149,7 +149,6 @@ function _dual_applicable(system::ChemicalSystem)
 end
 
 
-
 """
     _certified_dual_route(state, model, b, ϵ, verbose, constraint, parameters, kwargs)
 

@@ -171,9 +171,9 @@ function ChemistryLab._optima_dual_problem(
         A, g, lna;
         phases = [
             SolutionPhase(
-                    ph.members, ph.j_ref;
-                    always_present = ph.always_present, mole_fraction = ph.mole_fraction,
-                ) for ph in phases
+                ph.members, ph.j_ref;
+                always_present = ph.always_present, mole_fraction = ph.mole_fraction,
+            ) for ph in phases
         ],
         idx_bounded = idx_bounded, params = params,
         gq = gq, hq = hq, cq = cq, q0 = q0, qscale = qscale,

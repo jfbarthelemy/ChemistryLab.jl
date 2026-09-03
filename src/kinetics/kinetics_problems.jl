@@ -408,14 +408,14 @@ function build_kinetics_params(kp::KineticsProblem; ϵ::Float64 = 1.0e-30)
         # With the certified route the certificate DECIDES, so a partition that
         # does not conserve matter is not accepted in the first place.
         eq_dual = (
-            isnothing(kp.equilibrium_solver) || !_DUAL_AVAILABLE[] ||
+                isnothing(kp.equilibrium_solver) || !_DUAL_AVAILABLE[] ||
                 !_dual_applicable(eq_sys)
-        ) ? nothing :
+            ) ? nothing :
             try
                 DualEquilibriumSolver(eq_sys, kp.activity_model)
-            catch
+        catch
                 nothing
-            end,
+        end,
         n_eq_init = n_eq_init,
         n_eq_buf = similar(n_eq_init),
         n_eq_buf2 = similar(n_eq_init),
