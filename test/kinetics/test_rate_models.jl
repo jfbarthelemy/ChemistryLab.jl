@@ -478,7 +478,7 @@ end
     # the phase at all: all four reach 0.2386 at seven days, against the 0.61
     # the cement literature reports for a CEM I at w/c = 0.40.
     #
-    # The behaviour is pinned rather than fixed: the variant is deprecated and
+    # The behavior is pinned rather than fixed: the variant is deprecated and
     # its attribution withdrawn, so what matters is that the discrepancy stays
     # visible instead of being rediscovered from a demo that looks plausible.
     function branches_smoothed(p, ξ)
