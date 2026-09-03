@@ -269,7 +269,7 @@ import{_ as l,o as a,c as n,j as i,a as e,ao as t}from"./chunks/framework.neklfv
 <span class="line"><span style="--shiki-light:#24292e;--shiki-dark:#e1e4e8;">Number of equality constraint Jacobian evaluations   = 44</span></span>
 <span class="line"><span style="--shiki-light:#24292e;--shiki-dark:#e1e4e8;">Number of inequality constraint Jacobian evaluations = 0</span></span>
 <span class="line"><span style="--shiki-light:#24292e;--shiki-dark:#e1e4e8;">Number of Lagrangian Hessian evaluations             = 43</span></span>
-<span class="line"><span style="--shiki-light:#24292e;--shiki-dark:#e1e4e8;">Total seconds in IPOPT                               = 12.466</span></span>
+<span class="line"><span style="--shiki-light:#24292e;--shiki-dark:#e1e4e8;">Total seconds in IPOPT                               = 11.885</span></span>
 <span class="line"></span>
 <span class="line"><span style="--shiki-light:#24292e;--shiki-dark:#e1e4e8;">EXIT: Optimal Solution Found.</span></span>
 <span class="line"><span style="--shiki-light:#24292e;--shiki-dark:#e1e4e8;">Reference state (w/c = 0.40, no CO₂):</span></span>
