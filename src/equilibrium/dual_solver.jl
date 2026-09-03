@@ -152,7 +152,7 @@ function _dual_problem(des::DualEquilibriumSolver, p, n0, blocks = nothing)
         _constraint_blocks(FixedTP(), des, nothing, p, n0) : blocks
     return _optima_dual_problem(
         des.A, Float64.(p.ΔₐG⁰overT), des.lna, phases, des.idx_pure, p,
-        bl.gq, bl.hq, bl.cq, bl.q0, bl.qscale, bl.Aq, Int[],
+        bl.gq, bl.hq, bl.cq, bl.q0, bl.qscale, bl.Aq, Int[], nothing,
     )
 end
 
@@ -231,6 +231,11 @@ function optimality_certificate(
     )
     return (;
         stationarity = c.stationarity, balance = c.feasibility,
+        # The unscaled stationarity, in RT units. `stationarity` is divided by the
+        # size of the potentials it is built from — they are of order 10²-10³, so
+        # an absolute threshold on their residual would ask for thirteen digits of
+        # cancellation — and this is the raw figure for reporting.
+        stationarity_abs = c.stationarity_abs,
         worst_supersaturation = c.worst_violation, n_interior = c.n_interior,
         n_absent_component = c.n_forced_zero, optimal = c.optimal,
     )

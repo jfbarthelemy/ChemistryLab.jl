@@ -167,12 +167,53 @@ detects stiffness at run time. It is offered rather than made the default: on
 these problems it lands on the same stiff method as `Rodas5P` and returns the same
 answers, so switching would change nothing while removing a reproducible choice.
 
-One design point worth recording, because the obvious choice fails. The tolerance
+A step is accepted on the estimate **and** on the certificate. Richardson's
+difference is blind to an error the two resolutions share: on calcite over
+`10⁵ s` the coarse step and both half-steps each dissolve the entire mineral,
+their extents agree to `5×10⁻¹¹`, and the estimator grades that step excellent.
+The certificate is not fooled, since such a composition violates
+`Δξ − Δt·M·r(n) = 0` by the whole extent. This also closed a hole in
+`kkt_certificate`, which checked stationarity, the linear rows and phase
+stability but not the **nonlinear** parameter residual, so a step violating its
+own rate equation could be proved optimal (`OptimaSolver` 0.5.0).
+
+One further design point, because the obvious choice fails. The tolerance
 is relative to the amount each reaction acts on, **not** to the extent. Scaling by
 `Δξ` makes the tolerance vanish with the step while the equilibrium solve's noise
 does not, so the measured error grows as the step shrinks: the controller halved
 to the floor without advancing, and the answer got worse as the tolerance was
 tightened — 2.5e-5 at `reltol = 1e-3` against 9.2e-5 at `1e-5`.
+
+### `coupling = :species`: prescribed products inside the strong coupling
+
+The third combination, which neither Reaktoro nor the ODE route offers. One
+constraint per kinetic species, `nᵢ = nᵢ(0) + Σⱼ νᵢⱼ Δξⱼ`, so a solid-to-solid
+scheme in the form of [Lavergne2018] imposes its products while the aqueous phase
+still minimizes `G` under element conservation. Measured on two C₃A pathways, the
+extents come out at `Δt·r` exactly and every species follows the stoichiometry to
+eight or nine digits, ettringite and monosulfoaluminate included, where
+`:reactions` leaves the AFm at zero because the minimization is free to rearrange
+the solids.
+
+It was refused in an earlier draft of this release, and finding out why turned up
+a genuine defect in `OptimaSolver`: a pinning row for a product that starts absent
+has one positive entry and a zero budget, exactly the shape `degenerate_components`
+reads as "this component is absent from the system". It pinned that row's
+multiplier and declared the species dead — stationarity residual 458, extents 4.3
+times short. `conservation_rows` now restricts that criterion to rows that
+conserve something.
+
+The pinned species are **eliminated**, not constrained, and that is what makes it
+work. Holding them by a linear row — the obvious implementation — stalls: the
+species' stationarity row stays in the system, satisfied by a multiplier that must
+reach the mineral's own chemical potential, of order 10²–10³ in `RT` units, and
+the Newton sits at a fixed point its line search cannot leave. Measured, an
+element balance of `6.1×10⁻⁷` mol whatever `maxit`, `tol` or the number of
+active-set updates. Their amounts being an explicit affine function of the
+extents, they are removed from the system instead, their element content is
+subtracted from the budget, and a plain equilibrium is solved over what remains
+with a Newton on the `nr` extents around it: the balance goes to `2×10⁻¹⁴` and the
+step is certified.
 
 ### ForwardDiff through the certified route
 

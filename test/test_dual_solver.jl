@@ -51,7 +51,12 @@ end
     # detects it — which is the whole reason for having one.
     cert_ipm = optimality_certificate(des, ipm; b = b)
     @test !cert_ipm.optimal
-    @test cert_ipm.stationarity > 1.0e-3
+    # On the RAW residual, in RT units. `stationarity` is now divided by the size
+    # of the potentials it is built from — of order 10²-10³ — so the same answer
+    # reads 4.1e-5 there and 4.1e-2 here. Asserting the scaled figure against a
+    # fixed threshold would be asserting the scale, not the disagreement.
+    @test cert_ipm.stationarity_abs > 1.0e-3
+    @test cert_ipm.stationarity > cert_ipm.balance
 
 end
 

@@ -47,15 +47,54 @@ stoichiometric hydration scheme in the form of [Lavergne2018](@cite), where
 proposed. Every product then follows the coefficients you gave, several pathways
 may share a mineral, and the integrator chooses the step.
 
-!!! note "Prescribed products AND strong coupling is not yet available"
-    Combining the two — an imposed solid assemblage inside the implicit step —
-    needs one constraint per kinetic species rather than one per reaction. It was
-    implemented and does not converge: pinning a pure phase by a linear row
-    leaves its stationarity row in the system as well, made trivially satisfiable
-    by that row's own multiplier, and the Jacobian degenerates. Measured on two
-    C₃A pathways the extents came out 4.3 times short, with the solve reporting
-    non-convergence. `coupling = :species` therefore raises rather than returning
-    that answer. Removing the pinned variables' stationarity rows is what remains.
+### Prescribed products AND strong coupling: `coupling = :species`
+
+The third combination, which neither Reaktoro nor the ODE route offers: a
+solid-to-solid scheme whose **products are imposed by the stoichiometry**, solved
+inside the same Gibbs minimization as the aqueous equilibrium.
+
+`coupling = :reactions` (the default) puts one constraint per reaction, so the
+minimization still rearranges the solids and the assemblage stays thermodynamic.
+`coupling = :species` puts one per kinetic species, `nᵢ = nᵢ(0) + Σⱼ νᵢⱼ Δξⱼ`, so
+every product follows the coefficients you wrote while the aqueous phase still
+minimizes `G` under element conservation.
+
+```julia
+kss = KineticStepSolver(cs, DiluteSolutionModel(), reactions; coupling = :species)
+```
+
+Measured on two C₃A pathways — ettringite and monosulfoaluminate, one thousand
+seconds, constant rates — against what the stoichiometry demands:
+
+| | `:reactions` | `:species` |
+|:--|--:|--:|
+| extents `Δξ` | `Δt·M·r`, exactly | `Δt·r`, exactly |
+| C₃A, gypsum, AFt, AFm | rearranged by `G`; AFm at zero | the stoichiometry, to 8–9 digits |
+| element balance | `2×10⁻¹¹` mol | `2×10⁻¹⁴` mol |
+| certificate | proved optimal | proved optimal |
+
+!!! note "How `:species` is solved, and why it is not a constraint"
+    The pinned species are **eliminated**, not constrained. Their amounts are an
+    explicit affine function of the extents, `nᵢ = nᵢ(0) + Σⱼ νᵢⱼ Δξⱼ`, so they
+    need not be unknowns at all: they are removed from the system, their element
+    content is subtracted from the budget, and a plain equilibrium is solved over
+    what remains, with a Newton on the `nr` extents around it.
+
+    Holding them by a linear row instead — which is the obvious implementation —
+    was tried and stalls. The species' stationarity row stays in the system,
+    satisfied by a multiplier that must reach the mineral's own chemical
+    potential, of order 10²–10³ in `RT` units, and the Newton sits at a fixed
+    point its line search cannot leave: an element balance of `6.1×10⁻⁷` mol
+    whatever `maxit`, `tol` or the number of active-set updates, against
+    `2×10⁻¹⁴` after elimination.
+
+    The Newton on the extents is an outer loop, deliberately. It is the price of
+    imposing an assemblage, and `nr` is a handful where the composition is dozens;
+    each of its evaluations is one exact, well-conditioned equilibrium solve.
+
+Use `:reactions` when the assemblage should come from thermodynamics, the ODE
+route when no aqueous coupling is needed, and `:species` when you want a
+stoichiometric scheme with the pore solution still at equilibrium.
 
 ### The implicit step, in full
 
@@ -140,6 +179,16 @@ step does. The extension warns when a trajectory ends on amounts no chemistry ca
 produce — 457 mol of calcite from a budget of 55.6 — and that is what the ODE
 route can offer: a rate law that reads the solution belongs on the implicit
 route.
+
+A step is accepted on the estimate **and** on the certificate, never on the
+estimate alone. Richardson's difference measures the disagreement between two
+resolutions, so it is blind to an error the two share: measured on calcite over
+`10⁵ s`, the coarse step and both half-steps each dissolve the entire mineral,
+their extents agree to `5×10⁻¹¹`, and the estimator reports `9×10⁻⁶` — a step it
+should have refused, graded excellent. The certificate is not fooled, because a
+composition that dissolved everything violates `Δξ − Δt·M·r(n) = 0` by the whole
+extent. With both conditions the same march refuses `10⁵ s`, comes down to
+`1.6×10³ s`, and grows back to `5×10⁴ s` over seven steps.
 
 The tolerance is relative to the amount each reaction acts on, not to the extent.
 Scaling by `Δξ` is the obvious thing to write and does not work: `Δξ ∝ Δt`, so

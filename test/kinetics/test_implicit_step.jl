@@ -164,11 +164,6 @@ using LinearAlgebra
             cs, DiluteSolutionModel(), KineticReaction[],
         )
 
-        # The species-pinned coupling would impose the assemblage, but it does not
-        # converge and is refused rather than shipped. See the tutorial.
-        @test_throws ArgumentError KineticStepSolver(
-            cs, DiluteSolutionModel(), [kr]; coupling = :species,
-        )
         @test_throws ArgumentError KineticStepSolver(
             cs, DiluteSolutionModel(), [kr]; coupling = :nonsense,
         )
@@ -252,7 +247,7 @@ end
         # construction: that is what being held back means.
         @test cert[].optimal
         @test cert[].stationarity < 1.0e-10
-        @test cert[].feasibility < 1.0e-10
+        @test cert[].balance < 1.0e-10
 
         push!(totals, sum(amounts))
     end
@@ -460,5 +455,101 @@ end
     @test length(taken) < 30                                # measured at 7
     @test ustrip(us"mol", st.n[i_Ca]) ≈ Ca_eq rtol = 1.0e-6
     @test ustrip(us"mol", st.n[i_Cal]) ≈ Cal_eq rtol = 1.0e-8
+
+end
+
+@testsection "coupling = :species imposes the assemblage" begin
+
+    # Two C3A pathways with distinct solid products, the form Lavergne et al.
+    # (2018) uses. With one constraint per REACTION the minimization rearranges
+    # the solids and the monosulfoaluminate ends at zero; with one per kinetic
+    # SPECIES every product follows the coefficients written down.
+    #
+    # The bug that made this impossible is worth naming: a pinning row for a
+    # product that starts absent has one positive entry and a zero budget, which
+    # `degenerate_components` read as "this component is absent from the system".
+    # It pinned that row's multiplier and declared the species dead — stationarity
+    # residual 458, extents 4.3 times short. `conservation_rows` now restricts the
+    # criterion to the rows that conserve something.
+    CEM = Dict(symbol(x) => x for x in build_species(
+        datapath("cemdata18-thermofun.json")))
+    spc = speciation(
+        collect(values(CEM)),
+        split("C3A Gp H2O@ ettringite monosulphate12 Portlandite");
+        aggregate_state = [AS_AQUEOUS],
+    )
+    cs4 = ChemicalSystem(spc, CEMDATA_PRIMARIES)
+    S(x) = cs4[x]
+    r_aft = Reaction(
+        OrderedDict(S("C3A") => 1.0, S("Gp") => 3.0, S("H2O@") => 26.0),
+        OrderedDict(S("ettringite") => 1.0); symbol = "C3A -> AFt",
+    )
+    r_afm = Reaction(
+        OrderedDict(S("C3A") => 1.0, S("Gp") => 1.0, S("H2O@") => 10.0),
+        OrderedDict(S("monosulphate12") => 1.0); symbol = "C3A -> AFm",
+    )
+    f(k) = KineticFunc((T, P, t, n, lna, n0) -> k, NamedTuple(), u"mol/s")
+    k1, k2 = 2.0e-6, 5.0e-7
+    krs = [KineticReaction(cs4, r_aft, f(k1)), KineticReaction(cs4, r_afm, f(k2))]
+
+    names4 = symbol.(cs4.species)
+    idx4 = Dict(nm => findfirst(==(nm), names4) for nm in
+                ("C3A", "Gp", "ettringite", "monosulphate12"))
+    function fresh4()
+        st = ChemicalState(cs4)
+        set_quantity!(st, "C3A", 1.0e-2u"mol")
+        set_quantity!(st, "Gp", 3.0e-2u"mol")
+        set_quantity!(st, "H2O@", 1.0u"kg")
+        return st
+    end
+
+    Δt = 1000.0
+    kss_sp = KineticStepSolver(cs4, DiluteSolutionModel(), krs; coupling = :species)
+    q = Ref(Float64[])
+    cert_sp = Ref{Any}(nothing)
+    s_sp = kinetic_step(kss_sp, fresh4(), Δt; parameters = q, certificate = cert_sp)
+    n_sp = Float64[ustrip(us"mol", x) for x in s_sp.n]
+
+    # The extents ARE the reaction progress: no `M` factor, because pinning the
+    # species makes `Δξ` the progress itself.
+    @test q[] ≈ Δt .* [k1, k2] rtol = 1.0e-6
+
+    # And every species follows the stoichiometry, the products included.
+    @test n_sp[idx4["C3A"]] ≈ 1.0e-2 - (k1 + k2) * Δt rtol = 1.0e-6
+    @test n_sp[idx4["Gp"]] ≈ 3.0e-2 - (3k1 + k2) * Δt rtol = 1.0e-6
+    @test n_sp[idx4["ettringite"]] ≈ k1 * Δt rtol = 1.0e-6
+    @test n_sp[idx4["monosulphate12"]] ≈ k2 * Δt rtol = 1.0e-6
+
+    # The element balance, and it is certified.
+    #
+    # Held by a linear row instead — a Lagrange multiplier that must reach the
+    # mineral's own chemical potential, of order 10²-10³ in RT units — this same
+    # step stalled at 6.1e-7 mol whatever `maxit`, `tol` or the number of
+    # active-set updates. Eliminating the pinned species instead, so their amounts
+    # are computed from the extents and the budget they leave is handed to a plain
+    # equilibrium over what remains, brings it to 2e-14.
+    A4 = Matrix{Float64}(cs4.SM.A)
+    b4 = A4 * Float64[ustrip(us"mol", x) for x in fresh4().n]
+    resid = maximum(abs, A4 * n_sp - b4)
+    @test resid < 1.0e-11
+
+    @test cert_sp[].optimal
+    @test cert_sp[].balance < 1.0e-11
+
+    # Both routes report a certificate of the SAME shape, whichever produced it.
+    # `:reactions` fills it from `kkt_certificate` and `:species` from
+    # `optimality_certificate`, and those name the balance differently.
+    @test hasproperty(cert_sp[], :balance) && hasproperty(cert_sp[], :stationarity)
+
+    # `:reactions` on the same problem: certified, and the assemblage is
+    # thermodynamic instead — the monosulfoaluminate does not form.
+    kss_rx = KineticStepSolver(cs4, DiluteSolutionModel(), krs)
+    cert = Ref{Any}(nothing)
+    s_rx = kinetic_step(kss_rx, fresh4(), Δt; certificate = cert)
+    n_rx = Float64[ustrip(us"mol", x) for x in s_rx.n]
+    @test cert[].optimal
+    @test maximum(abs, A4 * n_rx - b4) < 1.0e-9
+    @test n_rx[idx4["monosulphate12"]] < 1.0e-9
+    @test n_rx[idx4["C3A"]] < n_sp[idx4["C3A"]]     # the two disagree, as they must
 
 end
