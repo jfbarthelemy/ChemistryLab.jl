@@ -215,6 +215,29 @@ subtracted from the budget, and a plain equilibrium is solved over what remains
 with a Newton on the `nr` extents around it: the balance goes to `2×10⁻¹⁴` and the
 step is certified.
 
+### A single step far beyond the relaxation time can find the other root
+
+For a rate law that vanishes at equilibrium the implicit step has two solutions,
+and the second is the composition with the mineral wholly dissolved: it satisfies
+the element balance and the reactivity row while violating `Δξ − Δt·M·r(n) = 0`
+by the entire extent. The certificate refuses it, and `kinetic_step` reports the
+step uncertified rather than passing it off.
+
+Which root the Newton finds is a property of the build, not of the chemistry.
+Measured on calcite under `r = k(1 − Ω)` with `k = 10⁻⁵ mol/s`: steps of `10⁴ s`
+and `10⁶ s` converge to the right root on Julia 1.12 and to the other one on
+1.13.0-rc4 — which is how this was found, a suite green on one and five failures
+on the other. `kinetic_step_adaptive` is build-independent, because it refuses an
+uncertified step and halves until one certifies; it reaches the equilibrium
+values to eight digits in seven steps on either.
+
+The test now asserts the contract rather than the outcome of a Newton on a
+particular build: a certified step never crosses saturation, an uncertified one is
+flagged and its rate-equation residual is of order one, steps well inside the
+relaxation time certify on any build, and the adaptive march reaches the right
+answer. Asserting the physics unconditionally on a step of `10⁶ s` was asserting
+which root a given LLVM finds.
+
 ### `pin_minerals = :auto` ranks the two formulations by margin
 
 It used to return the first one whose certificate passed. That makes the choice a

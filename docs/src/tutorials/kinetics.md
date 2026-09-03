@@ -180,6 +180,21 @@ produce — 457 mol of calcite from a budget of 55.6 — and that is what the OD
 route can offer: a rate law that reads the solution belongs on the implicit
 route.
 
+!!! warning "A single step far beyond the relaxation time can find the other root"
+    For a rate law that vanishes at equilibrium the step has two solutions, and
+    the second is the composition with the mineral wholly dissolved: it satisfies
+    the element balance and the reactivity row while violating
+    `Δξ − Δt·M·r(n) = 0` by the whole extent. The certificate refuses it, so pass
+    `certificate` and read `optimal` before trusting a step much larger than
+    `1/k`.
+
+    Which root a Newton finds there is a property of the build. Measured on the
+    case above: `10⁴ s` and `10⁶ s` converge to the right root on Julia 1.12 and
+    to the other one on 1.13.0-rc4, reported uncertified either way. That is the
+    reason the adaptive route exists — it refuses an uncertified step and halves
+    until one certifies, and reaches the equilibrium values to eight digits in
+    seven steps on both builds.
+
 A step is accepted on the estimate **and** on the certificate, never on the
 estimate alone. Richardson's difference measures the disagreement between two
 resolutions, so it is blind to an error the two share: measured on calcite over

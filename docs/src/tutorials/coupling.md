@@ -9,7 +9,7 @@ integrator down to their timescale. Equilibrating everything would dissolve the
 clinker instantly.
 
 The way out is [Leal2017](@cite)'s partition, which is also what Reaktoro
-implements. This page derives it; [The hydrating paste, end to end](@ref) puts
+implements. This page derives it; [The hydrating paste, end to end](@ref sec-coupled-hydration) puts
 it to work.
 
 ## The partition
@@ -129,6 +129,6 @@ trajectory is not the one the equations describe.
 
 ## See also
 
-- [The hydrating paste, end to end](@ref) — a worked example
+- [The hydrating paste, end to end](@ref sec-coupled-hydration) — a worked example
 - [Validation against Reaktoro](@ref) — what agrees and what does not
-- [Chemical Kinetics](@ref) — rate laws and the `KineticFunc` interface
+- [Chemical Kinetics](@ref sec-kinetics) — rate laws and the `KineticFunc` interface

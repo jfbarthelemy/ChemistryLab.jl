@@ -152,6 +152,24 @@ C-S-H solution left one end-member at 2.7e-9 with a stationarity residual of 6.5
 The rate laws are evaluated at the **end-of-step** composition, which is what
 makes the step implicit and stable on a stiff system. `Δt` is the caller's choice;
 [`kinetic_step_adaptive`](@ref) chooses it from a local error estimate instead.
+
+!!! warning "One step far beyond the relaxation time can land on the other root"
+    The step is a nonlinear problem, and for a rate law that vanishes at
+    equilibrium it has a second solution: the composition with the mineral wholly
+    dissolved. That one satisfies the element balance and the reactivity row while
+    violating `Δξ − Δt·M·r(n) = 0` by the entire extent, so the certificate
+    refuses it — pass `certificate` and check `optimal` before trusting a step
+    much larger than `1/k`.
+
+    Which root the Newton finds is a property of the build, not of the chemistry.
+    Measured on calcite under `r = k(1 − Ω)` with `k = 10⁻⁵ mol/s`: steps of
+    `10⁴ s` and `10⁶ s` converge to the right root on Julia 1.12 and to the other
+    one on 1.13.0-rc4, reported uncertified in both readings. Steps well inside
+    the relaxation time certify on either.
+
+    [`kinetic_step_adaptive`](@ref) is the remedy and is build-independent: it
+    refuses an uncertified step and halves until one certifies, reaching the
+    equilibrium values to eight digits in seven steps on the same case.
 """
 function kinetic_step(
         kss::KineticStepSolver, state::ChemicalState, Δt;

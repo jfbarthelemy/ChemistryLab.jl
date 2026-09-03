@@ -1,6 +1,6 @@
 # [The full Portland cement, through its pore solution](@id ex-ionic-opc)
 
-[The hydrating paste, end to end](@ref) runs the two silicate clinker phases this
+[The hydrating paste, end to end](@ref sec-coupled-hydration) runs the two silicate clinker phases this
 way: prescribe the dissolution, let the thermodynamics decide the hydrates. This
 page does the same for a **complete CEM I** — alite, belite, aluminate, ferrite,
 gypsum and limestone filler — and then reads its calorimetry off the result.

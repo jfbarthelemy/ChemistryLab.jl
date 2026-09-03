@@ -43,3 +43,14 @@ Pages   = ["kinetics/calorimetry.jl"]
 Modules = [ChemistryLab]
 Pages   = ["kinetics/kinetics_postprocessing.jl"]
 ```
+
+## The implicit kinetic step
+
+One fully implicit problem per step, with the reaction extents as unknowns of the
+same Gibbs minimization. See
+[Which route: two ways to advance in time](@ref sec-kinetics-routes).
+
+```@autodocs
+Modules = [ChemistryLab]
+Pages   = ["kinetics/implicit_step.jl"]
+```

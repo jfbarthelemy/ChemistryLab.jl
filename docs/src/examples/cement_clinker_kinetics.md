@@ -228,7 +228,7 @@ supplementary cementitious material, a carbonating cover, a leached surface.
 
 !!! note "Cost"
     One equilibrium solve per accepted ODE step, not per right-hand-side
-    evaluation — see [the coupling note](@ref) in the kinetics manual. On this
+    evaluation — see [The equilibrium–kinetics coupling](@ref) in the kinetics manual. On this
     system that is a few hundred solves over seven days of hydration.
 
 !!! warning "What `equilibrium_solver = nothing` costs here, and what it does not"
