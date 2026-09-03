@@ -25,7 +25,18 @@ SymbolicNumericIntegration = "78aadeae-fbc0-11eb-17b6-c7ec0477ba9e"
 
 [compat]
 Documenter = "1.17"
-DocumenterCitations = "1.5"
+# DocumenterCitations 1.5.0 and DocumenterVitepress 0.3.x cannot be resolved
+# together. Pkg reports `DocumenterVitepress restricted to versions 0.0.1 - 0.0.20
+# by compatibility requirements with DocumenterCitations`, so asking for 1.5 and
+# 0.3 at once leaves the resolver nothing and the documentation job fails before
+# it builds a page. Nothing in this repository changed to cause it: the docs
+# environment is resolved afresh on every run, so the release of 1.5.0 broke a
+# job that had passed the day before.
+#
+# `"1.4"` resolves to DocumenterCitations 1.4.1, DocumenterVitepress 0.3.5 and
+# Documenter 1.19.0 — the stack these pages were built and checked against.
+# Widen it once DocumenterVitepress accepts 1.5.
+DocumenterCitations = "1.4"
 DocumenterVitepress = "0.3"
 # The docs environment declares OptimaSolver directly, and without a bound here
 # it resolved to 0.2.1 — whose `OptimaOptimizer` has neither `use_fd_hessian`
