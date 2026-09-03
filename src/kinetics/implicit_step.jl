@@ -176,25 +176,43 @@ function kinetic_step(
     # sufficient — so trying both and keeping a proved answer is exact, not a
     # heuristic. Pass `true` or `false` to force one.
     if pin_minerals === :auto
+        # BOTH branches are computed and ranked by margin. Returning the first one
+        # whose certificate happens to pass makes the choice a threshold decision,
+        # and a threshold decision between two answers that straddle the tolerance
+        # is settled by the last bits: the same code then chooses differently on a
+        # different machine. That is how this was found — a suite green here and
+        # five failures in CI, on the same commit.
+        #
+        # Ranked by margin it is not close. On the case that exposed it, the free
+        # branch has run to equilibrium and violates its own rate equation by the
+        # whole extent while the pinned one satisfies it to 1e-13: fifteen orders
+        # of magnitude, not an epsilon.
+        best_out = nothing
+        best_cert = nothing
+        best_err = Inf
+        best_params = nothing
         for pin in (false, true)
             cert_try = Ref{Any}(nothing)
+            par_try = Ref(Float64[])
             out = kinetic_step(
                 kss, state, Δt;
                 t = t, ϵ = ϵ, warm_start = warm_start, pin_minerals = pin,
-                parameters = parameters, certificate = cert_try,
+                parameters = par_try, certificate = cert_try,
             )
-            if cert_try[] !== nothing && cert_try[].optimal
-                certificate === nothing || (certificate[] = cert_try[])
-                return out
-            end
-            if pin        # the last attempt: hand back what there is, and say so
-                certificate === nothing || (certificate[] = cert_try[])
-                @warn """no implicit kinetic step was certified, with the minerals \
-                pinned or free; the last answer is returned. Try a smaller Δt, and \
-                audit with the certificate.""" maxlog = 1
-                return out
+            err = _certificate_error(cert_try[])
+            if err < best_err
+                best_out, best_cert, best_err = out, cert_try[], err
+                best_params = copy(par_try[])
             end
         end
+        parameters === nothing || (parameters[] = best_params)
+        certificate === nothing || (certificate[] = best_cert)
+        if best_cert !== nothing && !best_cert.optimal
+            @warn """no implicit kinetic step was certified, with the minerals \
+            pinned or free; the closest is returned. Try a smaller Δt, and audit \
+            with the certificate.""" maxlog = 1
+        end
+        return best_out
     end
     Δt_s = Δt isa Number && !(Δt isa DynamicQuantities.AbstractQuantity) ?
         Float64(Δt) : ustrip(us"s", Δt)
@@ -556,15 +574,24 @@ function kinetic_step_adaptive(
     # own compares two different formulations through Richardson's difference,
     # and the error estimate is then meaningless: measured, the march accepted a
     # step that dissolved the whole mineral.
+    # Resolved by MARGIN, not by whether one branch's certificate happens to
+    # pass — see `_certificate_error`. A threshold decision between two answers
+    # that straddle the tolerance is settled by rounding, and the whole march
+    # then depends on the machine.
     pin_fixed = pin_minerals
     if pin_minerals === :auto
-        pin_fixed = true
-        c = Ref{Any}(nothing)
-        kinetic_step(
-            kss, state, Δt_s; t = t, ϵ = ϵ, warm_start = warm_start,
-            pin_minerals = false, certificate = c,
-        )
-        c[] !== nothing && c[].optimal && (pin_fixed = false)
+        errs = Float64[]
+        for pin in (false, true)
+            c = Ref{Any}(nothing)
+            kinetic_step(
+                kss, state, Δt_s; t = t, ϵ = ϵ, warm_start = warm_start,
+                pin_minerals = pin, certificate = c,
+            )
+            push!(errs, _certificate_error(c[]))
+        end
+        # Ties, and the case where neither produced a certificate, go to the
+        # pinned formulation: it is the one that enforces the reactivity row.
+        pin_fixed = !(errs[1] < errs[2])
     end
 
     common = (;
@@ -756,4 +783,28 @@ function _normalize_certificate(c)
         n_interior = c.n_interior, n_absent_component = c.n_forced_zero,
         optimal = c.optimal,
     )
+end
+
+
+"""
+    _certificate_error(c) -> Float64
+
+One number ranking how far a step is from satisfying its own conditions:
+stationarity, element balance, the worst supersaturation among absent phases, and
+the residual of the rate equation. `Inf` when no certificate was produced.
+
+Used to choose between the pinned and free formulations of a step. A ranking is
+needed rather than the boolean `optimal`, because two answers may straddle the
+tolerance and then the choice is decided by rounding — the same code choosing
+differently on another machine. Ranked, the gap is fifteen orders of magnitude.
+"""
+function _certificate_error(c)
+    c === nothing && return Inf
+    e = max(
+        Float64(c.stationarity),
+        Float64(c.balance),
+        max(Float64(c.worst_supersaturation), 0.0),
+    )
+    hasproperty(c, :param_residual) && (e = max(e, Float64(c.param_residual)))
+    return isfinite(e) ? e : Inf
 end

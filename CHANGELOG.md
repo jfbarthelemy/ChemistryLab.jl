@@ -215,6 +215,22 @@ subtracted from the budget, and a plain equilibrium is solved over what remains
 with a Newton on the `nr` extents around it: the balance goes to `2×10⁻¹⁴` and the
 step is certified.
 
+### `pin_minerals = :auto` ranks the two formulations by margin
+
+It used to return the first one whose certificate passed. That makes the choice a
+**threshold** decision, and a threshold decision between two answers that straddle
+the tolerance is settled by the last bits: the same commit then behaves differently
+on a different machine. Found exactly that way — the suite green locally and five
+failures in CI on the identical commit, in the test asserting that a saturating
+rate law never crosses equilibrium.
+
+Both formulations are now computed and ranked by a single margin —
+stationarity, element balance, worst supersaturation among absent phases, and the
+residual of the rate equation. Ranked, the two are not close: on the case that
+exposed it the free branch has run to equilibrium and violates its own rate
+equation by the whole extent while the pinned one satisfies it to `10⁻¹³`, fifteen
+orders of magnitude apart. The adaptive march resolves `:auto` the same way.
+
 ### ForwardDiff through the certified route
 
 A composition carrying dual numbers takes the implicit-function route: the

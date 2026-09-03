@@ -78,7 +78,7 @@ julia> n_sv  = StateView([1.0], idx);
 
 julia> lna_sv = StateView([0.0], idx);
 
-julia> pk = parrot_killoh(PK_PARAMS_C3S, "C3S");
+julia> pk = parrot_killoh_avrami(PK84_PARAMS_C3S, "C3S");
 
 julia> pk(293.15, 1e5, 0.0, n_sv, lna_sv, n_sv) > 0
 true
@@ -493,17 +493,19 @@ AD-compatible (ForwardDiff-safe): no `Float64` casts in the evaluation path.
 
 # Examples
 
-```jldoctest
-julia> pk = parrot_killoh(PK_PARAMS_C3S, "C3S");
+Shown rather than run: the constructor warns by design, and a deprecation
+warning on stderr is not something a doctest should have to reproduce verbatim.
+The numerical behavior of this variant is pinned by the test suite instead — see
+the branch oracle in `test/kinetics/test_rate_models.jl`, which asserts that
+`PK_PARAMS_*` puts C3S, C2S and C3A on the diffusion branch within a few percent
+of hydration and that C4AF is limited by its own nucleation branch.
 
-julia> idx = Dict("C3S" => 1);
-
-julia> n0  = StateView([1.0], idx);
-
-julia> lna = StateView([0.0], idx);
-
-julia> pk(293.15, 1e5, 0.0, n0, lna, n0) > 0
-true
+```julia
+pk = parrot_killoh(PK_PARAMS_C3S, "C3S")
+idx = Dict("C3S" => 1)
+n0 = StateView([1.0], idx)
+lna = StateView([0.0], idx)
+pk(293.15, 1e5, 0.0, n0, lna, n0) > 0      # true
 ```
 
 See also: [`PK_PARAMS_C3S`](@ref), [`PK_PARAMS_C2S`](@ref),
