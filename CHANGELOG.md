@@ -1,5 +1,42 @@
 # Changelog
 
+## v0.14.1 — the ambiguities a test suite cannot see
+
+`Aqua.test_all` now runs as part of the suite. It checks eight properties no
+domain test looks at — method ambiguities, unbound type parameters, undefined
+exports, dependency hygiene, type piracy, tasks left running at load — and it
+found three real defects, all fixed here. No exported name, signature or result
+changes; the calls below simply used to fail.
+
+### Fixed
+
+- **Fourteen method ambiguities from one signature.** `convert(::Type{T},
+  f::Formula{T}) where {T}` left `T` unconstrained, so dispatch weighed it
+  against every `convert(::Type{T}, x)` in the ecosystem — `Missing`,
+  `Nothing`, `Ref`, `FunctionWrapper`, `VecElement`, polynomial types and more.
+  `Formula{T <: Number}` already implies the bound; saying it in the signature
+  costs nothing and removes all fourteen.
+- **`convert(::Type{<:ForwardDiff.Dual}, ::Formula)`** was ambiguous with
+  ForwardDiff's own catch-all and therefore unusable. It now resolves, spelled
+  with the same type parameters ForwardDiff uses so that it is genuinely more
+  specific.
+- **`promote_rule(Species, Species)`** was the missing diagonal of the
+  `Species`/`AbstractSpecies` pair, and errored.
+- **`Species(...)` and `CemSpecies(...)`** declared a `where {T}` bound only by
+  the varargs, so `T` was unbound when no pair was passed. `T` was never used in
+  the body; the bound is gone.
+- **`gather_species`** on a dictionary whose keys *and* values are species was
+  ambiguous in dispatch and in meaning. It now says which two readings are
+  possible instead of raising an unexplained `MethodError`.
+
+### Declared, not fixed
+
+`thermo_factories.jl` extends some thirty `Base` math functions to
+`DynamicQuantities.Quantity`, stripping the unit first. That is type piracy —
+function and type both belong elsewhere — and it is deliberate. It is now
+declared to Aqua as such rather than left unexamined. It remains global: any
+code loading ChemistryLab gets these methods whether it asked or not.
+
 ## v0.14.0 — an equilibrium that comes with a proof, and a kinetic step that is one problem
 
 ### Breaking changes

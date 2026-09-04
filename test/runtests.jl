@@ -1,4 +1,5 @@
 using ChemistryLab
+using Aqua
 using DynamicQuantities
 using ForwardDiff
 using OptimaSolver
@@ -18,6 +19,48 @@ macro testsection(str, block)
 end
 
 reset_timer!()
+
+"""
+    aqua_persistent_tasks(m::Module) -> Bool
+
+`Aqua.test_persistent_tasks` in a child process with default bounds checking.
+
+The check precompiles a synthetic package that depends on `m` and waits for a
+sentinel written from that package's module body. Julia writes no
+precompilation cache when `--check-bounds` is forced, so the body never runs,
+the sentinel never appears, and the check fails for a reason that says nothing
+about `m`. `Pkg.test()` forces the flag by default.
+
+Running it in a child with `--check-bounds=auto` keeps both halves: the test
+suite proper still runs with bounds checking on, and the check still runs.
+"""
+function aqua_persistent_tasks(m::Module)
+    code = """
+    using Aqua, $(nameof(m)), Test
+    @testset "persistent_tasks" begin
+        Aqua.test_persistent_tasks($(nameof(m)))
+    end
+    """
+    cmd = `$(first(Base.julia_cmd())) --check-bounds=auto --startup-file=no --project=$(Base.active_project()) -e $code`
+    return success(run(ignorestatus(cmd)))
+end
+
+@testsection "Aqua" begin
+    Aqua.test_all(
+        ChemistryLab;
+        # `thermo_factories.jl` extends some thirty `Base` math functions to
+        # `DynamicQuantities.Quantity`, stripping the unit before applying them.
+        # That is type piracy by construction — the function and the type both
+        # belong elsewhere — and it is deliberate: it is what lets a
+        # dimensionless quantity be used wherever a number is expected. Declared
+        # rather than hidden. It stays global, though: any code loading
+        # ChemistryLab gets these methods whether it asked for them or not.
+        piracies = (treat_as_own = [DynamicQuantities.Quantity],),
+        # Run apart, see `aqua_persistent_tasks` above.
+        persistent_tasks = false,
+    )
+    @test aqua_persistent_tasks(ChemistryLab)
+end
 
 @testsection "Construction tests" begin
 
