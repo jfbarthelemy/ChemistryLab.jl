@@ -681,6 +681,19 @@ function StoichMatrix(
     )
     gather_species(d::AbstractDict{T, S} where {T, S <: AbstractSpecies}) = collect(values(d))
     gather_species(d::AbstractDict{S, T} where {S <: AbstractSpecies, T}) = collect(keys(d))
+    # Both sides carrying species is genuinely ambiguous in meaning, not merely in
+    # dispatch: keys and values are two different sets, and nothing says which one
+    # the caller means. Say so, rather than pick one — this used to surface as an
+    # unexplained `MethodError` about ambiguous methods.
+    gather_species(
+        ::AbstractDict{S, T} where {S <: AbstractSpecies, T <: AbstractSpecies}
+    ) = throw(
+        ArgumentError(
+            "the dictionary has species as both keys and values, so which set is " *
+                "meant is undetermined; pass `collect(keys(d))` or " *
+                "`collect(values(d))` explicitly"
+        )
+    )
     gather_species(d) = d
     return StoichMatrix(
         gather_species(species),

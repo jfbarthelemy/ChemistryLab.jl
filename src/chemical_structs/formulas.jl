@@ -564,9 +564,24 @@ function Base.convert(T::Type{<:Number}, f::Formula)
     )
 end
 
-function Base.convert(::Type{T}, f::Formula{T}) where {T}
+# `T <: Number` is not a restriction — `Formula{T <: Number}` already implies it.
+# Saying it in the signature is what stops dispatch from considering this method
+# for every other `convert(::Type{T}, x)` in the ecosystem: without it, it was
+# ambiguous with `Missing`, `Nothing`, `Ref`, `FunctionWrapper`, `VecElement` and
+# a dozen more, fourteen ambiguities in all.
+function Base.convert(::Type{T}, f::Formula{T}) where {T <: Number}
     return f
 end
+
+# `ForwardDiff.Dual` is a `Number`, so `convert(Dual, ::Formula)` matched both the
+# method above and ForwardDiff's own catch-all. Forward to the generic conversion,
+# which is what the caller means.
+# The type parameters are spelled out to match ForwardDiff's own
+# `convert(::Type{Dual{T,V,N}}, x)`: written as `D <: Dual` this method would be
+# more specific on the second argument and less on the first, which is an
+# ambiguity rather than a fix.
+Base.convert(::Type{ForwardDiff.Dual{T, V, N}}, f::Formula) where {T, V, N} =
+    invoke(Base.convert, Tuple{Type{<:Number}, Formula}, ForwardDiff.Dual{T, V, N}, f)
 
 """
     apply(func::Function, f::Formula, args...; kwargs...) -> Formula

@@ -596,13 +596,13 @@ OrderedDict{Symbol, Int64} with 2 entries:
 ```
 """
 function Species(
-        atoms::Pair{Symbol, T}...;
+        atoms::Pair{Symbol}...;
         name = "",
         symbol = "",
         aggregate_state = AS_UNDEF,
         class = SC_UNDEF,
         properties::AbstractDict = OrderedDict{Symbol, PropertyType}(),
-    ) where {T}
+    )
     return Species(
         OrderedDict(atoms...);
         name = name,
@@ -1008,13 +1008,13 @@ OrderedDict{Symbol, Int64} with 2 entries:
 ```
 """
 function CemSpecies(
-        oxides::Pair{Symbol, T}...;
+        oxides::Pair{Symbol}...;
         name = "",
         symbol = "",
         aggregate_state = AS_UNDEF,
         class = SC_UNDEF,
         properties::AbstractDict = OrderedDict{Symbol, PropertyType}(),
-    ) where {T}
+    )
     return CemSpecies(
         OrderedDict(oxides...);
         name = name,
@@ -1329,6 +1329,8 @@ Define promotion rule to convert AbstractSpecies to Species.
 """
 Base.promote_rule(::Type{Species}, ::Type{<:AbstractSpecies}) = Species
 Base.promote_rule(::Type{<:AbstractSpecies}, ::Type{Species}) = Species
+# The diagonal the two above leave ambiguous: `Species` matches both.
+Base.promote_rule(::Type{Species}, ::Type{Species}) = Species
 
 Base.promote_rule(::Type{Species}, ::Type{Species{T}}) where {T} = Species
 Base.promote_rule(::Type{Species{T}}, ::Type{Species}) where {T} = Species
