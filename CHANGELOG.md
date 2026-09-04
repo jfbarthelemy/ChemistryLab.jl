@@ -1,5 +1,23 @@
 # Changelog
 
+## v0.14.2 — holding AMD at a version that still has `SS_Int`
+
+A release with no change to ChemistryLab itself. It exists because an upstream
+patch release broke every environment that resolves this package's test target
+or its documentation.
+
+AMD 0.5.4, published on 2026-09-04, removed `SS_Int`. `SparseColumnPivotedQR`'s
+AMD extension calls it and bounds AMD only at `"0.5.1"`, so any fresh resolve
+picks 0.5.4, and `LinearSolve` — hence `OrdinaryDiffEq`, hence this package's
+test and docs environments — fails to precompile. Nothing in ChemistryLab is at
+fault and nothing in it can avoid the clash.
+
+`AMD = "0.5.1 - 0.5.3"` is therefore declared in the test target and in
+`docs/Project.toml`. AMD is **not** a dependency of the package: the bound
+constrains nothing downstream, only the environments built here. Remove it once
+AMD restores the binding or SparseColumnPivotedQR tightens its own bound.
+
+
 ## v0.14.1 — the ambiguities a test suite cannot see
 
 `Aqua.test_all` now runs as part of the suite. It checks eight properties no
@@ -36,17 +54,6 @@ changes; the calls below simply used to fail.
 function and type both belong elsewhere — and it is deliberate. It is now
 declared to Aqua as such rather than left unexamined. It remains global: any
 code loading ChemistryLab gets these methods whether it asked or not.
-
-### Dependencies
-
-- **AMD is bounded to `0.5.1 - 0.5.3` in the test target and the docs
-  environment.** AMD 0.5.4 removed `SS_Int`, which `SparseColumnPivotedQR`'s AMD
-  extension calls; since that package bounds AMD at `"0.5.1"`, a fresh resolve
-  picks 0.5.4 and `LinearSolve` — hence `OrdinaryDiffEq` — fails to precompile.
-  Nothing in ChemistryLab is at fault and nothing in it can avoid the clash. The
-  bound is test- and docs-only: AMD is not a dependency of the package, so
-  nothing downstream is constrained. Remove it once AMD restores the binding or
-  SparseColumnPivotedQR tightens its own bound.
 
 ## v0.14.0 — an equilibrium that comes with a proof, and a kinetic step that is one problem
 
