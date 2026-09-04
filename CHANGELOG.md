@@ -37,6 +37,17 @@ function and type both belong elsewhere — and it is deliberate. It is now
 declared to Aqua as such rather than left unexamined. It remains global: any
 code loading ChemistryLab gets these methods whether it asked or not.
 
+### Dependencies
+
+- **AMD is bounded to `0.5.1 - 0.5.3` in the test target and the docs
+  environment.** AMD 0.5.4 removed `SS_Int`, which `SparseColumnPivotedQR`'s AMD
+  extension calls; since that package bounds AMD at `"0.5.1"`, a fresh resolve
+  picks 0.5.4 and `LinearSolve` — hence `OrdinaryDiffEq` — fails to precompile.
+  Nothing in ChemistryLab is at fault and nothing in it can avoid the clash. The
+  bound is test- and docs-only: AMD is not a dependency of the package, so
+  nothing downstream is constrained. Remove it once AMD restores the binding or
+  SparseColumnPivotedQR tightens its own bound.
+
 ## v0.14.0 — an equilibrium that comes with a proof, and a kinetic step that is one problem
 
 ### Breaking changes
