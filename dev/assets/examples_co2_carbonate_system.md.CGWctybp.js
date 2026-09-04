@@ -139,7 +139,7 @@ import{_ as n,o as t,c as e,ao as i,j as s}from"./chunks/framework.neklfv_E.js";
 <span class="line"><span style="--shiki-light:#24292e;--shiki-dark:#e1e4e8;">Number of equality constraint Jacobian evaluations   = 29</span></span>
 <span class="line"><span style="--shiki-light:#24292e;--shiki-dark:#e1e4e8;">Number of inequality constraint Jacobian evaluations = 0</span></span>
 <span class="line"><span style="--shiki-light:#24292e;--shiki-dark:#e1e4e8;">Number of Lagrangian Hessian evaluations             = 28</span></span>
-<span class="line"><span style="--shiki-light:#24292e;--shiki-dark:#e1e4e8;">Total seconds in IPOPT                               = 10.697</span></span>
+<span class="line"><span style="--shiki-light:#24292e;--shiki-dark:#e1e4e8;">Total seconds in IPOPT                               = 11.128</span></span>
 <span class="line"></span>
 <span class="line"><span style="--shiki-light:#24292e;--shiki-dark:#e1e4e8;">EXIT: Optimal Solution Found.</span></span>
 <span class="line"><span style="--shiki-light:#24292e;--shiki-dark:#e1e4e8;">pH at [CO₂]₀ = 1.0e-5 mol (atmospheric, ~400 ppm) : 5.72</span></span>
@@ -219,7 +219,7 @@ import{_ as n,o as t,c as e,ao as i,j as s}from"./chunks/framework.neklfv_E.js";
 <span class="line"><span style="--shiki-light:#24292e;--shiki-dark:#e1e4e8;">Number of equality constraint Jacobian evaluations   = 32</span></span>
 <span class="line"><span style="--shiki-light:#24292e;--shiki-dark:#e1e4e8;">Number of inequality constraint Jacobian evaluations = 0</span></span>
 <span class="line"><span style="--shiki-light:#24292e;--shiki-dark:#e1e4e8;">Number of Lagrangian Hessian evaluations             = 31</span></span>
-<span class="line"><span style="--shiki-light:#24292e;--shiki-dark:#e1e4e8;">Total seconds in IPOPT                               = 0.007</span></span>
+<span class="line"><span style="--shiki-light:#24292e;--shiki-dark:#e1e4e8;">Total seconds in IPOPT                               = 0.008</span></span>
 <span class="line"></span>
 <span class="line"><span style="--shiki-light:#24292e;--shiki-dark:#e1e4e8;">EXIT: Optimal Solution Found.</span></span>
 <span class="line"><span style="--shiki-light:#24292e;--shiki-dark:#e1e4e8;">pH at [CO₂]₀ = 0.001 mol (lightly carbonated) : 4.68</span></span>
